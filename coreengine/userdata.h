@@ -142,6 +142,13 @@ public:
      * @return
      */
     QVector<Userdata::ShopItem> getItems(GameEnums::ShopItemType type, bool bought);
+    /**
+     * @brief Userdata::getItems
+     * @param type
+     * @param bought
+     * @return
+     */
+    QStringList getItemsList(GameEnums::ShopItemType type, bool bought);
 signals:
 
 public slots:
@@ -155,6 +162,11 @@ public slots:
      * @param credtis
      */
     void setCredtis(const qint32 &credtis);
+    /**
+     * @brief addCredtis
+     * @param credtis
+     */
+    void addCredtis(const qint32 &credtis);
     /**
      * @brief addAchievement
      * @param id

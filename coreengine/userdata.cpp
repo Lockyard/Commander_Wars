@@ -38,6 +38,11 @@ void Userdata::setCredtis(const qint32 &credtis)
     m_credtis = credtis;
 }
 
+void Userdata::addCredtis(const qint32 &credtis)
+{
+    m_credtis += credtis;
+}
+
 void Userdata::storeUser()
 {
     Mainapp* pApp = Mainapp::getInstance();
@@ -210,7 +215,7 @@ void Userdata::addVictoryForMap(QString mapPath, QString co1, QString co2, qint3
         qint32 insertPos = -1;
         if (item->co1.size() >= MAX_VICTORY_INFO_PER_MAP)
         {
-            for (qint32 i2 = 0; i2 < score; ++i2)
+            for (qint32 i2 = 0; i2 < MAX_VICTORY_INFO_PER_MAP; ++i2)
             {
                 if (item->score[i2] <= score)
                 {
@@ -218,6 +223,7 @@ void Userdata::addVictoryForMap(QString mapPath, QString co1, QString co2, qint3
                     item->co1.removeLast();
                     item->co2.removeLast();
                     item->score.removeLast();
+                    break;
                 }
             }
         }
@@ -282,6 +288,20 @@ QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, boo
             item.bought == bought)
         {
             ret.append(item);
+        }
+    }
+    return ret;
+}
+
+QStringList Userdata::getItemsList(GameEnums::ShopItemType type, bool bought)
+{
+    QStringList ret;
+    for (const auto & item : m_shopItems)
+    {
+        if (item.itemType == type &&
+            item.bought == bought)
+        {
+            ret.append(item.key);
         }
     }
     return ret;

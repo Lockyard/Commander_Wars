@@ -1,6 +1,7 @@
 #include "mapselection.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/userdata.h"
 #include "resource_management/objectmanager.h"
 #include "resource_management/fontmanager.h"
 
@@ -217,12 +218,17 @@ void MapSelection::changeFolder(QString folder)
         QString list = "*.map;*.jsm";
         infoList.append(QDir(newFolder).entryInfoList(QDir::Dirs));
         infoList.append(QDir(newFolder).entryInfoList(list.split(";"), QDir::Files));
+        Userdata* pUserdata = Userdata::getInstance();
+        auto hideList = pUserdata->getItemsList(GameEnums::ShopItemType_Map, false);
         for (qint32 i = 1; i < infoList.size(); i++)
         {
             QString myPath = infoList[i].absoluteFilePath();
+            QString item = myPath;
+            item.replace(QCoreApplication::applicationDirPath() + "/", "");
             if ((myPath == newFolder) ||
                 (upFolder == infoList[i] ||
-                 (infoList[i].isDir() && myPath.endsWith(".camp"))))
+                 (infoList[i].isDir() && myPath.endsWith(".camp"))) ||
+                 (hideList.contains(item)))
             {
                 // skip ourself
                 continue;
