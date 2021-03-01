@@ -107,6 +107,7 @@ void GameEnums::registerEnums()
     value.setProperty("AiTypes_NormalOffensive", AiTypes_NormalOffensive);
     value.setProperty("AiTypes_NormalDefensive", AiTypes_NormalDefensive);
     value.setProperty("AiTypes_Heavy", AiTypes_Heavy);
+    value.setProperty("AiTypes_TestFirst", AiTypes_TestFirst);
 
     value.setProperty("RandomMapTerrainType_Group", RandomMapTerrainType_Group);
     value.setProperty("RandomMapTerrainType_Line", RandomMapTerrainType_Line);

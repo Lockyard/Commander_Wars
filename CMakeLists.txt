@@ -363,6 +363,7 @@ set(${PROJECT_NAME}_SRCS
         ai/normalai.cpp
         ai/heavyai.cpp
         ai/influencefrontmap.cpp
+        ai/testfirstai.cpp
 
         ai/neuralnetwork/neural/edge.cpp
         ai/neuralnetwork/neural/layer.cpp

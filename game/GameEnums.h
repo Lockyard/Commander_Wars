@@ -183,6 +183,7 @@ public:
         AiTypes_NormalOffensive,
         AiTypes_NormalDefensive,
         AiTypes_Heavy,
+        AiTypes_TestFirst,
         AiTypes_Closed,
         AiTypes_Max,        
         AiTypes_Open    = 200,

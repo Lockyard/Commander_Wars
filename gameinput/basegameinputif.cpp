@@ -8,6 +8,7 @@
 #include "ai/proxyai.h"
 #include "ai/normalai.h"
 #include "ai/heavyai.h"
+#include "ai/testfirstai.h"
 
 #include "game/gamemap.h"
 
@@ -114,6 +115,11 @@ BaseGameInputIF* BaseGameInputIF::createAi(GameEnums::AiTypes type)
         case GameEnums::AiTypes_Heavy:
         {
             ret = new HeavyAi();
+            break;
+        }
+        case GameEnums::AiTypes_TestFirst:
+        {
+            ret = new TestFirstAI();
             break;
         }
         case GameEnums::AiTypes_Open:
