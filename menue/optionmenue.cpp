@@ -28,7 +28,6 @@
 #include "objects/base/textbox.h"
 #include "objects/base/label.h"
 #include "objects/base/timespinbox.h"
-#include "objects/base/checkbox.h"
 
 OptionMenue::OptionMenue()
 {
@@ -41,7 +40,7 @@ OptionMenue::OptionMenue()
     // load background
     oxygine::spSprite sprite = new oxygine::Sprite();
     addChild(sprite);
-    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("Background+1");
+    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("optionmenu");
     sprite->setResAnim(pBackground);
     // background should be last to draw
     sprite->setPriority(static_cast<qint32>(Mainapp::ZOrder::Background));
@@ -94,6 +93,7 @@ OptionMenue::OptionMenue()
         emit sigShowGameplayAndKeys();
     });
     connect(this, &OptionMenue::sigShowGameplayAndKeys, this, &OptionMenue::showGameplayAndKeys, Qt::QueuedConnection);
+    connect(this, &OptionMenue::sigUpdateModCheckboxes, this, &OptionMenue::updateModCheckboxes, Qt::QueuedConnection);
 
     QSize size(Settings::getWidth() - 20,
                Settings::getHeight() - static_cast<qint32>(20 + pButtonMods->getHeight()) * 2);
@@ -177,7 +177,6 @@ void OptionMenue::showSettings()
     m_pGameplayAndKeys->setVisible(false);
     m_pOptions->clearContent();
     Mainapp* pApp = Mainapp::getInstance();
-    AudioThread* pAudio = pApp->getAudioThread();
     oxygine::TextStyle style = FontManager::getMainFont24();
     style.color = FontManager::getFontColor();
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
@@ -410,61 +409,7 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pCheckbox);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
-    pTextfield->setStyle(style);
-    pTextfield->setHtmlText(tr("Audio Settings"));
-    pTextfield->setPosition(10, y);
-    m_pOptions->addItem(pTextfield);
-    y += 40;
-    pTextfield = new Label(sliderOffset - 10);
-    pTextfield->setStyle(style);
-    pTextfield->setHtmlText(tr("Global Volume: "));
-    pTextfield->setPosition(10, y);
-    m_pOptions->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
-    pSlider->setTooltipText(tr("Selects the global volume for the game"));
-    pSlider->setPosition(sliderOffset - 130, y);
-    pSlider->setCurrentValue(Settings::getTotalVolume());
-    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
-    {
-        Settings::setTotalVolume(value);
-        pAudio->setVolume(Settings::getMusicVolume());
-    });
-    m_pOptions->addItem(pSlider);
-
-    y += 40;
-    pTextfield = new Label(sliderOffset - 10);
-    pTextfield->setStyle(style);
-    pTextfield->setHtmlText(tr("Music Volume: "));
-    pTextfield->setPosition(10, y);
-    m_pOptions->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
-    pSlider->setTooltipText(tr("Selects the music volume for the game"));
-    pSlider->setPosition(sliderOffset - 130, y);
-    pSlider->setCurrentValue(Settings::getMusicVolume());
-    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
-    {
-        Settings::setMusicVolume(value);
-        pAudio->setVolume(value);
-    });
-    m_pOptions->addItem(pSlider);
-
-    y += 40;
-    pTextfield = new Label(sliderOffset - 10);
-    pTextfield->setStyle(style);
-    pTextfield->setHtmlText(tr("Sound Volume: "));
-    pTextfield->setPosition(10, y);
-    m_pOptions->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
-    pSlider->setTooltipText(tr("Selects the sound volume for the game"));
-    pSlider->setPosition(sliderOffset - 130, y);
-    pSlider->setCurrentValue(Settings::getSoundVolume());
-    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
-    {
-        Settings::setSoundVolume(value);
-    });
-    m_pOptions->addItem(pSlider);
-    y += 40;
+    showSoundOptions(m_pOptions, sliderOffset, y);
 
     pTextfield = new Label(sliderOffset - 10);
     pTextfield->setStyle(style);
@@ -572,7 +517,7 @@ void OptionMenue::showSettings()
     {
         if (value.isEmpty())
         {
-           pTextbox->setCurrentText(Settings::getUsername());
+            pTextbox->setCurrentText(Settings::getUsername());
         }
         else
         {
@@ -655,7 +600,72 @@ void OptionMenue::showSettings()
     y += 40;
 
     m_pOptions->setContentHeigth(20 + y);
-    
+}
+
+void OptionMenue::showSoundOptions(spPanel pOwner, qint32 sliderOffset, qint32 & y)
+{
+    AudioThread* pAudio = Mainapp::getInstance()->getAudioThread();
+    oxygine::TextStyle style = FontManager::getMainFont24();
+    style.color = FontManager::getFontColor();
+    style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
+    style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
+    style.multiline = false;
+
+    spLabel pTextfield = new Label(sliderOffset - 10);
+    pTextfield->setStyle(style);
+    pTextfield->setHtmlText(tr("Audio Settings"));
+    pTextfield->setPosition(10, y);
+    pOwner->addItem(pTextfield);
+    y += 40;
+    pTextfield = new Label(sliderOffset - 10);
+    pTextfield->setStyle(style);
+    pTextfield->setHtmlText(tr("Global Volume: "));
+    pTextfield->setPosition(10, y);
+    pOwner->addItem(pTextfield);
+    spSlider pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    pSlider->setTooltipText(tr("Selects the global volume for the game"));
+    pSlider->setPosition(sliderOffset - 130, y);
+    pSlider->setCurrentValue(Settings::getTotalVolume());
+    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
+    {
+        Settings::setTotalVolume(value);
+        pAudio->setVolume(Settings::getMusicVolume());
+    });
+    pOwner->addItem(pSlider);
+
+    y += 40;
+    pTextfield = new Label(sliderOffset - 10);
+    pTextfield->setStyle(style);
+    pTextfield->setHtmlText(tr("Music Volume: "));
+    pTextfield->setPosition(10, y);
+    pOwner->addItem(pTextfield);
+    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    pSlider->setTooltipText(tr("Selects the music volume for the game"));
+    pSlider->setPosition(sliderOffset - 130, y);
+    pSlider->setCurrentValue(Settings::getMusicVolume());
+    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
+    {
+        Settings::setMusicVolume(value);
+        pAudio->setVolume(value);
+    });
+    pOwner->addItem(pSlider);
+
+    y += 40;
+    pTextfield = new Label(sliderOffset - 10);
+    pTextfield->setStyle(style);
+    pTextfield->setHtmlText(tr("Sound Volume: "));
+    pTextfield->setPosition(10, y);
+    pOwner->addItem(pTextfield);
+    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    pSlider->setTooltipText(tr("Selects the sound volume for the game"));
+    pSlider->setPosition(sliderOffset - 130, y);
+    pSlider->setCurrentValue(Settings::getSoundVolume());
+    connect(pSlider.get(), &Slider::sliderValueChanged, [=](qint32 value)
+    {
+        Settings::setSoundVolume(value);
+    });
+    pOwner->addItem(pSlider);
+    y += 40;
 }
 
 void OptionMenue::showMods()
@@ -663,6 +673,8 @@ void OptionMenue::showMods()
     
     m_pMods->clearContent();
     m_pModDescription->clearContent();
+    m_ModBoxes.clear();
+    m_ModCheckboxes.clear();
 
     m_pOptions->setVisible(false);
     m_pMods->setVisible(true);
@@ -708,31 +720,15 @@ void OptionMenue::showMods()
         QString folder = info.filePath();
         if (!folder.endsWith("."))
         {
-            QString name = folder;
+            QString name;
             QString description;
             QString version;
-            QFile file(folder + "/mod.txt");
-            if (file.exists())
-            {
-                file.open(QFile::ReadOnly);
-                QTextStream stream(&file);
-                while (!stream.atEnd())
-                {
-                    QString line = stream.readLine();
-                    if (line.startsWith("name="))
-                    {
-                        name = line.split("=")[1];
-                    }
-                    if (line.startsWith("description="))
-                    {
-                        description = line.split("=")[1];
-                    }
-                    if (line.startsWith("version="))
-                    {
-                        version = line.split("=")[1];
-                    }
-                }
-            }
+            QStringList compatibleMods;
+            QStringList incompatibleMods;
+            QStringList requiredMods;
+            bool isComsetic = false;
+            Settings::getModInfos(folder, name, description, version,
+                                  compatibleMods, incompatibleMods, requiredMods, isComsetic);
             oxygine::ResAnim* pAnim = pObjectManager->getResAnim("topbar+dropdown");
             oxygine::spBox9Sprite pBox = new oxygine::Box9Sprite();
             pBox->setResAnim(pAnim);
@@ -746,6 +742,7 @@ void OptionMenue::showMods()
             pBox->addChild(pTextfield);
             qint32 curWidth = pTextfield->getTextRect().getWidth() + 30;
             spCheckbox modCheck = new Checkbox();
+            m_ModCheckboxes.append(modCheck);
             modCheck->setPosition(10, 5);
             pBox->addChild(modCheck);
             curWidth += modCheck->getWidth() + 10;
@@ -764,6 +761,7 @@ void OptionMenue::showMods()
                     Settings::removeMod(folder);
                 }
                 restartNeeded = true;
+                emit sigUpdateModCheckboxes();
             });
             if (curWidth > width)
             {
@@ -780,7 +778,27 @@ void OptionMenue::showMods()
                     m_ModBoxes[i2]->addTween(oxygine::Sprite::TweenAddColor(QColor(0, 0, 0, 0)), oxygine::timeMS(300));
                 }
                 pBox->addTween(oxygine::Sprite::TweenAddColor(QColor(32, 200, 32, 0)), oxygine::timeMS(300));
-                m_ModDescriptionText->setHtmlText(description + tr("\nVersion: ") + version);
+                QString cosmeticInfo;
+                if (isComsetic)
+                {
+                    cosmeticInfo = QString("\n\n") + tr("The mod is claimed to be pure cosmetic by the creator and may be used during multiplayer games based on the game rules.");
+                }
+                QString modInfo = "\n\n" + tr("Compatible Mods:\n");
+                for (const auto & mod : compatibleMods)
+                {
+                    modInfo += Settings::getModName(mod) + "\n";
+                }
+                modInfo += "\n" + tr("Incompatible Mods:\n");
+                for (const auto & mod : incompatibleMods)
+                {
+                    modInfo += Settings::getModName(mod) + "\n";
+                }
+                modInfo += "\n" + tr("Required Mods:\n");
+                for (const auto & mod : requiredMods)
+                {
+                    modInfo += Settings::getModName(mod) + "\n";
+                }
+                m_ModDescriptionText->setHtmlText(description + cosmeticInfo + modInfo + "\n\n" + tr("Version: ") + version);
                 m_pModDescription->setContentHeigth(m_ModDescriptionText->getTextRect().getHeight() + 40);
             });
             m_ModBoxes.append(pBox);
@@ -813,7 +831,7 @@ void OptionMenue::selectMods(qint32 item)
             removeList.append("mods/awdc_weather");
             removeList.append("mods/awdc_terrain");
             removeList.append("mods/awdc_flare");
-            removeList.append("map_creator");            
+            removeList.append("map_creator");
             removeList.append("coop_mod");
             break;
         }
@@ -870,4 +888,50 @@ void OptionMenue::restart()
 {
     Console::print("Forcing restart to reload required data changed in the options.", Console::eDEBUG);
     QCoreApplication::exit(1);
+}
+
+void OptionMenue::updateModCheckboxes()
+{
+    const auto mods = Settings::getActiveMods();
+    QFileInfoList infoList = QDir("mods").entryInfoList(QDir::Dirs);
+
+    qint32 i = 0;
+    for (const auto & info : infoList)
+    {
+        QString mod = info.filePath();
+        if (!mod.endsWith("."))
+        {
+            QString name;
+            QString description;
+            QString version;
+            QStringList compatibleMods;
+            QStringList incompatibleMods;
+            QStringList requiredMods;
+            bool isComsetic = false;
+            Settings::getModInfos(mod, name, description, version,
+                                  compatibleMods, incompatibleMods, requiredMods, isComsetic);
+            bool enabled = true;
+            for (const auto & incompatibleMod : incompatibleMods)
+            {
+                if (mods.contains(incompatibleMod))
+                {
+                    enabled = false;
+                    break;
+                }
+            }
+            if (enabled)
+            {
+                for (const auto & requiredMod : requiredMods)
+                {
+                    if (!mods.contains(requiredMod))
+                    {
+                        enabled = false;
+                        break;
+                    }
+                }
+            }
+            m_ModCheckboxes[i]->setEnabled(enabled);
+            ++i;
+        }
+    }
 }

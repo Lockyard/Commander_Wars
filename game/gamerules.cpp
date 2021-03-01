@@ -43,7 +43,11 @@ GameRules::GameRules()
     COSpriteManager* pCOSpriteManager = COSpriteManager::getInstance();
     for (qint32 i = 0; i < pCOSpriteManager->getCount(); i++)
     {
-        m_COBannlist.append(pCOSpriteManager->getID(i));
+        QString coid = pCOSpriteManager->getID(i);
+        if (!m_COBannlist.contains(coid))
+        {
+            m_COBannlist.append(coid);
+        }
     }
     m_StartWeather = 0;
     m_RoundTimer.setSingleShot(true);
@@ -242,7 +246,7 @@ void GameRules::addWeather(QString weatherId, qint32 weatherChance)
     }
 }
 
-void GameRules::changeWeatherChance(QString weatherId, qint32 weatherChance)
+void GameRules::changeWeatherChanceByName(QString weatherId, qint32 weatherChance)
 {
     for (qint32 i = 0; i < m_Weathers.size(); i++)
     {
@@ -316,7 +320,6 @@ void GameRules::startOfTurn(bool newDay)
         m_WeatherDays.removeAt(0);
         Console::print("New Day removing current weather. Currently predicting for " + QString::number(m_WeatherDays.size()), Console::eDEBUG);
     }
-    // todo maybe make this changeable some day
     const qint32 predictionSize = 4;
 
     qint32 dayInsert = -1;
@@ -561,7 +564,8 @@ void GameRules::setFogMode(const GameEnums::Fog &FogMode)
 
 void GameRules::createFogVision()
 {
-    Console::print("Creating fog vision.", Console::eDEBUG);
+    Console::print("Creating fog vision. Pausing Rendering", Console::eDEBUG);
+    Mainapp::getInstance()->pauseRendering();
     spGameMap pMap = GameMap::getInstance();
     qint32 width = pMap->getMapWidth();
     qint32 heigth = pMap->getMapHeight();
@@ -610,7 +614,8 @@ void GameRules::createFogVision()
             }
         }
     }
-    
+    Console::print("Fog vision created. Continue Rendering", Console::eDEBUG);
+    Mainapp::getInstance()->continueRendering();
 }
 
 void GameRules::createFieldFogClear(qint32 x, qint32 y, Player* pPlayer)
@@ -824,6 +829,16 @@ bool GameRules::getCoUnits() const
 void GameRules::setCoUnits(bool coUnits)
 {
     m_coUnits = coUnits;
+}
+
+bool GameRules::getCosmeticModsAllowed() const
+{
+    return m_cosmeticModsAllowed;
+}
+
+void GameRules::setCosmeticModsAllowed(bool value)
+{
+    m_cosmeticModsAllowed = value;
 }
 
 bool GameRules::getSingleCo() const
@@ -1043,6 +1058,7 @@ void GameRules::serializeObject(QDataStream& pStream) const
     pStream << m_description;
     m_password.serializeObject(pStream);
     pStream << m_singleCo;
+    pStream << m_cosmeticModsAllowed;
 }
 
 void GameRules::deserializeObject(QDataStream& pStream)
@@ -1205,7 +1221,8 @@ void GameRules::deserializer(QDataStream& pStream, bool)
         {
             QString coid;
             pStream >> coid;
-            if (pCOSpriteManager->exists(coid))
+            if (pCOSpriteManager->exists(coid) &&
+                !m_COBannlist.contains(coid))
             {
                 m_COBannlist.append(coid);
             }
@@ -1215,7 +1232,11 @@ void GameRules::deserializer(QDataStream& pStream, bool)
     {
         for (qint32 i = 0; i < pCOSpriteManager->getCount(); i++)
         {
-            m_COBannlist.append(pCOSpriteManager->getID(i));
+            QString coid = pCOSpriteManager->getID(i);
+            if (!m_COBannlist.contains(coid))
+            {
+                m_COBannlist.append(coid);
+            }
         }
     }
     if (version > 5)
@@ -1297,5 +1318,12 @@ void GameRules::deserializer(QDataStream& pStream, bool)
         pStream >> m_description;
         m_password.deserializeObject(pStream);
     }
-    pStream >> m_singleCo;
+    if (version > 17)
+    {
+        pStream >> m_singleCo;
+    }
+    if (version > 18)
+    {
+        pStream >> m_cosmeticModsAllowed;
+    }
 }

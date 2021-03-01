@@ -7,6 +7,7 @@
 
 #include "objects/base/panel.h"
 #include "objects/gameplayandkeys.h"
+#include "objects/base/checkbox.h"
 
 class OptionMenue : public QObject, public oxygine::Actor
 {
@@ -14,6 +15,8 @@ class OptionMenue : public QObject, public oxygine::Actor
 public:
     explicit OptionMenue();
     virtual ~OptionMenue();
+
+    static void showSoundOptions(spPanel pOwner, qint32 sliderOffset, qint32 & y);
 signals:
     void sigExitMenue();
     void sigShowMods();
@@ -21,6 +24,7 @@ signals:
     void sigShowGameplayAndKeys();
     void sigChangeScreenSize(qint32 width, qint32 heigth);
     void sigReloadSettings();
+    void sigUpdateModCheckboxes();
 public slots:
     void exitMenue();
     void showMods();
@@ -29,6 +33,7 @@ public slots:
     void showGameplayAndKeys();
     void selectMods(qint32 item);
     void reloadSettings();
+    void updateModCheckboxes();
 private:
     spGameplayAndKeys m_pGameplayAndKeys;
 
@@ -38,6 +43,7 @@ private:
     oxygine::spActor m_ModSelector;
     oxygine::spTextField m_ModDescriptionText;
     QVector<oxygine::spActor> m_ModBoxes;
+    QVector<spCheckbox> m_ModCheckboxes;
 
     QStringList languages;
 

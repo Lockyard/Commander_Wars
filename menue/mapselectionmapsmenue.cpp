@@ -38,7 +38,7 @@ MapSelectionMapsMenue::MapSelectionMapsMenue(qint32 heigth, spMapSelectionView p
     // load background
     oxygine::spSprite sprite = new oxygine::Sprite();
     addChild(sprite);
-    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("Background+1");
+    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("mapselectionmenu");
     sprite->setResAnim(pBackground);
     // background should be last to draw
     sprite->setPriority(static_cast<qint32>(Mainapp::ZOrder::Background));
@@ -399,13 +399,19 @@ void MapSelectionMapsMenue::selectRandomMap(QString mapName, QString author, QSt
                                             QVector<std::tuple<QString, float>> terrains,
                                             QVector<std::tuple<QString, float>> buildings,
                                             QVector<float> ownedBaseSize,
-                                            float startBaseSize)
+                                            float startBaseSize,
+                                            QVector<std::tuple<QString, float>> units,
+                                            qint32 unitCount,
+                                            float startBaseUnitSize,
+                                            QVector<float> unitDistribution,
+                                            bool unitsDistributed)
 {
     
     spGameMap pGameMap = new GameMap(width, heigth, playerCount);
     pGameMap->randomMap(width, heigth, playerCount, roadSupport, seed,
                         terrains, buildings, ownedBaseSize,
-                        startBaseSize / 100.0f);
+                        startBaseSize / 100.0f,
+                        units, unitCount, startBaseUnitSize / 100.0f, unitDistribution, unitsDistributed);
     pGameMap->setMapName(mapName);
     if (mapName.isEmpty())
     {

@@ -13,7 +13,9 @@
 #include "game/battleanimationsprite.h"
 #include "game/co.h"
 
+
 const QString BattleAnimationSprite::standingAnimation = "loadStandingAnimation";
+const QString BattleAnimationSprite::impactUnitOverlayAnimation = "loadImpactUnitOverlayAnimation";
 const QString BattleAnimationSprite::impactAnimation = "loadImpactAnimation";
 const QString BattleAnimationSprite::fireAnimation = "loadFireAnimation";
 const QString BattleAnimationSprite::moveInAnimation = "loadMoveInAnimation";
@@ -75,7 +77,7 @@ void BattleAnimationSprite::loadAnimation(QString animationType)
     loadAnimation(animationType, m_pUnit.get());
 }
 
-void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Unit* pDefender, qint32 attackerWeapon, bool clearSprite)
+void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Unit* pDefender, qint32 attackerWeapon, bool clearSprite, bool start)
 {
     QVector<QVector<oxygine::spSprite>> buffer;
     if (!clearSprite && m_nextFrames.length() > 0)
@@ -88,6 +90,7 @@ void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Un
                 buffer[buffer.length() - 1].append(sprite);
             }
         }
+        m_nextFrames.removeAt(m_nextFrames.length() - 1);
     }
     else if (!clearSprite)
     {
@@ -106,22 +109,11 @@ void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Un
         startFrame = true;
         m_frameIterator = 0;
     }
-    if (m_nextFrames.length() == 0 ||
-        m_nextFrames[m_nextFrames.length() - 1].length() > 0)
+    if ((m_nextFrames.length() == 0 ||
+        m_nextFrames[m_nextFrames.length() - 1].length() > 0))
     {
         m_nextFrames.append(QVector<QVector<oxygine::spSprite>>());
     }
-    Interpreter* pInterpreter = Interpreter::getInstance();
-    QString function1 = animationType;
-    QJSValueList args1;
-    QJSValue obj1 = pInterpreter->newQObject(this);
-    args1 << obj1;
-    QJSValue obj2 = pInterpreter->newQObject(pUnit);
-    args1 << obj2;
-    QJSValue obj3 = pInterpreter->newQObject(pDefender);
-    args1 << obj3;
-    args1 << attackerWeapon;
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (!clearSprite)
     {
         for (qint32 i = 0; i <  buffer.size(); ++i)
@@ -139,7 +131,18 @@ void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Un
             }
         }
     }
-    else if (m_nextFrames.length() > 0)
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QString function1 = animationType;
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
+    if (m_nextFrames.length() > 0 && !clearSprite)
     {
         for (qint32 i = m_currentFrame.length() - 1; i >= 0; --i)
         {
@@ -153,9 +156,29 @@ void BattleAnimationSprite::loadAnimation(QString animationType, Unit* pUnit, Un
             }
         }
     }
-    if (startFrame)
+    if (startFrame && start)
     {
         startNextUnitFrames();
+    }
+}
+
+void BattleAnimationSprite::loadDyingFadeOutAnimation(qint32 fadeoutTime)
+{
+    qint32 maxUnitCount = getMaxUnitCount();
+    qint32 startCount = getUnitCount(maxUnitCount, GlobalUtils::roundUp(m_dyingStartHp));
+    qint32 endCount = getUnitCount(maxUnitCount, GlobalUtils::roundUp(m_dyingEndHp));
+    for (qint32 i = startCount; i > endCount; --i)
+    {
+        if (i - 1 < m_currentFrame.size())
+        {
+            auto & sprites = m_currentFrame[i - 1];
+            for (auto & sprite : sprites)
+            {
+                oxygine::spTween tween = oxygine::createTween(oxygine::Actor::TweenAlpha(0),
+                                                              oxygine::timeMS(fadeoutTime  / static_cast<qint32>(Settings::getBattleAnimationSpeed())));
+                sprite->addTween(tween);
+            }
+        }
     }
 }
 
@@ -199,16 +222,19 @@ qint32 BattleAnimationSprite::getAnimationUnitCount()
     }
 }
 
-qint32 BattleAnimationSprite::getImpactDurationMS()
-{
-    return getImpactDurationMS(m_pUnit.get());
-}
-
-qint32 BattleAnimationSprite::getImpactDurationMS(Unit* pUnit)
+qint32 BattleAnimationSprite::getImpactDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getImpactDurationMS";
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (erg.isNumber())
     {
         return erg.toInt();
@@ -234,11 +260,19 @@ bool BattleAnimationSprite::hasMoveInAnimation()
     }
 }
 
-qint32 BattleAnimationSprite::getDyingDurationMS()
+qint32 BattleAnimationSprite::getDyingDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getDyingDurationMS";
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + m_pUnit->getUnitID(), function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (erg.isNumber())
     {
         return erg.toInt();
@@ -269,11 +303,19 @@ void BattleAnimationSprite::setMaxUnitCount(const qint32 &value)
     maxUnitCount = value;
 }
 
-qint32 BattleAnimationSprite::getFireDurationMS()
+qint32 BattleAnimationSprite::getFireDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getFireDurationMS";
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + m_pUnit->getUnitID(), function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (erg.isNumber())
     {
         return erg.toInt();
@@ -284,11 +326,19 @@ qint32 BattleAnimationSprite::getFireDurationMS()
     }
 }
 
-qint32 BattleAnimationSprite::getMoveInDurationMS()
+qint32 BattleAnimationSprite::getMoveInDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getMoveInDurationMS";
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + m_pUnit->getUnitID(), function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (erg.isNumber())
     {
         return erg.toInt();
@@ -299,11 +349,19 @@ qint32 BattleAnimationSprite::getMoveInDurationMS()
     }
 }
 
-qint32 BattleAnimationSprite::getStopDurationMS()
+qint32 BattleAnimationSprite::getStopDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getStopDurationMS";
-    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + m_pUnit->getUnitID(), function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(pUnit);
+    args1 << obj2;
+    QJSValue obj3 = pInterpreter->newQObject(pDefender);
+    args1 << obj3;
+    args1 << attackerWeapon;
+    QJSValue erg = pInterpreter->doFunction("BATTLEANIMATION_" + pUnit->getUnitID(), function1, args1);
     if (erg.isNumber())
     {
         return erg.toInt();
@@ -316,9 +374,9 @@ qint32 BattleAnimationSprite::getStopDurationMS()
 
 QPoint BattleAnimationSprite::getUnitPosition(qint32 unitCount, qint32 maxUnitCount)
 {
-    qint32 x = (unitCount * 70) % 100;
-    qint32 y = 20 * (maxUnitCount - unitCount);
-    return QPoint(x, y);
+    QPoint ret = QPoint((unitCount * 70) % 100,
+                        20 * (maxUnitCount - unitCount));
+    return ret;
 }
 
 void BattleAnimationSprite::loadSprite(QString spriteID, bool addPlayerColor, qint32 maxUnitCount, QPoint offset,
@@ -343,12 +401,17 @@ void BattleAnimationSprite::loadSpriteV2(QString spriteID, GameEnums::Recoloring
 
 qint32 BattleAnimationSprite::getUnitCount(qint32 maxUnitCount)
 {
-    return GlobalUtils::roundUp(hpRounded / Unit::MAX_UNIT_HP * maxUnitCount);
+    return getUnitCount(maxUnitCount, hpRounded);
 }
 
 qint32 BattleAnimationSprite::getUnitCount(qint32 maxUnitCount, qint32 hp)
 {
-    return GlobalUtils::roundUp(hp / Unit::MAX_UNIT_HP * maxUnitCount);
+    qint32 count = GlobalUtils::roundUp(hp / Unit::MAX_UNIT_HP * maxUnitCount);
+    if (count < 0)
+    {
+        count = 0;
+    }
+    return count;
 }
 
 void BattleAnimationSprite::loadMovingSprite(QString spriteID, bool addPlayerColor, qint32 maxUnitCount, QPoint offset,
@@ -385,7 +448,16 @@ void BattleAnimationSprite::loadMovingSpriteV2(QString spriteID, GameEnums::Reco
         QPoint position(0, 0);
         if (maxUnitCount > 1)
         {
-            position = getUnitPosition(i, maxUnitCount);
+            qint32 offset = 0;
+            if (m_invertStartPosition)
+            {
+                qint32 livingCount = getUnitCount(getAnimationUnitCount(), m_dyingStartHp);
+                if (value < livingCount)
+                {
+                    offset = livingCount - value;
+                }
+            }
+            position = getUnitPosition(i - offset, maxUnitCount);
         }
         QPoint posOffset = getUnitPositionOffset(i);
         loadSingleMovingSpriteV2(spriteID, mode, offset + position + posOffset, movement, moveTime, deleteAfter,
@@ -501,6 +573,61 @@ void BattleAnimationSprite::loadSingleMovingSprite(QString spriteID, bool addPla
     }
 }
 
+void BattleAnimationSprite::addMoveTweenToLastLoadedSprites(qint32 deltaX, qint32 deltaY, qint32 moveTime, qint32 delayPerUnitMs, qint32 loops, bool scaleWithAnimationSpeed)
+{
+    if (m_nextFrames.size() > 0)
+    {
+        qint32 count = 0;
+        for (auto & sprites : m_nextFrames[m_nextFrames.size() - 1])
+        {
+            if (sprites.size() > 0)
+            {
+                auto & sprite = sprites[sprites.size() - 1];
+                qint64 time = moveTime;
+                if (scaleWithAnimationSpeed)
+                {
+                    time /= Settings::getBattleAnimationSpeed();
+                }
+                oxygine::spTween moveTween = oxygine::createTween(oxygine::Actor::TweenPosition(oxygine::Vector2(sprite->getX() + deltaX, sprite->getY() + deltaY)),
+                                                                  oxygine::timeMS(time),
+                                                                  loops, true);
+                sprite->addTween(moveTween);
+                moveTween->setElapsed(oxygine::timeMS(delayPerUnitMs * count));
+                ++count;
+            }
+        }
+    }
+}
+
+
+void BattleAnimationSprite::loadColorOverlayForLastLoadedFrame(QColor color, qint32 time, qint32 loops, qint32 showDelayMs)
+{
+    QVector<QVector<oxygine::spSprite>>* frame;
+    if (m_nextFrames.length() > 0 && m_nextFrames[m_nextFrames.length() - 1].length() > 0)
+    {
+        frame = &m_nextFrames[m_nextFrames.length() - 1];
+    }
+    else
+    {
+        frame = &m_currentFrame;
+    }
+    qint32 value = getUnitCount(maxUnitCount);
+    for (qint32 i = maxUnitCount; i >= maxUnitCount - value + 1; i--)
+    {
+        if (i - 1 < frame->length() && i > 0)
+        {
+            for (auto & sprite : (*frame)[i - 1])
+            {
+                // add impact image
+                oxygine::ColorRectSprite::TweenColor tweenColor2(color);
+                oxygine::spTween colorTween2 = oxygine::createTween(tweenColor2, oxygine::timeMS(static_cast<qint64>(time / Settings::getBattleAnimationSpeed())), loops, true,
+                                                                    oxygine::timeMS(static_cast<qint64>((showDelayMs + m_nextFrameTimer.interval() * (i - maxUnitCount)) / Settings::getBattleAnimationSpeed())));
+                sprite->addTween(colorTween2);
+            }
+        }
+    }
+}
+
 void BattleAnimationSprite::detachChild(oxygine::spActor pActor)
 {
     
@@ -576,14 +703,17 @@ void BattleAnimationSprite::startNextUnitFrames()
         {
             m_currentFrame.append(QVector<oxygine::spSprite>());
         }
-        if (m_frameIterator < m_nextFrames[0].length())
+        if (m_nextFrames.length() > 0)
         {
-            for (auto & sprite : m_nextFrames[0][m_frameIterator])
+            if (m_frameIterator < m_nextFrames[0].length())
             {
-                m_currentFrame[m_frameIterator].append(sprite);
-                m_Actor->addChild(sprite);
+                for (auto & sprite : m_nextFrames[0][m_frameIterator])
+                {
+                    m_currentFrame[m_frameIterator].append(sprite);
+                    m_Actor->addChild(sprite);
+                }
+                m_nextFrames[0][m_frameIterator].clear();
             }
-            m_nextFrames[0][m_frameIterator].clear();
         }
     }
 
@@ -608,6 +738,36 @@ void BattleAnimationSprite::startNextUnitFrames()
             m_frameIterator = 0;
         }
     }
+}
+
+bool BattleAnimationSprite::getInvertStartPosition() const
+{
+    return m_invertStartPosition;
+}
+
+void BattleAnimationSprite::setInvertStartPosition(bool invertStartPosition)
+{
+    m_invertStartPosition = invertStartPosition;
+}
+
+float BattleAnimationSprite::getDyingEndHp() const
+{
+    return m_dyingEndHp;
+}
+
+void BattleAnimationSprite::setDyingEndHp(float dyingEndHp)
+{
+    m_dyingEndHp = dyingEndHp;
+}
+
+float BattleAnimationSprite::getDyingStartHp() const
+{
+    return m_dyingStartHp;
+}
+
+void BattleAnimationSprite::setDyingStartHp(float dyingStartHp)
+{
+    m_dyingStartHp = dyingStartHp;
 }
 
 bool BattleAnimationSprite::getStartWithFraming() const

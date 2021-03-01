@@ -16,13 +16,13 @@ var Constructor = function()
     {
         var armyName = BATTLEANIMATION_HEAVY_TANK.getArmyName(unit);
         sprite.loadMovingSprite("light_tank+" + armyName + "+move", false, sprite.getMaxUnitCount(), Qt.point(-70, 5),
-                                Qt.point(65, 0), 400, false,
+                                Qt.point(65, 0), 600, false,
                                 1, 1);
         sprite.loadMovingSpriteV2("light_tank+" + armyName + "+move+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-70, 5),
-                                  Qt.point(65, 0), 400, false,
+                                  Qt.point(65, 0), 600, false,
                                   1, 1);
         sprite.loadMovingSprite("vehicle_dust", false, sprite.getMaxUnitCount(), Qt.point(-90, 7),
-                                Qt.point(65, 0), 400, false,
+                                Qt.point(65, 0), 600, false,
                                 1, 1);
     };
 
@@ -158,19 +158,19 @@ var Constructor = function()
         // return true if the unit has an implementation for loadMoveInAnimation
         return true;
     };
-    this.getMoveInDurationMS = function()
+    this.getMoveInDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 410;
+        return 610;
     };
 
-    this.getStopDurationMS = function()
+    this.getStopDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 300 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_LIGHT_TANK.getMaxUnitCount();
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 820 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_LIGHT_TANK.getMaxUnitCount();

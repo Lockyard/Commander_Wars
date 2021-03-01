@@ -8,13 +8,13 @@ var Constructor = function()
     this.loadMoveInAnimation = function(sprite, unit, defender, weapon)
     {
         sprite.loadMovingSprite("neotank+move", false, sprite.getMaxUnitCount(), Qt.point(-80, 5),
-                                Qt.point(65, 0), 400, false,
+                                Qt.point(65, 0), 600, false,
                                 1, 1);
         sprite.loadMovingSpriteV2("neotank+move+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-80, 5),
-                                Qt.point(65, 0), 400, false,
+                                Qt.point(65, 0), 600, false,
                                 1, 1);
         sprite.loadMovingSprite("vehicle_dust", false, sprite.getMaxUnitCount(), Qt.point(-100, 7),
-                                Qt.point(65, 0), 400, false,
+                                Qt.point(65, 0), 600, false,
                                 1, 1);
     };
 
@@ -83,19 +83,19 @@ var Constructor = function()
         return true;
     };
 
-    this.getMoveInDurationMS = function()
+    this.getMoveInDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 410;
+        return 610;
     };
 
-    this.getStopDurationMS = function()
+    this.getStopDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 300 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_NEOTANK.getMaxUnitCount();
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 820 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_NEOTANK.getMaxUnitCount();

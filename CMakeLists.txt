@@ -48,7 +48,7 @@ endif()
 add_definitions(
     -DUSE_MEMORY_POOL
     -DMAJOR=0
-    -DMINOR=17
+    -DMINOR=18
     -DREVISION=0
 )
 
@@ -57,7 +57,6 @@ message ("CXX System: ${CMAKE_SYSTEM_NAME}")
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
     set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}") # -g for debug info
 endif()
-
 
 ###################################################################################
 # start oxygine stuff -> qoxygine
@@ -195,6 +194,7 @@ set(${PROJECT_NAME}_SRCS
         objects/dialogs/dialogmessagebox.cpp
         objects/dialogs/dialogtextinput.cpp
         objects/dialogs/folderdialog.cpp
+        objects/dialogs/dialogvaluecounter.cpp
         # objects dialogs editor
         objects/dialogs/editor/dialogmodifyunit.cpp
         objects/dialogs/editor/dialogmodifybuilding.cpp
@@ -426,7 +426,6 @@ set(${PROJECT_NAME}_SRCS
         ingamescriptsupport/events/scripteventcentermap.cpp
         ingamescriptsupport/events/scripteventplaysound.cpp
 
-
         # wiki stuff
         wiki/terraininfo.cpp
         wiki/unitinfo.cpp
@@ -439,12 +438,16 @@ set(${PROJECT_NAME}_SRCS
         spritingsupport/spritecreator.cpp
 )
 
+FILE(GLOB_RECURSE scripts "resources/*.js")
+FILE(GLOB_RECURSE images "resources/*.png")
+FILE(GLOB_RECURSE xmls "resources/*.xml")
+add_custom_target(Resources SOURCES ${scripts} ${images} ${xmls})
 
-FILE(GLOB_RECURSE JavaScripts "resources/*.js")
-add_custom_target(scripts SOURCES ${JavaScripts})
-
-FILE(GLOB_RECURSE ModScripts "mods/*.js")
-add_custom_target(modscripts SOURCES ${ModScripts})
+FILE(GLOB_RECURSE modScripts "mods/*.js")
+FILE(GLOB_RECURSE modDescs "mods/*.txt")
+FILE(GLOB_RECURSE modImages "resources/*.png")
+FILE(GLOB_RECURSE modXmls "resources/*.xml")
+add_custom_target(modscripts SOURCES ${modScripts} ${modImages} ${modXmls} ${modDescs})
 
 FILE(GLOB_RECURSE TemplateScripts "templates/*.js")
 add_custom_target(templatescripts SOURCES ${TemplateScripts})
@@ -457,6 +460,10 @@ add_custom_target(campaignscripts SOURCES ${CampaignScripts})
 
 FILE(GLOB_RECURSE ShaderScripts "system/*.glsl")
 add_custom_target(shaders SOURCES ${ShaderScripts})
+
+FILE(GLOB_RECURSE DataScripts "data/*.js")
+add_custom_target(data SOURCES ${DataScripts})
+
 # create translation here :)
 set(LUPDATE_OPTIONS "-I ${CMAKE_CURRENT_SOURCE_DIR}")
 message ("Language Update Options: ${LUPDATE_OPTIONS}")
@@ -491,7 +498,6 @@ endif(WIN32)
 
 
 # link libraries
-
 set(QT_LIBRARIES
     Qt5::Core
     Qt5::Qml
@@ -558,10 +564,6 @@ set(${PROJECT_NAME}_INSTALL_QT_BEARER_LIBS
      ${QT_BIN_DIR}/../plugins/bearer/qgenericbearer.dll
 )
 
-set(${PROJECT_NAME}_INSTALL_QT_PLAYLISTFORAMTS_LIBS
-     ${QT_BIN_DIR}/../plugins/playlistformats/qtmultimedia_m3u.dll
-)
-
 # those libs are not the same for each platform and need to be selected based on the os
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
     set(${PROJECT_NAME}_INSTALL_QT_AUDIO_LIBS
@@ -572,6 +574,9 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
     )
     set(${PROJECT_NAME}_INSTALL_QT_STYLES_LIBS
          ${QT_BIN_DIR}/../plugins/styles/qwindowsvistastyle.dll
+    )
+    set(${PROJECT_NAME}_INSTALL_QT_PLAYLISTFORAMTS_LIBS
+         ${QT_BIN_DIR}/../plugins/playlistformats/qtmultimedia_m3u.dll
     )
 else() # currently this is for linux systems -> may differ for ios # todo maybe a proper check would be nice here
     set(${PROJECT_NAME}_INSTALL_QT_AUDIO_LIBS
@@ -585,6 +590,10 @@ else() # currently this is for linux systems -> may differ for ios # todo maybe 
     set(${PROJECT_NAME}_INSTALL_QT_STYLES_LIBS
         # todo install the proper  linux style lib to be used
         # ${QT_BIN_DIR}/../plugins/styles/
+    )
+    set(${PROJECT_NAME}_INSTALL_QT_PLAYLISTFORAMTS_LIBS
+        # todo install the proper  linux style lib to be used
+        # ${QT_BIN_DIR}/../plugins/playlistformats/qtmultimedia_m3u.dll
     )
 endif()
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")

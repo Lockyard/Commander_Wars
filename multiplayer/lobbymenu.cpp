@@ -37,7 +37,7 @@ LobbyMenu::LobbyMenu()
     // load background
     oxygine::spSprite sprite = new oxygine::Sprite();
     addChild(sprite);
-    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("Background+1");
+    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("lobbymenu");
     sprite->setResAnim(pBackground);
     sprite->setPosition(-1, -1);
     // background should be last to draw
@@ -214,7 +214,6 @@ void LobbyMenu::join(QString adress, QString password)
 {
     
     Console::print("Leaving Lobby Menue", Console::eDEBUG);
-    // todo
     oxygine::getStage()->addChild(new Multiplayermenu(adress, password, false));
     oxygine::Actor::detach();
     
@@ -265,7 +264,7 @@ void LobbyMenu::updateGamesView()
         QString modString;
         for (const auto & mod : mods)
         {
-            modString.append(mod + "; ");
+            modString.append(Settings::getModName(mod) + "; ");
         }
         data.append(modString);
         char lockChar = 1;

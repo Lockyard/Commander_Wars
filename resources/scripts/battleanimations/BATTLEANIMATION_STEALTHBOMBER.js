@@ -10,12 +10,20 @@ var Constructor = function()
         BATTLEANIMATION_STEALTHBOMBER.loadSprite(sprite, unit, defender, weapon, Qt.point(0, 0), 0);
     };
 
-    this.loadSprite = function(sprite, unit, defender, weapon, movement, moveTime)
+    this.loadSprite = function(sprite, unit, defender, weapon, movement, moveTime, alive = true)
     {
         sprite.loadMovingSprite("stealthbomber",  false,
                           BATTLEANIMATION_STEALTHBOMBER.getMaxUnitCount(), Qt.point(0, 60), movement, moveTime);
+        if (alive)
+        {
+            sprite.addMoveTweenToLastLoadedSprites(0, -3, 800);
+        }
         sprite.loadMovingSpriteV2("stealthbomber+mask", GameEnums.Recoloring_Table,
                             BATTLEANIMATION_STEALTHBOMBER.getMaxUnitCount(), Qt.point(0, 60), movement, moveTime);
+        if (alive)
+        {
+            sprite.addMoveTweenToLastLoadedSprites(0, -3, 800);
+        }
     };
 
     this.loadFireAnimation = function(sprite, unit, defender, weapon)
@@ -38,6 +46,11 @@ var Constructor = function()
             }
             sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", i * 150);
         }
+    };
+
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 1000, 1, 300);
     };
 
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
@@ -68,23 +81,23 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_STEALTHBOMBER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, -140), 600);
+        BATTLEANIMATION_STEALTHBOMBER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, -140), 600, false);
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1250;
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
         // should be a second or longer.
         // the time will be scaled with animation speed inside the engine
         return 1500;
     };
 
-    this.getDyingDurationMS = function()
+    this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1000;

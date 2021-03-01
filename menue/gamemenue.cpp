@@ -4,6 +4,7 @@
 
 #include "menue/gamemenue.h"
 #include "menue/victorymenue.h"
+#include "menue/optionmenue.h"
 
 #include "coreengine/console.h"
 #include "coreengine/audiothread.h"
@@ -354,6 +355,8 @@ void GameMenue::connectMap()
     connect(pMap.get(), &GameMap::sigQueueAction, this, &GameMenue::performAction, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowNicknameUnit, this, &GameMenue::showNicknameUnit, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowOptions, this, &GameMenue::showOptions, Qt::QueuedConnection);
+    connect(pMap.get(), &GameMap::sigShowChangeSound, this, &GameMenue::showChangeSound, Qt::QueuedConnection);
+
 
     connect(m_IngameInfoBar->getMinimap(), &Minimap::clicked, pMap.get(), &GameMap::centerMap, Qt::QueuedConnection);
 }
@@ -681,9 +684,9 @@ void GameMenue::performAction(spGameAction pGameAction)
             }
 
             pCurrentPlayer->getBaseGameInput()->centerCameraOnAction(pGameAction.get());
-            m_CurrentActionUnit = pMoveUnit;
             pGameAction->perform();
             // clean up the action
+            m_pCurrentAction = pGameAction;
             pGameAction = nullptr;
             skipAnimations();
             if (!pMap->anyPlayerAlive())
@@ -983,18 +986,22 @@ void GameMenue::autoScroll()
 
 void GameMenue::finishActionPerformed()
 {
-    
-    if (m_CurrentActionUnit.get() != nullptr)
-    {
-        m_CurrentActionUnit->postAction();
-        m_CurrentActionUnit = nullptr;
-    }
+    Console::print("Doing post action update", Console::eDEBUG);
     spGameMap pMap = GameMap::getInstance();
+    if (m_pCurrentAction.get() != nullptr)
+    {
+        Unit* pUnit = m_pCurrentAction->getTargetUnit();
+        if (pUnit != nullptr)
+        {
+            pUnit->postAction(m_pCurrentAction);
+        }
+        pMap->getCurrentPlayer()->postAction(m_pCurrentAction.get());
+        m_pCurrentAction = nullptr;
+    }
     pMap->killDeadUnits();
-    pMap->getGameScript()->actionDone();
+    pMap->getGameScript()->actionDone(m_pCurrentAction);
     pMap->getGameRules()->checkVictory();
     pMap->getGameRules()->createFogVision();
-    
 }
 
 void GameMenue::actionPerformed()
@@ -1196,8 +1203,7 @@ void GameMenue::showUnitInfo(qint32 player)
 }
 
 void GameMenue::showOptions()
-{
-    
+{    
     m_Focused = false;
     Console::print("showOptions()", Console::eDEBUG);
     spGenericBox pDialogOptions = new GenericBox();
@@ -1209,7 +1215,27 @@ void GameMenue::showOptions()
         m_Focused = true;
     });
     addChild(pDialogOptions);
-    
+}
+
+void GameMenue::showChangeSound()
+{
+    m_Focused = false;
+    Console::print("showChangeSound()", Console::eDEBUG);
+    spGenericBox pDialogOptions = new GenericBox();
+    QSize size(Settings::getWidth() - 20,
+               Settings::getHeight() - 100);
+    spPanel pPanel = new Panel(true, size, size);
+    qint32 y = 10;
+    qint32 sliderOffset = 400;
+    OptionMenue::showSoundOptions(pPanel, sliderOffset, y);
+    pPanel->setContentHeigth(y + 40);
+    pPanel->setPosition(10, 10);
+    pDialogOptions->addItem(pPanel);
+    connect(pDialogOptions.get(), &GenericBox::sigFinished, [=]()
+    {
+        m_Focused = true;
+    });
+    addChild(pDialogOptions);
 }
 
 void GameMenue::showGameInfo(qint32 player)

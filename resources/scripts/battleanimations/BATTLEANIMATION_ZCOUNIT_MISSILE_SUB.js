@@ -31,6 +31,11 @@ var Constructor = function()
         sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", 0);
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 1000, 1, 300);
+    };
+
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
@@ -53,20 +58,20 @@ var Constructor = function()
         BATTLEANIMATION_ZCOUNIT_MISSILE_SUB.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 500;
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
         // should be a second or longer.
         // the time will be scaled with animation speed inside the engine
         return 1500;
     };
 
-    this.getDyingDurationMS = function()
+    this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1200 + BATTLEANIMATION.defaultFrameDelay * 5;

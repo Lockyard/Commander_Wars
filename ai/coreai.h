@@ -19,6 +19,7 @@
 class GameAction;
 typedef oxygine::intrusive_ptr<GameAction> spGameAction;
 class Unit;
+class CO;
 class UnitPathFindingSystem;
 class QmlVectorUnit;
 class QmlVectorBuilding;
@@ -36,18 +37,21 @@ public:
     ENUM_CLASS AISteps
     {
         moveUnits = 0,
-        moveToTargets,
-        loadUnits,
-        moveTransporters,
-        moveSupportUnits,
-        moveAway,
-        buildUnits,
+                moveToTargets,
+                loadUnits,
+                moveTransporters,
+                moveSupportUnits,
+                moveAway,
+                buildUnits,
     };
     // static string list of actions so we only define them once
     static const QString ACTION_WAIT;
     static const QString ACTION_HOELLIUM_WAIT;
     static const QString ACTION_SUPPORTSINGLE;
+    static const QString ACTION_SUPPORTSINGLE_REPAIR;
+    static const QString ACTION_SUPPORTSINGLE_FREEREPAIR;
     static const QString ACTION_SUPPORTALL;
+    static const QString ACTION_SUPPORTALL_RATION;
     static const QString ACTION_UNSTEALTH;
     static const QString ACTION_PLACE;
     static const QString ACTION_STEALTH;
@@ -455,6 +459,29 @@ protected:
     {
         return m_missileTarget;
     };
+    /**
+     * @brief getAiCoUnitMultiplier
+     * @param pCO
+     * @param pUnit
+     * @return
+     */
+    float getAiCoUnitMultiplier(CO* pCO, Unit* pUnit);
+    /**
+     * @brief GetUnitCounts
+     * @param pUnits
+     * @param infantryUnits
+     * @param indirectUnits
+     * @param directUnits
+     * @param transportTargets
+     */
+    void GetOwnUnitCounts(QmlVectorUnit* pUnits, QmlVectorUnit* pEnemyUnits, QmlVectorBuilding* pEnemyBuildings,
+                          qint32 & infantryUnits, qint32 & indirectUnits,
+                          qint32 & directUnits, QVector<std::tuple<Unit*, Unit*>> & transportTargets);
+    /**
+     * @brief buildCOUnit
+     * @return
+     */
+    bool buildCOUnit(QmlVectorUnit* pUnits);
 protected:
     DecisionTree m_COPowerTree;
     QVector<spIslandMap> m_IslandMaps;
@@ -466,6 +493,12 @@ protected:
     bool m_missileTarget{false};
     float m_fuelResupply{0.33f};
     float m_ammoResupply{0.25f};
+
+    float m_minCoUnitScore{5000.0f};
+    qint32 m_coUnitValue{1000};
+    float m_coUnitRankReduction{1000.0f};
+    float m_coUnitScoreMultiplier{1.1f};
+    qint32 m_minCoUnitCount{5};
 private:
     bool finish{false};
     struct FlareInfo

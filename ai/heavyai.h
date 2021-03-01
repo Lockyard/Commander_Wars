@@ -6,6 +6,7 @@
 
 #include "ai/coreai.h"
 #include "ai/influencefrontmap.h"
+#include "ai/targetedunitpathfindingsystem.h"
 #include "game/unitpathfindingsystem.h"
 
 #include "coreengine/LUPDATE_MACROS.h"
@@ -14,17 +15,28 @@ class HeavyAi : public CoreAI
 {
     Q_OBJECT
     static const QString heavyAiObject;
+    /**
+     * @brief The BuildingEntry enum
+     */
+    enum BuildingEntry
+    {
+        BasicAttackRange,
+        CaptureUnit,
+        CoUnitValue,
+        Movementpoints,
+        MaxSize,
+    };
 public:
     ENUM_CLASS ThreadLevel
     {
         Normal,
-        High,
-        Hq
+                High,
+                Hq
     };
     ENUM_CLASS FunctionType
     {
         JavaScript,
-        CPlusPlus
+                CPlusPlus
     };
     struct UnitData
     {
@@ -59,13 +71,19 @@ protected:
     void scoreActions(UnitData & unit);
 private:
     void setupTurn(const spQmlVectorBuilding & buildings);
+    void endTurn();
     void createIslandMaps();
     void initUnits(QmlVectorUnit* pUnits, QVector<UnitData> & units, bool enemyUnits);
     void updateUnits();
     void updateUnits(QVector<UnitData> & units, bool enemyUnits);
     void findHqThreads(const spQmlVectorBuilding & buildings);
     bool isCaptureTransporterOrCanCapture(Unit* pUnit);
-    bool mutateAction(spGameAction pAction, FunctionType type, qint32 functionIndex, qint32 & step, QVector<qint32> & stepPosition, float & score);
+    void mutateActionForFields(UnitData & unit, const QVector<QPoint> & moveTargets,
+                               QString action, FunctionType type, qint32 index,
+                               float & bestScore, QVector<float> & bestScores,
+                               QVector<spGameAction> & bestActions);
+    bool mutateAction(spGameAction pAction, FunctionType type, qint32 functionIndex,
+                      qint32 & step, QVector<qint32> & stepPosition, float & score);
     /**
      * @brief performAction
      */
@@ -81,8 +99,52 @@ private:
      * @param action
      * @return
      */
-    float scoreFire(spGameAction action);    
-
+    float scoreFire(spGameAction action);
+    /**
+     * @brief scoreWait
+     * @param unit
+     */
+    void scoreActionWait();
+    /**
+     * @brief getMoveTargets
+     * @param unit
+     * @param targets
+     */
+    void getMoveTargets(UnitData & unit, QVector<QVector3D> & targets);
+    /**
+     * @brief scoreWait
+     * @param action
+     * @return
+     */
+    float scoreWait(spGameAction action);
+    /**
+     * @brief getBasicFieldInputVector
+     * @param action
+     * @param data
+     */
+    void getBasicFieldInputVector(spGameAction action, QVector<double> & data);
+    /**
+     * @brief getFunctionType
+     * @param action
+     * @param type
+     * @param index
+     */
+    void getFunctionType(QString action, FunctionType & type, qint32 & index);
+    /**
+     * @brief scoreProduction
+     */
+    void scoreProduction();
+    /**
+     * @brief getProductionInputVector
+     * @param pBuilding
+     * @param pUnit
+     */
+    void getProductionInputVector(Building* pBuilding, Unit* pUnit);
+    /**
+     * @brief buildUnits
+     * @return
+     */
+    bool buildUnits();
 private:
     // function for scoring a function
     using scoreFunction = std::function<float (spGameAction action)>;
@@ -103,9 +165,12 @@ private:
     QTimer m_timer;
     bool m_pause{false};
 
+    spTargetedUnitPathFindingSystem m_currentTargetefPfs;
+
     static const qint32 minSiloDamage;
     float m_minActionScore{0.1f};
     float m_actionScoreVariant{0.05f};
+
 };
 
 #endif // HEAVYAI_H

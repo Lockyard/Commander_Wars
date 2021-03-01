@@ -18,6 +18,7 @@ class Player;
 class Building;
 class GameAnimationDialog;
 class GameAnimationPower;
+class GameAction;
 
 class CO;
 typedef oxygine::intrusive_ptr<CO> spCO;
@@ -26,6 +27,8 @@ class CO : public QObject, public oxygine::Actor, public FileSerializable
 {
     Q_OBJECT
 public:
+    static constexpr qint32 MAX_CO_UNIT_VALUE = 10;
+
     explicit CO(QString coID, Player* owner);
     /**
      * @brief serialize stores the object
@@ -49,7 +52,7 @@ public:
      */
     virtual qint32 getVersion() const override
     {
-        return 5;
+        return 6;
     }
     /**
      * @brief writeCoStyleToStream
@@ -79,9 +82,20 @@ public:
      */
     oxygine::ResAnim* getResAnim(QString id, oxygine::error_policy ep = oxygine::ep_show_error) const;
 
+
 signals:
 
 public slots:
+    /**
+     * @brief getCoRangeEnabled
+     * @return
+     */
+    bool getCoRangeEnabled() const;
+    /**
+     * @brief setCoRangeEnabled
+     * @param coRangeEnabled
+     */
+    void setCoRangeEnabled(bool coRangeEnabled);
     /**
      * @brief getPowerUsed
      * @return
@@ -514,6 +528,14 @@ public slots:
     GameEnums::PowerMode getAiUsePower(double powerSurplus, qint32 unitCount, qint32 repairUnits,
                                        qint32 indirectUnits, qint32 directUnits, qint32 enemyUnits,
                                        GameEnums::AiTurnMode turnMode);
+
+    /**
+     * @brief getCoUnitBonus
+     * @param pUnit
+     * @param bonus
+     * @return
+     */
+    float getAiCoUnitBonus(Unit* pUnit, bool & valid);
     /**
      * @brief getPerkList
      * @return
@@ -584,7 +606,11 @@ public slots:
      * @return
      */
     QString getSuperPowerName();
-
+    /**
+     * @brief postAction
+     * @param pAction
+     */
+    void postAction(GameAction* pAction);
     /**
      * @brief setCoStyleFromUserdata
      */
@@ -595,7 +621,10 @@ public slots:
      * @param style index in the related predefined styles
      */
     void setCoStyle(QString file, qint32 style);
-
+    /**
+     * @brief postAction
+     * @param pAction
+     */
     /**
      * @brief getActiveCoStyle
      * @param coid
@@ -617,6 +646,7 @@ private:
     ScriptVariables m_Variables;
     qint32 m_powerUsed{0};
     bool m_powerCharging{false};
+    bool m_coRangeEnabled{true};
 
     QStringList m_perkList;
 

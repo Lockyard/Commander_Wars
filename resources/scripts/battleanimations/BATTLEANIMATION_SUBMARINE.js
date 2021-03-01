@@ -69,6 +69,11 @@ var Constructor = function()
         }
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        var count = sprite.getUnitCount(5);
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 300, count, 300);
+    };
 
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
@@ -109,20 +114,20 @@ var Constructor = function()
         BATTLEANIMATION_SUBMARINE.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1250;
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
         // should be a second or longer.
         // the time will be scaled with animation speed inside the engine
         return 1500;
     };
 
-    this.getDyingDurationMS = function()
+    this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1200;

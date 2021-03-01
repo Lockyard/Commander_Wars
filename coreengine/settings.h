@@ -370,6 +370,18 @@ public slots:
 
     static Qt::Key getKey_MapZoomIn();
     static void setKey_MapZoomIn(const Qt::Key &key_MapZoomIn);
+
+    static void getModInfos(QString mod, QString & name, QString & description, QString & version,
+                            QStringList & compatibleMods, QStringList & incompatibleMods,
+                            QStringList & requiredMods, bool & isCosmetic);
+
+    static QString getModName(QString mod);
+    /**
+     * @brief getIsCosmetic
+     * @param mod
+     * @return
+     */
+    static bool getIsCosmetic(QString mod);
 private:
     Settings();
     virtual ~Settings() = default;

@@ -10,6 +10,9 @@
 #include "coreengine/LUPDATE_MACROS.h"
 
 #include "game/GameEnums.h"
+#include "game/gameaction.h"
+
+#include "objects/base/tooltip.h"
 
 class GameAction;
 typedef oxygine::intrusive_ptr<GameAction> spGameAction;
@@ -19,7 +22,7 @@ class Terrain;
 class Unit;
 typedef oxygine::intrusive_ptr<Unit> spUnit;
 
-class Unit : public QObject, public oxygine::Sprite, public FileSerializable
+class Unit : public Tooltip, public FileSerializable
 {
     Q_OBJECT
 public:
@@ -622,7 +625,7 @@ public slots:
      * @brief postAction
      * @param pAction
      */
-    void postAction();
+    void postAction(spGameAction pAction);
     /**
      * @brief getBonusOffensive
      * @param position

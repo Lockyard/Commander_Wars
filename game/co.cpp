@@ -9,6 +9,7 @@
 #include "game/gameanimationfactory.h"
 #include "game/gameanimationdialog.h"
 #include "game/gameanimationpower.h"
+#include "game/gameaction.h"
 
 #include "menue/gamemenue.h"
 
@@ -24,6 +25,7 @@ CO::CO(QString coID, Player* owner)
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
     m_perkList.append(coID);
+    m_perkList.append("TAGPOWER");
     init();
 }
 
@@ -738,6 +740,7 @@ qint32 CO::getCaptureBonus(Unit* pUnit, QPoint position)
 void CO::activatePower()
 {
     ++m_powerUsed;
+    m_coRangeEnabled = false;
     m_PowerMode = GameEnums::PowerMode_Power;
     powerFilled -= powerStars;
     Interpreter* pInterpreter = Interpreter::getInstance();
@@ -760,6 +763,7 @@ void CO::activatePower()
 void CO::activateSuperpower(GameEnums::PowerMode powerMode)
 {
     ++m_powerUsed;
+    m_coRangeEnabled = false;
     m_PowerMode = powerMode;
     powerFilled = 0;
     Interpreter* pInterpreter = Interpreter::getInstance();
@@ -1037,7 +1041,7 @@ QStringList CO::getActionModifierList(Unit* pUnit)
 qint32 CO::getCORange()
 {    
     qint32 ret = 0;
-    if (m_PowerMode == GameEnums::PowerMode_Off)
+    if (m_coRangeEnabled)
     {
         Interpreter* pInterpreter = Interpreter::getInstance();
         QString function1 = "getCOUnitRange";
@@ -1170,6 +1174,21 @@ bool CO::getWeatherImmune()
     return false;
 }
 
+void CO::postAction(GameAction* pAction)
+{
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QString function1 = "postAction";
+    QJSValueList args1;
+    QJSValue obj3 = pInterpreter->newQObject(this);
+    args1 << obj3;
+    QJSValue obj2 = pInterpreter->newQObject(pAction);
+    args1 << obj2;
+    for (const auto & perk : m_perkList)
+    {
+        pInterpreter->doFunction(perk, function1, args1);
+    }
+}
+
 GameEnums::PowerMode CO::getAiUsePower(double powerSurplus, qint32 unitCount, qint32 repairUnits,
                                        qint32 indirectUnits, qint32 directUnits, qint32 enemyUnits,
                                        GameEnums::AiTurnMode turnMode)
@@ -1197,6 +1216,37 @@ GameEnums::PowerMode CO::getAiUsePower(double powerSurplus, qint32 unitCount, qi
     }
 }
 
+float CO::getAiCoUnitBonus(Unit* pUnit, bool & valid)
+{
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    float value = 0;
+    valid = false;
+    QString function1 = "getAiCoUnitBonus";
+    if (pInterpreter->exists(coID, function1))
+    {
+        valid = true;
+        QJSValueList args;
+        QJSValue obj = pInterpreter->newQObject(this);
+        args << obj;
+        QJSValue obj1 = pInterpreter->newQObject(pUnit);
+        args << obj1;
+        QJSValue erg = pInterpreter->doFunction(coID, function1, args);
+        if (erg.isNumber())
+        {
+            value = erg.toNumber();
+        }
+        if (value > MAX_CO_UNIT_VALUE)
+        {
+            value = MAX_CO_UNIT_VALUE;
+        }
+        else if (value < -MAX_CO_UNIT_VALUE)
+        {
+            value = -MAX_CO_UNIT_VALUE;
+        }
+    }
+    return value;
+}
+
 QStringList CO::getPerkList()
 {
     QStringList ret = m_perkList;
@@ -1208,6 +1258,7 @@ void CO::setPerkList(QStringList perks)
 {
     m_perkList.clear();
     m_perkList.append(coID);
+    m_perkList.append("TAGPOWER");
     m_perkList.append(perks);
 }
 
@@ -1454,6 +1505,7 @@ QString CO::getSuperPowerName()
     return ret;
 }
 
+
 void CO::postBattleActions(Unit* pAttacker, float atkDamage, Unit* pDefender, bool gotAttacked)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
@@ -1489,6 +1541,7 @@ void CO::serializeObject(QDataStream& pStream) const
         pStream << perk;
     }
     writeCoStyleToStream(pStream);
+    pStream << m_coRangeEnabled;
 }
 
 void CO::deserializeObject(QDataStream& pStream)
@@ -1543,9 +1596,17 @@ void CO::deserializer(QDataStream& pStream, bool fast)
     {
         m_perkList.append(coID);
     }
+    if (!m_perkList.contains("TAGPOWER"))
+    {
+        m_perkList.append("TAGPOWER");
+    }
     if (version > 4)
     {
         readCoStyleFromStream(pStream);
+    }
+    if (version > 5)
+    {
+        pStream >> m_coRangeEnabled;
     }
     if (!fast)
     {
@@ -1698,6 +1759,16 @@ void CO::loadResAnim(QString coid, QString file, QImage colorTable, QImage maskT
         }
     }
     pCOAnim = nullptr;
+}
+
+bool CO::getCoRangeEnabled() const
+{
+    return m_coRangeEnabled;
+}
+
+void CO::setCoRangeEnabled(bool coRangeEnabled)
+{
+    m_coRangeEnabled = coRangeEnabled;
 }
 
 oxygine::ResAnim* CO::getResAnim(QString id, oxygine::error_policy ep) const

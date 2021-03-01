@@ -21,6 +21,8 @@
 #include "coreengine/audiothread.h"
 #include "coreengine/userdata.h"
 
+#include "objects/dialogs/dialogvaluecounter.h"
+
 VictoryMenue::VictoryMenue(spNetworkInterface pNetworkInterface)
     : QObject(),
       m_pNetworkInterface(pNetworkInterface)
@@ -46,7 +48,7 @@ VictoryMenue::VictoryMenue(spNetworkInterface pNetworkInterface)
     // load background
     oxygine::spSprite sprite = new oxygine::Sprite();
     addChild(sprite);
-    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("Background+1");
+    oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("victorymenu");
     sprite->setResAnim(pBackground);
     // background should be last to draw
     sprite->setPriority(static_cast<qint32>(Mainapp::ZOrder::Background));
@@ -169,8 +171,7 @@ VictoryMenue::VictoryMenue(spNetworkInterface pNetworkInterface)
     }
 
     m_ProgressTimer.setSingleShot(false);
-
-    m_ProgressTimer.start(getStepTime());
+    m_ProgressTimer.setInterval(getStepTime());
     connect(&m_ProgressTimer, &QTimer::timeout, this, &VictoryMenue::updateGraph, Qt::QueuedConnection);
 
     spPanel panel = new Panel(true, QSize(Settings::getWidth() - pButtonExit->getWidth() - 30, 105), QSize(Settings::getWidth() - pButtonExit->getX() - 20, 40));
@@ -373,10 +374,10 @@ VictoryMenue::VictoryMenue(spNetworkInterface pNetworkInterface)
                     }
                     m_VictoryPanel->addItem(pCOSprite);
 
-                    oxygine::spTextField winLooseText = new oxygine::TextField();
+                    spLabel winLooseText = new Label(sentenceWidth - 110);
                     style.multiline = true;
                     winLooseText->setStyle(style48);
-                    winLooseText->setSize(sentenceWidth - 110, pWinLooseSprite->getScaledHeight());
+                    winLooseText->setHeight(pWinLooseSprite->getScaledHeight());
                     winLooseText->setPosition(48 * scale + 10, 1 + y);
                     winLooseText->setHtmlText(sentence);
                     m_VictoryPanel->addItem(winLooseText);
@@ -417,7 +418,10 @@ VictoryMenue::VictoryMenue(spNetworkInterface pNetworkInterface)
         m_VictoryPanel->setContentHeigth(y + 48 * scale + 10);
         addShopMoney();
     }
-    showGraph(GraphModes::Funds);
+    else
+    {
+        showGraph(GraphModes::Funds);
+    }
 
     m_pGraphBackground->addEventListener(oxygine::TouchEvent::CLICK, [ = ](oxygine::Event* pEvent)
     {
@@ -450,7 +454,8 @@ void VictoryMenue::addShopMoney()
     qint32 highestScore = 0;
     for (qint32 i = 0; i < pMap->getPlayerCount(); i++)
     {
-        if (pMap->getPlayer(i)->getBaseGameInput()->getAiType() == GameEnums::AiTypes_Human)
+        if (pMap->getPlayer(i)->getBaseGameInput()->getAiType() == GameEnums::AiTypes_Human &&
+            pMap->getPlayer(i)->getTeam() == pMap->getWinnerTeam())
         {
             qint32 score = m_VictoryScores[i].x() + m_VictoryScores[i].y() + m_VictoryScores[i].z();
             if (score > highestScore)
@@ -459,13 +464,31 @@ void VictoryMenue::addShopMoney()
             }
         }
     }
-    Userdata* pUserdata = Userdata::getInstance();
-    pUserdata->addCredtis(highestScore);
+    if (highestScore > 0)
+    {
+        Console::print("Adding points to userdata.", Console::eDEBUG);
+        Userdata* pUserdata = Userdata::getInstance();
+        spDialogValueCounter pDialogValueCounter = new DialogValueCounter(pUserdata->getCredtis(), highestScore);
+        connect(pDialogValueCounter.get(), &DialogValueCounter::sigFinished, this, &VictoryMenue::onProgressTimerStart, Qt::QueuedConnection);
+        addChild(pDialogValueCounter);
+        pUserdata->addCredtis(highestScore);
+        pUserdata->storeUser();
+        m_ProgressTimer.stop();
+    }
+    else
+    {
+        showGraph(GraphModes::Funds);
+    }
+}
+
+void VictoryMenue::onProgressTimerStart()
+{
+    showGraph(GraphModes::Funds);
 }
 
 void VictoryMenue::showGraph(VictoryMenue::GraphModes mode)
 {
-    
+    Console::print("VictoryMenue::showGraph " + QString::number(static_cast<qint32>(mode)), Console::eDEBUG);
     m_CurrentGraphMode = mode;
     if (m_CurrentGraphMode < GraphModes::Max)
     {

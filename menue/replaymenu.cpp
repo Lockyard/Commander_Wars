@@ -24,7 +24,7 @@ ReplayMenu::ReplayMenu(QString filename)
     connect(this, &ReplayMenu::sigStartFastForward, this, &ReplayMenu::startFastForward, Qt::QueuedConnection);
     connect(this, &ReplayMenu::sigStopFastForward, this, &ReplayMenu::stopFastForward, Qt::QueuedConnection);
     connect(this, &ReplayMenu::sigShowConfig, this, &ReplayMenu::showConfig, Qt::QueuedConnection);
-
+    changeBackground("replaymenu");
     bool valid = m_ReplayRecorder.loadRecord(filename);
     if (valid)
     {
@@ -324,6 +324,7 @@ void ReplayMenu::seekToDay(qint32 day)
     if (m_ReplayRecorder.getRecordSize() > 0)
     {
         Console::print("Seeking to day " + QString::number(day), Console::eDEBUG);
+        Mainapp::getInstance()->pauseRendering();
         spGameMap pMap = GameMap::getInstance();
         auto pos = pMap->getPosition();
         m_ReplayRecorder.seekToDay(day);
@@ -333,6 +334,7 @@ void ReplayMenu::seekToDay(qint32 day)
         pMap->setPosition(pos);
         pMap->updateSprites();
         pMap->getGameRules()->createFogVision();
+        Mainapp::getInstance()->continueRendering();
         connectMap();
         connectMapCursor();
         swapPlay();

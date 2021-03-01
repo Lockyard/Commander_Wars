@@ -17,6 +17,7 @@ class BattleAnimationSprite : public QObject, public oxygine::Sprite
     Q_OBJECT
 public:
     static const QString standingAnimation;
+    static const QString impactUnitOverlayAnimation;
     static const QString impactAnimation;
     static const QString fireAnimation;
     static const QString moveInAnimation;
@@ -48,17 +49,76 @@ public:
      * @param flippedX
      */
     virtual void flipActorsX(bool flippedX) override;
-
-
+    /**
+     * @brief getStartWithFraming
+     * @return
+     */
     bool getStartWithFraming() const;
+    /**
+     * @brief setStartWithFraming
+     * @param startWithFraming
+     */
     void setStartWithFraming(bool startWithFraming);
     /**
      * @brief startNextFrame
      */
     void startNextFrame();
+    /**
+     * @brief setDyingStartHp
+     * @param dyingStartHp
+     */
+    void setDyingStartHp(float dyingStartHp);
+    /**
+     * @brief setDyingEndHp
+     * @param dyingEndHp
+     */
+    void setDyingEndHp(float dyingEndHp);
+    /**
+     * @brief loadDyingFadeOutAnimation
+     */
+    void loadDyingFadeOutAnimation(qint32 fadeoutTime);
+    /**
+     * @brief setInvertStartPosition
+     * @param invertStartPosition
+     */
+    void setInvertStartPosition(bool invertStartPosition);
+
 signals:
     void sigDetachChild(oxygine::spActor pActor);
 public slots:
+    /**
+     * @brief addMoveTweenToLastLoadedSprites
+     * @param deltaX
+     * @param deltaY
+     * @param moveTime
+     * @param loops
+     */
+    void addMoveTweenToLastLoadedSprites(qint32 deltaX, qint32 deltaY, qint32 moveTime, qint32 delayPerUnitMs = 75, qint32 loops = -1, bool scaleWithAnimationSpeed = false);
+    /**
+     * @brief loadColorOverlayForLastLoadedFrame
+     * @param color
+     * @param time
+     * @param loops
+     * @param showDelayMs
+     */
+    void loadColorOverlayForLastLoadedFrame(QColor color, qint32 time, qint32 loops, qint32 showDelayMs);
+    /**
+     * @brief getInvertStartPosition
+     * @return is true during impact animations and results in an inverted positioning of the impacts.
+     * So the impacts are drawm at the position of the dying units
+     */
+    bool getInvertStartPosition() const;
+    /**
+     * @brief getDyingStartHp
+     * @return
+     */
+    float getDyingStartHp() const;
+    /**
+     * @brief getDyingEndHp
+     * @return
+     */
+    float getDyingEndHp() const;
+
     /**
      * @brief setMaxUnitCount
      * @param value
@@ -72,7 +132,7 @@ public slots:
      * @param attackerWeapon weapon used by the attacking unit
      * @param clearSprite if true clears the battle animation sprite buffer so you can add stuff from scratch default
      */
-    void loadAnimation(QString animationType, Unit* pUnit, Unit* pDefender = nullptr, qint32 attackerWeapon = 0, bool clearSprite = true);
+    void loadAnimation(QString animationType, Unit* pUnit, Unit* pDefender = nullptr, qint32 attackerWeapon = 0, bool clearSprite = true, bool start = true);
     /**
      * @brief getMaxUnitCount
      * @return
@@ -230,33 +290,27 @@ public slots:
      * @brief getImpactDurationMS
      * @return
      */
-    qint32 getImpactDurationMS();
-    /**
-     * @brief getImpactDurationMS
-     * @param pUnit
-     * @return
-     */
-    qint32 getImpactDurationMS(Unit* pUnit);
+    qint32 getImpactDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon);
     /**
      * @brief getFireDurationMS
      * @return
      */
-    qint32 getFireDurationMS();
+    qint32 getFireDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon);
     /**
      * @brief getMoveInDurationMS
      * @return
      */
-    qint32 getMoveInDurationMS();
+    qint32 getMoveInDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon);
     /**
      * @brief getStopDurationMS
      * @return
      */
-    qint32 getStopDurationMS();
+    qint32 getStopDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon);
     /**
      * @brief getMoveInDurationMS
      * @return
      */
-    qint32 getDyingDurationMS();
+    qint32 getDyingDurationMS(Unit* pUnit, Unit* pDefender, qint32 attackerWeapon);
     /**
      * @brief getMoveInDurationMS
      * @return
@@ -307,6 +361,10 @@ private:
     qint32 m_frameIterator{0};
     QTimer m_nextFrameTimer;
     bool m_startWithFraming{false};
+
+    float m_dyingStartHp{10.0f};
+    float m_dyingEndHp{10.0f};
+    bool m_invertStartPosition{false};
 };
 
 #endif // BATTLEANIMATIONSPRITE_H

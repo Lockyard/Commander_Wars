@@ -23,11 +23,11 @@ var Constructor = function()
     {
         var armyName = BATTLEANIMATION_RECON.getArmyName(unit);
         sprite.loadMovingSprite("recon+" + armyName + "+move", false, sprite.getMaxUnitCount(), Qt.point(-70, 5),
-                                Qt.point(65, 0), 400, false, 1, 1);
+                                Qt.point(65, 0), 600, false, 1, 1);
         sprite.loadMovingSpriteV2("recon+" + armyName + "+move+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-70, 5),
-                                  Qt.point(65, 0), 400, false, 1, 1);
+                                  Qt.point(65, 0), 600, false, 1, 1);
         sprite.loadMovingSprite("vehicle_dust", false, sprite.getMaxUnitCount(), Qt.point(-90, 7),
-                                Qt.point(65, 0), 400, false, 1, 1);
+                                Qt.point(65, 0), 600, false, 1, 1);
     };
 
     this.loadStopAnimation = function(sprite, unit, defender, weapon)
@@ -122,25 +122,30 @@ var Constructor = function()
         return true;
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 300, 3, 0);
+    };
+
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
         sprite.loadSprite("mg_hit",  false, sprite.getMaxUnitCount(), Qt.point(0, 22),
                           1, 1.0, 0, 0);
         sprite.loadSound("mg_impact.wav", 1, "resources/sounds/", 0);
     };
-    this.getMoveInDurationMS = function()
+    this.getMoveInDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 410;
+        return 610;
     };
 
-    this.getStopDurationMS = function()
+    this.getStopDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 300 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_RECON.getMaxUnitCount();
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 820 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_RECON.getMaxUnitCount();

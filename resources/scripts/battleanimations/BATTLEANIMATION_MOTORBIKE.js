@@ -49,6 +49,11 @@ var Constructor = function()
                           1, 1, 0, 0);
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 300, 3, 0);
+    };
+
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
         sprite.loadSprite("mg_hit",  false, sprite.getMaxUnitCount(), Qt.point(0, 22),
@@ -56,7 +61,7 @@ var Constructor = function()
         sprite.loadSound("mg_impact.wav", 1, "resources/sounds/", 0);
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 500 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_MOTORBIKE.getMaxUnitCount();

@@ -126,6 +126,11 @@ var Constructor = function()
         return 1500;
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 1000, 1, 300);
+    };
+
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
         if (weapon === 0)
@@ -146,14 +151,19 @@ var Constructor = function()
         }
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
-        // should be a second or longer.
-        // the time will be scaled with animation speed inside the engine
-        return 1500;
+        if (weapon === 0)
+        {
+            return 1500;
+        }
+        else
+        {
+            return 1000;
+        }
     };
 
-    this.getDyingDurationMS = function()
+    this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 1200;

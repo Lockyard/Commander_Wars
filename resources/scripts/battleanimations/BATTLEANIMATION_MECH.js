@@ -168,6 +168,18 @@ var Constructor = function()
         }
     };
 
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        if (weapon === 0)
+        {
+            sprite.loadColorOverlayForLastLoadedFrame("#969696", 1000, 1, 300);
+        }
+        else
+        {
+            sprite.loadColorOverlayForLastLoadedFrame("#969696", 300, 2, 0);
+        }
+    };
+
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
     {
         if (weapon === 1)
@@ -215,23 +227,28 @@ var Constructor = function()
         return 610;
     };
 
-    this.getStopDurationMS = function()
+    this.getStopDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 300 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_MECH.getMaxUnitCount();
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 500 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_MECH.getMaxUnitCount();
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
-        // should be a second or longer.
-        // the time will be scaled with animation speed inside the engine
-        return 1500 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_MECH.getMaxUnitCount();
+        if (weapon === 0)
+        {
+            return 1500 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_MECH.getMaxUnitCount();
+        }
+        else
+        {
+            return 1000;
+        }
     }
 };
 

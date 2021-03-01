@@ -9,8 +9,10 @@ var Constructor = function()
     {
         sprite.loadSprite("waterplane",  false,
                           BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20));
+        sprite.addMoveTweenToLastLoadedSprites(0, -5, 1200);
         sprite.loadSpriteV2("waterplane+mask", GameEnums.Recoloring_Table,
                           BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20));
+        sprite.addMoveTweenToLastLoadedSprites(0, -5, 1200);
     };
     this.loadFireAnimation = function(sprite, unit, defender, weapon)
     {
@@ -29,6 +31,11 @@ var Constructor = function()
                                     1, 1, -1);
         }
         sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", 0);
+    };
+
+    this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
+    {
+        sprite.loadColorOverlayForLastLoadedFrame("#969696", 1000, 1, 300);
     };
 
     this.loadImpactAnimation = function(sprite, unit, defender, weapon)
@@ -52,13 +59,13 @@ var Constructor = function()
         sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200);
     };
 
-    this.getFireDurationMS = function()
+    this.getFireDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
         return 500 + BATTLEANIMATION.defaultFrameDelay * BATTLEANIMATION_WATERPLANE.getMaxUnitCount();
     };
 
-    this.getImpactDurationMS = function()
+    this.getImpactDurationMS = function(sprite, unit, defender, weapon)
     {
         // should be a second or longer.
         // the time will be scaled with animation speed inside the engine

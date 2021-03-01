@@ -101,7 +101,8 @@ var UNIT =
         for (var i = 0; i < unit.getLoadedUnitCount(); i++)
         {
             var transportUnit = unit.getLoadedUnit(i);
-            transportUnit.refill();
+            var refillMaterial = (typeof refillRule === 'undefined' || refillRule === null); // an existing rule equals it's set
+            transportUnit.refill(refillMaterial);
             transportUnit.setHasMoved(false);
         }
     },
@@ -180,7 +181,7 @@ var UNIT =
         // gotAttacked if true we're defending else we're attacking
         // this function gets called twice for a unit for one attack.
     },
-    postAction : function(unit)
+    postAction : function(unit, action)
     {
     },
     getBonusOffensive : function(attacker, atkX, atkY, defender, defX, defY, isDefender)

@@ -264,6 +264,11 @@ var CO =
         // called at the start of the turn use it to do cool co stuff like caulder's healing :)
     },
 
+    postAction: function(co, action)
+    {
+        // called after the action was performed
+    },
+
     // CO - Intel
     getBio : function()
     {
@@ -345,6 +350,13 @@ var CO =
     {
         return CO.getAiUsePowerAtStart(co, powerSurplus, turnMode);
     },
+
+//    getAiCoUnitBonus : function(co, unit)
+//    {
+//        implement this function for a co to make the ai build more of the co's good units and to increase the chance
+//        the ai deploys a co unit in it. The return value is capped at 10 and -10
+//        return 0;
+//    },
 
     getAiUsePowerAlways : function(co, powerSurplus)
     {
