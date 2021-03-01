@@ -3860,6 +3860,16 @@ Version: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../objects/playerselection.cpp" line="343"/>
+        <source>Heavy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../objects/playerselection.cpp" line="343"/>
+        <source>Test First AI</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../objects/playerselection.cpp" line="350"/>
         <location filename="../objects/playerselection.cpp" line="357"/>
         <location filename="../objects/playerselection.cpp" line="361"/>
