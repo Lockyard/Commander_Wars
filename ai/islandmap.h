@@ -8,9 +8,16 @@
 
 class Player;
 
+
 class IslandMap;
 typedef oxygine::intrusive_ptr<IslandMap> spIslandMap;
 
+/**
+ * @brief The IslandMap class stores a map of the size of the game map, representing the separate areas a specific unit can move
+ * on, and if it can reach it eventually with its own movement (for instance a plain separated by mountains constitute 2 island
+ * maps for a tank. Each map is walkable by it but the tank alone cannot pass on the other island on its own (and maybe need a
+ * boat if any).
+ */
 class IslandMap : public QObject, public oxygine::ref_counter
 {
     Q_OBJECT
