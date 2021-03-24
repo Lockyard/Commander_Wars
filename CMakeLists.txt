@@ -364,6 +364,7 @@ set(${PROJECT_NAME}_SRCS
         ai/heavyai.cpp
         ai/influencefrontmap.cpp
         ai/testfirstai.cpp
+        ai/adapta/influencemap.cpp
 
         ai/neuralnetwork/neural/edge.cpp
         ai/neuralnetwork/neural/layer.cpp

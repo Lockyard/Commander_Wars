@@ -13,7 +13,8 @@
 #include "game/unitpathfindingsystem.h"
 #include "resource_management/unitspritemanager.h"
 
-TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_TestFirst)
+TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_TestFirst),
+    m_influenceMap(m_IslandMaps), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;
 }
@@ -21,7 +22,6 @@ TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_TestFirst)
 
 void TestFirstAI::readIni(QString name) {
     QString a = name;
-
 }
 
 
@@ -29,6 +29,9 @@ void TestFirstAI::process() {
     spQmlVectorUnit pUnits = m_pPlayer->getUnits();
     pUnits-> randomize();
     spQmlVectorBuilding pBuildings = m_pPlayer->getBuildings();
+
+    spQmlVectorUnit pEnemyUnits = m_pPlayer->getEnemyUnits();
+    pEnemyUnits->randomize();
 
 
 
@@ -38,6 +41,41 @@ void TestFirstAI::process() {
         rebuildIslandMaps = false;
         // remove island maps of the last turn
         m_IslandMaps.clear();
+
+        // create influence map at the start of the turn
+        m_influenceMap.reset();
+        m_inffMap.reset();
+
+        for (qint32 i= 0; i < pUnits->size(); i++)
+        {
+            Unit* pUnit = pUnits->at(i);
+            UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
+            pPfs->setIgnoreEnemies(pEnemyUnits);
+            pPfs->explore();
+            m_influenceMap.addUnitInfluence(pUnit, pPfs, pUnit->getCosts());
+            m_inffMap.addUnitInfluence(pUnit, pPfs, pUnit->getMovementpoints(QPoint(pUnit->getX(), pUnit->getY())));
+        }
+
+        for (qint32 i= 0; i < pEnemyUnits->size(); i++)
+        {
+            Unit* pUnit = pEnemyUnits->at(i);
+            UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
+            pPfs->setIgnoreEnemies(pUnits);
+            pPfs->explore();
+            //negative weight since are enemies
+            m_influenceMap.addUnitInfluence(pUnit, pPfs, pUnit->getCosts()*-1);
+            m_inffMap.addUnitInfluence(pUnit, pPfs, pUnit->getMovementpoints(QPoint(pUnit->getX(), pUnit->getY())));
+        }
+
+        m_inffMap.updateOwners();
+        m_inffMap.findFrontLines();
+
+        //m_influenceMap.show();
+        //m_influenceMap.hide();
+        m_inffMap.show();
+        m_inffMap.showFrontlines();
+
+        Console::print("TestAI front lines created", Console::eDEBUG);
     }
     rebuildIsland(pUnits.get());
 
@@ -45,6 +83,7 @@ void TestFirstAI::process() {
     if(moveAUnit(pUnits)) {}
     else if(buildAUnit(pBuildings)){}
     else{
+
         finishTurn();
     }
 
@@ -56,6 +95,9 @@ bool TestFirstAI::moveAUnit(spQmlVectorUnit pUnits) {
     for(qint32 i = 0; i < pUnits->size(); i++) {
 
         Unit* pUnit = pUnits->at(i);
+        qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
+        Console::print("movePoints of unit at (" + QString::number(pUnit->getPosition().x()) + ", " +
+                       QString::number(pUnit->getPosition().y()) + ") are " + QString::number(movePoints), Console::eDEBUG);
 
         if(pUnit->hasAction(ACTION_CAPTURE) && !pUnit->getHasMoved()) {
 

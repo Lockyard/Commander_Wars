@@ -2,6 +2,8 @@
 #define TESTFIRSTAI_H
 
 #include "coreai.h"
+#include "adapta/influencemap.h"
+#include "influencefrontmap.h"
 
 /**
  * @brief The TestFirstAI class is just a AI playground where I can understand which methods and stuff I have to do in order
@@ -21,6 +23,8 @@ protected:
 
 private:
     bool rebuildIslandMaps;
+    InfluenceMap m_influenceMap;
+    InfluenceFrontMap m_inffMap;
 
     /**
      * @brief moveAUnit
@@ -30,6 +34,7 @@ private:
     bool moveAUnit(spQmlVectorUnit pUnits);
 
     bool buildAUnit(spQmlVectorBuilding pBuildings);
+
 };
 
 #endif // TESTFIRSTAI_H
