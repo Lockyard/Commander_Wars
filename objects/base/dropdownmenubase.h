@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QVector>
 #include <QString>
-#include <oxygine-framework.h>
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/base/panel.h"
 #include "objects/base/tooltip.h"
@@ -42,6 +42,11 @@ public:
      * @param value
      */
     virtual void setEnabled(bool value) override;
+    /**
+     * @brief changeItemCount
+     * @param itemcount
+     */
+    void changeItemCount(qint32 itemcount);
 signals:
     void sigItemChangedInternal(qint32 item);
 

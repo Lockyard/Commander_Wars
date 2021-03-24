@@ -1,13 +1,12 @@
-#include "NativeTexture.h"
-#include "ImageDataOperations.h"
-#include "../Image.h"
-#include <stdio.h>
+#include "3rd_party/oxygine-framework/oxygine/core/NativeTexture.h"
+#include "3rd_party/oxygine-framework/oxygine/core/ImageDataOperations.h"
+#include "3rd_party/oxygine-framework/oxygine/Image.h"
 
 namespace oxygine
 {
     volatile int NativeTexture::created = 0;
 
-    void NativeTextureNull::init(nativeTextureHandle, int, int, ImageData::TextureFormat)
+    void NativeTextureNull::init(GLuint, int, int, ImageData::TextureFormat)
     {
 
     }
@@ -47,7 +46,7 @@ namespace oxygine
 
     }
 
-    void NativeTextureNull::setLinearFilter(quint32 filter)
+    void NativeTextureNull::setLinearFilter(quint32)
     {
 
     }
@@ -63,9 +62,9 @@ namespace oxygine
     }
 
     /**returns handle (ptr) to HW texture ID*/
-    nativeTextureHandle NativeTextureNull::getHandle() const
+    GLuint NativeTextureNull::getHandle() const
     {
-        return nullptr;
+        return 0;
     }
 
     int NativeTextureNull::getWidth() const

@@ -7,7 +7,8 @@
 #include <QPoint>
 #include <qlist.h>
 #include "array"
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "coreengine/qmlvector.h"
 
@@ -143,6 +144,7 @@ public:
     qint32 getTargetCosts(qint32 x, qint32 y);
     /**
      * @brief getAllNodePoints returns all reachable fields in a point vector
+     * @param maxRange max costs of the target fields (costs need to be smaller than this value)
      * @return
      */
     QVector<QPoint> getAllNodePoints(qint32 maxRange = infinite);

@@ -1,11 +1,10 @@
-#include "Box9Sprite.h"
-#include "../RenderState.h"
-#include "../STDRenderDelegate.h"
-#include "../STDRenderer.h"
-#include "../math/ScalarMath.h"
-#include "../res/ResAnim.h"
-#include "../res/Resources.h"
-#include <sstream>
+#include "3rd_party/oxygine-framework/oxygine/actor/Box9Sprite.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/STDRenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/STDRenderer.h"
+#include "3rd_party/oxygine-framework/oxygine/math/ScalarMath.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResAnim.h"
+#include "3rd_party/oxygine-framework/oxygine/res/Resources.h"
 
 namespace oxygine
 {
@@ -26,8 +25,9 @@ namespace oxygine
     oxygine::RectF Box9Sprite::getInnerArea() const
     {
         if (!_prepared)
+        {
             prepare();
-
+        }
         RectF rect;
         rect.pos = Vector2(_guideX[0], _guideY[0]);
         
@@ -301,19 +301,29 @@ namespace oxygine
                     for (int xc = 0; xc < vc; xc++)
                     {
                         if (xc == 0) // select correct index for _guides% arrays
+                        {
                             xgi = 0;
+                        }
                         else if (xc == (int)_pointsX.size() - 2)
+                        {
                             xgi = 2;
+                        }
                         else
+                        {
                             xgi = 1;
-
+                        }
                         if (yc == 0)
+                        {
                             ygi = 0;
+                        }
                         else if (yc == (int)_pointsY.size() - 2)
+                        {
                             ygi = 2;
+                        }
                         else
+                        {
                             ygi = 1;
-
+                        }
                         RectF srcRect(_guidesX[xgi], _guidesY[ygi], _guidesX[xgi + 1] - _guidesX[xgi], _guidesY[ygi + 1] - _guidesY[ygi]);
                         RectF destRect(_pointsX[xc], _pointsY[yc], _pointsX[xc + 1] - _pointsX[xc], _pointsY[yc + 1] - _pointsY[yc]);
 

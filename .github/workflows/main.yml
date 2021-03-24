@@ -1,0 +1,33 @@
+name: CMake
+on: [push]
+env:
+  BUILD_TYPE: RelWithDebInfo
+  compiler: gcc
+  QT_Version: '5.15.2'
+  COMPILER_VERSION: 'win64_msvc2019_64'
+jobs:
+  install:
+    name: All
+    runs-on: windows-latest
+    steps:
+    - uses: jurplel/install-qt-action@v2
+      with:
+          version: ${{env.QT_Version}}
+          target: 'desktop'
+          arch: ${{env.COMPILER_VERSION}}
+          dir: '${{ github.workspace }}/qt/'
+    - uses: actions/checkout@v2
+    - name: Create Build Environment
+      run: cmake -E make_directory ${{github.workspace}}/build
+    - name: Configure CMake
+      shell: bash
+      working-directory: ${{github.workspace}}/build
+      run: cmake $GITHUB_WORKSPACE -DQt5_DIR=$Qt5_Dir -DCMAKE_MODULE_PATH=$Qt5_Dir -DCMAKE_PREFIX_PATH=$Qt5_Dir -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DQT_QMAKE_EXECUTABLE=$Qt5_Dir/bin/qmake.exe
+    - name: Translate
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE --target Commander_Wars_translations
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE --target install

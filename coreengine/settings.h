@@ -5,7 +5,8 @@
 #include <QObject>
 #include <QTranslator>
 
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "game/GameEnums.h"
 
@@ -314,6 +315,10 @@ public slots:
     static float getDialogAnimationSpeed();
     static void setDialogAnimationSpeed(const quint32 &value);
 
+    static float getCaptureAnimationSpeedValue();
+    static float getCaptureAnimationSpeed();
+    static void setCaptureAnimationSpeed(const quint32 &value);
+
     static Qt::Key getKey_up();
     static void setKey_up(const Qt::Key &key_up);
 
@@ -473,6 +478,7 @@ private:
     static quint32 walkAnimationSpeed;
     static quint32 battleAnimationSpeed;
     static quint32 dialogAnimationSpeed;
+    static quint32 captureAnimationSpeed;
     static bool m_dialogAnimation;
     static quint32 multiTurnCounter;
     static QString m_LastSaveGame;

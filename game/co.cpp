@@ -1250,7 +1250,8 @@ float CO::getAiCoUnitBonus(Unit* pUnit, bool & valid)
 QStringList CO::getPerkList()
 {
     QStringList ret = m_perkList;
-    ret.removeFirst();
+    ret.removeAll(coID);
+    ret.removeAll("TAGPOWER");
     return ret;
 }
 
@@ -1759,6 +1760,11 @@ void CO::loadResAnim(QString coid, QString file, QImage colorTable, QImage maskT
         }
     }
     pCOAnim = nullptr;
+    spGameMenue pMenu = GameMenue::getInstance();
+    if (pMenu.get() != nullptr)
+    {
+        pMenu->updatePlayerinfo();
+    }
 }
 
 bool CO::getCoRangeEnabled() const

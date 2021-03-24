@@ -226,7 +226,8 @@ void Unit::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode, bool flipS
             pSprite->setResAnim(pAnim);
             pWaitSprite->setResAnim(pAnim);
         }
-
+        setSize(pAnim->getWidth(),
+                pAnim->getHeight());
         pSprite->setPriority(static_cast<short>(Priorities::Colored));
         pWaitSprite->setPriority(static_cast<short>(Priorities::Waiting));
         // repaint the unit?
@@ -1402,7 +1403,7 @@ qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosit
     return bonus;
 }
 
-bool Unit::useTerrainDefense()
+bool Unit::useTerrainDefense() const
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "useTerrainDefense";
@@ -1970,7 +1971,7 @@ bool Unit::getTransportHidden(Player* pPlayer)
     return false;
 }
 
-QString Unit::getMovementType()
+QString Unit::getMovementType() const
 {
     return m_MovementType;
 }
@@ -2774,6 +2775,16 @@ bool Unit::isStatusStealthed() const
     return (m_Hidden || (m_cloaked > 0));
 }
 
+bool Unit::isStatusStealthedAndInvisible(Player* pPlayer) const
+{
+    if (isStatusStealthed() &&
+        isStealthed(pPlayer))
+    {
+        return true;
+    }
+    return false;
+}
+
 bool Unit::getHidden() const
 {
     return m_Hidden;
@@ -2797,7 +2808,7 @@ void Unit::updateStealthIcon()
     }
 }
 
-bool Unit::hasTerrainHide(Player* pPlayer)
+bool Unit::hasTerrainHide(Player* pPlayer) const
 {
     qint32 x = getX();
     qint32 y = getY();
@@ -2807,7 +2818,7 @@ bool Unit::hasTerrainHide(Player* pPlayer)
             pMap->getGameRules()->getFogMode() != GameEnums::Fog_Off);
 }
 
-bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 testX, qint32 testY)
+bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 testX, qint32 testY) const
 {
     if (pPlayer != nullptr &&
         pPlayer->checkAlliance(m_pOwner) == GameEnums::Alliance_Enemy)

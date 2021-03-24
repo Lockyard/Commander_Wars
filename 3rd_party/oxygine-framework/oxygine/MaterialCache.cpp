@@ -1,11 +1,13 @@
-#include "MaterialCache.h"
-#include "Material.h"
-#include "core/oxygine.h"
+#include "3rd_party/oxygine-framework/oxygine/MaterialCache.h"
+#include "3rd_party/oxygine-framework/oxygine/Material.h"
+#include "3rd_party/oxygine-framework/oxygine/core/oxygine.h"
 
 #include "QMutexLocker"
 
 namespace oxygine
 {
+    MaterialCache MaterialCache::mcache;
+
     Material* MaterialCache::clone_(const Material& other)
     {
         QMutexLocker alock(&_lock);
@@ -13,39 +15,36 @@ namespace oxygine
         size_t hash;
         Material::compare cm;
         other.update(hash, cm);
-
-
-        materials::iterator itl = _materials.find(hash);
-
-        if (itl != _materials.end())
+        auto items = _materials.values(hash);
+        if (items.size() > 0)
         {
-            Material* sec = itl->second.get();
+            Material* sec = items[0].get();
             if (cm == sec->_compare && cm(sec, &other))
+            {
                 return sec;
+            }
 
             //hash collision?
+            auto it = items.begin();
+            it++; //skip first, already checked
 
-            std::pair<materials::iterator, materials::iterator> it = _materials.equal_range(hash);
-
-            itl = it.first;
-            itl++;//skip first, already checked
-
-            for (; itl != it.second; itl++)
+            for (; it != items.end(); it++)
             {
-                Material* sec = itl->second.get();
+                Material* sec = it->get();
                 if (cm == sec->_compare && cm(sec, &other))
                     return sec;
             }
         }
-
         _addCounter++;
         if (_addCounter > 30)
+        {
             removeUnusedNoLock();
+        }
 
         Material* copy = other.clone();
         copy->_hash = hash;
         copy->_compare = cm;
-        _materials.insert(std::make_pair(hash, copy));
+        _materials.insert(hash, copy);
 
         return copy;
     }
@@ -56,9 +55,9 @@ namespace oxygine
         materials fresh;
         for (auto it = _materials.begin(); it != _materials.end(); it++)
         {
-            if (it->second->_ref_counter > 1)
+            if (it.value()->_ref_counter > 1)
             {
-                fresh.insert(std::make_pair(it->second->_hash, it->second));
+                fresh.insert(it.value()->_hash, it.value());
             }
         }
 
@@ -83,9 +82,7 @@ namespace oxygine
         _materials.clear();
     }
 
-    static MaterialCache mcache;
-
-    MaterialCache& mc()
+    MaterialCache& MaterialCache::mc()
     {
         return mcache;
     }

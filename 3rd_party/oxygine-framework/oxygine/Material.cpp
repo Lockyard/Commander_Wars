@@ -1,9 +1,9 @@
-#include "Material.h"
-#include "MaterialCache.h"
-#include "STDRenderer.h"
-#include "core/UberShaderProgram.h"
-#include "core/oxygine.h"
-#include "core/gamewindow.h"
+#include "3rd_party/oxygine-framework/oxygine/Material.h"
+#include "3rd_party/oxygine-framework/oxygine/MaterialCache.h"
+#include "3rd_party/oxygine-framework/oxygine/STDRenderer.h"
+#include "3rd_party/oxygine-framework/oxygine/core/UberShaderProgram.h"
+#include "3rd_party/oxygine-framework/oxygine/core/oxygine.h"
+#include "3rd_party/oxygine-framework/oxygine/core/gamewindow.h"
 
 namespace oxygine
 {
@@ -97,7 +97,7 @@ namespace oxygine
     {
         STDMaterial mat(*this);
         mat._uberShader = &STDRenderer::uberShader;
-        return mc().cache(mat);
+        return MaterialCache::mc().cache(mat);
     }
 
     Material::Material(const Material& other)

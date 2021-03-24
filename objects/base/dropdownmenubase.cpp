@@ -6,9 +6,10 @@
 DropDownmenuBase::DropDownmenuBase(qint32 width, qint32 itemcount)
 {
     Mainapp* pApp = Mainapp::getInstance();
-    this->moveToThread(pApp->getWorkerthread());
-    this->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
-    this->setWidth(width);
+    moveToThread(pApp->getWorkerthread());
+    setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
+    setWidth(width);
+    setHeight(40);
     ObjectManager* pObjectManager = ObjectManager::getInstance();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("dropdownmenu");
     m_Box = new oxygine::Box9Sprite();
@@ -21,8 +22,12 @@ DropDownmenuBase::DropDownmenuBase(qint32 width, qint32 itemcount)
     m_pClipActor->setSize(m_Box->getWidth() - 20 - 45, m_Box->getHeight());
     m_pClipActor->setX(10);
     addChild(m_Box);
-
     qint32 maxItemCount = 6;
+    qint32 changedCount = Settings::getHeight() / 40 / 3;
+    if (changedCount > maxItemCount)
+    {
+        maxItemCount = changedCount;
+    }
     if (Settings::getHeight() / 2 < maxItemCount * 40)
     {
         maxItemCount = Settings::getHeight() / 40;
@@ -64,6 +69,11 @@ DropDownmenuBase::DropDownmenuBase(qint32 width, qint32 itemcount)
     connect(this, &DropDownmenuBase::sigItemChangedInternal, this, &DropDownmenuBase::itemChanged, Qt::QueuedConnection);
     connect(this, &DropDownmenuBase::sigShowDropDown, this, &DropDownmenuBase::showDropDown, Qt::QueuedConnection);
     connect(this, &DropDownmenuBase::sigHideDropDown, this, &DropDownmenuBase::hideDropDown, Qt::QueuedConnection);
+}
+
+void DropDownmenuBase::changeItemCount(qint32 itemcount)
+{
+    m_Panel->setContentHeigth(itemcount * 40);
 }
 
 void DropDownmenuBase::focusedLost()

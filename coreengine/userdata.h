@@ -142,13 +142,7 @@ public:
      * @return
      */
     QVector<Userdata::ShopItem> getItems(GameEnums::ShopItemType type, bool bought);
-    /**
-     * @brief Userdata::getItems
-     * @param type
-     * @param bought
-     * @return
-     */
-    QStringList getItemsList(GameEnums::ShopItemType type, bool bought);
+
 signals:
 
 public slots:
@@ -209,6 +203,12 @@ public slots:
      */
     void addShopItem(GameEnums::ShopItemType itemType, QString key, QString name, qint32 price, bool buyable = false);
     /**
+     * @brief removeShopItem
+     * @param itemType
+     * @param key
+     */
+    void removeShopItem(GameEnums::ShopItemType itemType, QString key);
+    /**
      * @brief setShopItemBuyable changes if an item can be bought in the shop or not
      * @param itemType
      * @param key
@@ -227,6 +227,13 @@ public slots:
      * @param bought if true the items get bought as well
      */
     void unlockAllShopItems(bool bought);
+    /**
+     * @brief Userdata::getItems
+     * @param type
+     * @param bought
+     * @return
+     */
+    QStringList getShopItemsList(GameEnums::ShopItemType type, bool bought);
 private:
     void showAchieved();
 

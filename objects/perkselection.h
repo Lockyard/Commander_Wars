@@ -5,7 +5,8 @@
 #include <QVector>
 
 #include "objects/base/checkbox.h"
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 #include "game/co.h"
 
 class PerkSelection;
@@ -51,6 +52,10 @@ public slots:
      * @param toggle
      */
     void toggleAll(bool toggle);
+    /**
+     * @brief selectRandomPerks
+     */
+    void selectRandomPerks(bool fill);
 private:
     CO* m_pCO{nullptr};
     QVector<spCheckbox> m_Checkboxes;

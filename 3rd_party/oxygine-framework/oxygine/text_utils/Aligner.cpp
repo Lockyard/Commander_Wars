@@ -1,7 +1,6 @@
-#include "Aligner.h"
-#include "../Font.h"
-#include "../res/ResFont.h"
-#include <assert.h>
+#include "3rd_party/oxygine-framework/oxygine/text_utils/Aligner.h"
+#include "3rd_party/oxygine-framework/oxygine/Font.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResFont.h"
 
 namespace oxygine
 {
@@ -19,7 +18,6 @@ namespace oxygine
               _y(0),
               _lineWidth(0)
         {
-            //qDebug("gscale %f, adjScale %f globscale %f, %d %f", gscale, _globalScale, _fontSize, fs);
             _line.reserve(50);
             _lineSkip = (int)(_font->getBaselineDistance() * style.baselineScale) + style.linesOffset;
             options = Style.options;

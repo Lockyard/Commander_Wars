@@ -3,11 +3,12 @@
 
 #include <QObject>
 #include <QElapsedTimer>
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/base/tooltip.h"
 
-#include "oxygine/KeyEvent.h"
+#include "3rd_party/oxygine-framework/oxygine/KeyEvent.h"
 
 class Textbox;
 typedef oxygine::intrusive_ptr<Textbox> spTextbox;
@@ -35,7 +36,11 @@ public:
      * @param text
      */
     void setCurrentText(QString text);
-
+    /**
+     * @brief setEnabled
+     * @param value
+     */
+    virtual void setEnabled(bool value) override;
 signals:
     void sigTextChanged(QString text);
     void sigEnterPressed(QString text);

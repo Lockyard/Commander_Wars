@@ -1,13 +1,12 @@
-#include "TextField.h"
-#include "../Font.h"
-#include "../res/ResFont.h"
-#include "../RenderDelegate.h"
-#include "../RenderState.h"
-#include "../core/gl/VideoDriverGLES20.h"
-#include "../res/Resources.h"
-#include "../text_utils/Node.h"
-#include "../text_utils/TextBuilder.h"
-#include <sstream>
+#include "3rd_party/oxygine-framework/oxygine/actor/TextField.h"
+#include "3rd_party/oxygine-framework/oxygine/Font.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResFont.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/core/gl/VideoDriverGLES20.h"
+#include "3rd_party/oxygine-framework/oxygine/res/Resources.h"
+#include "3rd_party/oxygine-framework/oxygine/text_utils/Node.h"
+#include "3rd_party/oxygine-framework/oxygine/text_utils/TextBuilder.h"
 
 namespace oxygine
 {
@@ -35,9 +34,9 @@ namespace oxygine
     {
     }
 
-    bool TextField::isOn(const Vector2& localPosition, float localScale)
+    bool TextField::isOn(const Vector2& localPosition, float)
     {
-        Rect r = getTextRect(localScale);
+        Rect r = getTextRect();
         r.expand(Point(_extendedIsOn, _extendedIsOn), Point(_extendedIsOn, _extendedIsOn));
         return r.pointIn(Point((int)localPosition.x, (int)localPosition.y));
     }
@@ -244,12 +243,12 @@ namespace oxygine
 
     text::Symbol* TextField::getSymbolAt(int pos) const
     {
-        return const_cast<TextField*>(this)->getRootNode(_rtscale)->getSymbol(pos);
+        return const_cast<TextField*>(this)->getRootNode()->getSymbol(pos);
     }
 
-    const Rect& TextField::getTextRect(float localScale) const
+    const Rect& TextField::getTextRect() const
     {
-        const_cast<TextField*>(this)->getRootNode(localScale);
+        const_cast<TextField*>(this)->getRootNode();
         return _textRect;
     }
 
@@ -260,15 +259,12 @@ namespace oxygine
     }
 
 
-    text::Node* TextField::getRootNode(float globalScale)
+    text::Node* TextField::getRootNode()
     {
         if (!_style.font)
         {
             return _root.get();
         }
-
-        globalScale = qAbs(globalScale);
-
         return _root.get();
     }
 

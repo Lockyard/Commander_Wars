@@ -30,8 +30,12 @@ public:
 signals:
     void sigLoadResAnim(QString coid, QString file, QImage colorTable, QImage maskTable, bool useColorBox);
 public slots:
+    QStringList getCoIds()
+    {
+        return m_loadedRessources;
+    }
     /**
-     * @brief loadResAnim
+     * @brief loadResAnim this function is not callable from js
      * @param coid
      * @param file
      * @param colorTable

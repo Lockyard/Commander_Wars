@@ -9,7 +9,8 @@
 #include "objects/base/dropdownmenu.h"
 #include "objects/base/checkbox.h"
 
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 class PerkSelectionDialog;
 typedef oxygine::intrusive_ptr<PerkSelectionDialog> spPerkSelectionDialog;
@@ -34,12 +35,19 @@ protected slots:
      * @param item
      */
     void setPerkBannlist(qint32 item);
+    /**
+     * @brief selectRandomPerks
+     */
+    void selectRandomPerks();
 signals:
     void sigCancel();
     void sigFinished();
     void editFinished(QStringList list);
     void sigToggleAll(bool toggle);
     void sigShowSavePerklist();
+    void sigSelectRandomPerks();
+private:
+    QVector<QString> getNameList(QString path);
 private:
     oxygine::spButton m_OkButton;
     oxygine::spButton m_CancelButton;
@@ -50,6 +58,7 @@ private:
     Player* m_pPlayer{nullptr};
     spPanel m_pPanel;
     spPerkSelection m_pPerkSelection;
+    bool m_banning{false};
 };
 
 #endif // PERKSELECTIONDIALOG_H

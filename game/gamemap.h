@@ -1,13 +1,12 @@
 #ifndef GAMEMAP_H
 #define GAMEMAP_H
 
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
+
 #include <QObject>
 #include <QVector>
 #include <QRandomGenerator>
 #include "memory"
-
-#include "oxygine/core/ref_counter.h"
-#include "oxygine-framework.h"
 
 #include "game/terrain.h"
 #include "game/cursor.h"
@@ -293,7 +292,7 @@ public:
      */
     inline virtual qint32 getVersion() const override
     {
-        return 9;
+        return 10;
     }
     /**
      * @brief clearMap
@@ -350,7 +349,10 @@ public:
     void registerMapAtInterpreter();
     QString getMapPath() const;
     void setMapPath(const QString &mapPath);
-
+    /**
+     * @brief playMusic
+     */
+    void playMusic();
 signals:
     void signalExitGame();
     void signalSaveGame();
@@ -364,7 +366,23 @@ signals:
     void sigShowNicknameUnit(qint32 x, qint32 y);
     void sigShowOptions();
     void sigShowChangeSound();
+    void sigShowWiki();
+    void sigShowRules();
 public slots:
+    /**
+     * @brief getMapMusic
+     * @return
+     */
+    QString getMapMusic() const;
+    /**
+     * @brief setMapMusic
+     * @param mapMusic
+     */
+    void setMapMusic(const QString &mapMusic, qint32 startLoopMs = -1, qint32 endLoopMs = -1);
+    /**
+     * @brief clearMapMusic
+     */
+    void clearMapMusic();
     /**
      * @brief getFrameTime
      * @return
@@ -509,6 +527,14 @@ public slots:
      */
     void showUnitInfo(qint32 player);
     /**
+     * @brief showWiki
+     */
+    void showWiki();
+    /**
+     * @brief showRules
+     */
+    void showRules();
+    /**
      * @brief getBuildingCount
      * @param buildingID
      * @return
@@ -615,7 +641,7 @@ public slots:
      * @param y
      * @param useTerrainAsBaseTerrain
      */
-    void replaceTerrainOnly(QString terrainID, qint32 x, qint32 y, bool useTerrainAsBaseTerrain);
+    void replaceTerrainOnly(QString terrainID, qint32 x, qint32 y, bool useTerrainAsBaseTerrain = false);
     /**
      * @brief replaceBuilding
      * @param buildingID
@@ -795,6 +821,10 @@ private:
     float m_zoom{1.0f};
     bool loaded{false};
     qint32 m_UniqueIdCounter{0};
+    QString m_mapMusic;
+    QString m_loadedMapMusic;
+    qint32 m_startLoopMs{-1};
+    qint32 m_endLoopMs{-1};
     static qint32 m_imagesize;
     void loadMapData();
 };

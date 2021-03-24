@@ -11,10 +11,11 @@
 
 #include "coreengine/LUPDATE_MACROS.h"
 
+class GameMap;
+
 class HeavyAi : public CoreAI
 {
     Q_OBJECT
-    static const QString heavyAiObject;
     /**
      * @brief The BuildingEntry enum
      */
@@ -49,7 +50,15 @@ public:
         spGameAction m_action;
         float m_score{0};
     };
-    explicit HeavyAi();
+
+    struct BuildingData
+    {
+        Building* m_pBuilding;
+
+    };
+
+
+    explicit HeavyAi(QString type);
     virtual ~HeavyAi() = default;
 public slots:
     /**
@@ -68,7 +77,17 @@ public slots:
     void showFrontLines();
     void hideFrontMap();
 protected:
+    /**
+     * @brief scoreActions
+     * @param unit
+     */
     void scoreActions(UnitData & unit);
+    /**
+     * @brief prepareWaitPfs
+     * @param unitData
+     * @param actions
+     */
+    void prepareWaitPfs(UnitData & unitData, QStringList & actions);
 private:
     void setupTurn(const spQmlVectorBuilding & buildings);
     void endTurn();
@@ -82,7 +101,7 @@ private:
                                QString action, FunctionType type, qint32 index,
                                float & bestScore, QVector<float> & bestScores,
                                QVector<spGameAction> & bestActions);
-    bool mutateAction(spGameAction pAction, FunctionType type, qint32 functionIndex,
+    bool mutateAction(spGameAction pAction, UnitData & unitData, FunctionType type, qint32 functionIndex,
                       qint32 & step, QVector<qint32> & stepPosition, float & score);
     /**
      * @brief performAction
@@ -93,13 +112,13 @@ private:
      * @param action
      * @return
      */
-    float scoreCapture(spGameAction action);
+    float scoreCapture(spGameAction action, UnitData & unitData);
     /**
      * @brief scoreFire
      * @param action
      * @return
      */
-    float scoreFire(spGameAction action);
+    float scoreFire(spGameAction action, UnitData & unitData);
     /**
      * @brief scoreWait
      * @param unit
@@ -110,13 +129,43 @@ private:
      * @param unit
      * @param targets
      */
-    void getMoveTargets(UnitData & unit, QVector<QVector3D> & targets);
+    void getMoveTargets(UnitData & unit, QStringList & actions, QVector<QVector3D> & targets);
     /**
      * @brief scoreWait
      * @param action
      * @return
      */
-    float scoreWait(spGameAction action);
+    float scoreWait(spGameAction action, UnitData & unitData);
+    /**
+     * @brief addCaptureTargets
+     * @param pUnit
+     * @param actions
+     * @param pEnemyBuildings
+     * @param targets
+     */
+    void addCaptureTargets(const QStringList & actions,
+                           Terrain* pTerrain, QVector<QVector3D>& targets);
+    /**
+     * @brief getCaptureDistanceModifier
+     * @return
+     */
+    qint32 getMovingToCaptureDistanceModifier();
+    /**
+     * @brief addAttackTargets
+     * @param pUnit
+     * @param pTargetFields
+     * @param targets
+     */
+    void addAttackTargets(Unit* pUnit, Terrain* pTerrain, QmlVectorPoint* pTargetFields, QVector<QVector3D> & targets);
+    /**
+     * @brief getMovingToAttackDistanceModifier
+     */
+    qint32 getMovingToAttackDistanceModifier();
+    /**
+     * @brief getMovingToAttackEnvironmentDistanceModifier
+     * @return
+     */
+    qint32 getMovingToAttackEnvironmentDistanceModifier();
     /**
      * @brief getBasicFieldInputVector
      * @param action
@@ -145,9 +194,13 @@ private:
      * @return
      */
     bool buildUnits();
+    /**
+     * @brief scoreUnitBuilding
+     */
+    void scoreUnitBuilding();
 private:
     // function for scoring a function
-    using scoreFunction = std::function<float (spGameAction action)>;
+    using scoreFunction = std::function<float (spGameAction action, UnitData & unitData)>;
     struct ScoreInfo
     {
         QString m_actionId;
@@ -157,6 +210,7 @@ private:
     QVector<UnitData> m_enemyUnits;
     QVector<UnitData> m_ownUnits;
     QVector<QPoint> m_updatePoints;
+    QVector<BuildingData> m_BuildingData;
     InfluenceFrontMap m_InfluenceFrontMap;
 
     spQmlVectorUnit m_pUnits = nullptr;
@@ -165,12 +219,16 @@ private:
     QTimer m_timer;
     bool m_pause{false};
 
-    spTargetedUnitPathFindingSystem m_currentTargetefPfs;
+    spTargetedUnitPathFindingSystem m_currentTargetedfPfs;
 
     static const qint32 minSiloDamage;
     float m_minActionScore{0.1f};
     float m_actionScoreVariant{0.05f};
+    float m_stealthDistanceMultiplier{2.0f};
+    float m_alliedDistanceModifier{5.0f};
 
+    // storable stuff
+    QString m_aiName{"HEAVY_AI"};
 };
 
 #endif // HEAVYAI_H

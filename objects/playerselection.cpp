@@ -44,7 +44,7 @@ PlayerSelection::PlayerSelection(qint32 width, qint32 heigth)
     connect(this, &PlayerSelection::sigAiChanged, this, &PlayerSelection::selectAI, Qt::QueuedConnection);
     connect(this, &PlayerSelection::sigCOsRandom, this, &PlayerSelection::slotCOsRandom, Qt::QueuedConnection);
     connect(this, &PlayerSelection::sigSelectedArmyChanged, this, &PlayerSelection::selectedArmyChanged, Qt::QueuedConnection);
-
+    connect(this, &PlayerSelection::sigChangeAllTeams, this, &PlayerSelection::changeAllTeams, Qt::QueuedConnection);
     connect(this, &PlayerSelection::buttonShowAllBuildList, this, &PlayerSelection::slotShowAllBuildList, Qt::QueuedConnection);
 
     this->addChild(m_pPlayerSelection);
@@ -168,7 +168,7 @@ void PlayerSelection::showSelectCO(qint32 player, quint8 co)
             cos= COSpriteManager::getInstance()->getLoadedRessources();
         }
         Userdata* pUserdata = Userdata::getInstance();
-        auto items = pUserdata->getItemsList(GameEnums::ShopItemType_CO, false);
+        auto items = pUserdata->getShopItemsList(GameEnums::ShopItemType_CO, false);
         for (const auto & item : items)
         {
             cos.removeAll(item);
@@ -320,6 +320,19 @@ void PlayerSelection::showPlayerSelection()
         allIncomeSpinBox->setEnabled(false);
     }
 
+    itemIndex = 5;
+    spSpinBox teamSpinBox = new SpinBox(xPositions[itemIndex + 1] - xPositions[itemIndex] - 10, 2, pMap->getPlayerCount(), SpinBox::Mode::Int);
+    teamSpinBox->setTooltipText(tr("Automatically changes the teams of all players so the teams are equally distributed, according to the team count."
+                                   "Teams are assigned in a way that the first turn advantage is the least relevant."));
+    teamSpinBox->setPosition(xPositions[itemIndex], y);
+    teamSpinBox->setCurrentValue(pMap->getPlayerCount());
+    teamSpinBox->setSpinSpeed(1.0f);
+    connect(teamSpinBox.get(), &SpinBox::sigValueChanged, this, [=](qreal value)
+    {
+        emit sigChangeAllTeams(static_cast<qint32>(value));
+    });
+    m_pPlayerSelection->addItem(teamSpinBox);
+
     itemIndex = 6;
     oxygine::spButton pButtonAllBuildList = ObjectManager::createButton(tr("Build List"), 150);
     pButtonAllBuildList->setPosition(xPositions[itemIndex], y);
@@ -341,7 +354,17 @@ void PlayerSelection::showPlayerSelection()
     {
         teamList.append(tr("Team") + " " + QString::number(i + 1));
     }
-    QVector<QString> defaultAiList = {tr("Human"), tr("Very Easy"), tr("Normal"), tr("Normal Off."), tr("Normal Def."), tr("Heavy"), tr("Test First AI"), tr("Closed")}; // tr("Heavy"),  // heavy ai disabled cause it's not finished
+    QVector<QString> defaultAiList = {tr("Human"), tr("Very Easy"), tr("Normal"), tr("Normal Off."), tr("Normal Def.")}; // // heavy ai disabled cause it's not finished
+    GameManager* pGameManager = GameManager::getInstance();
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    for (qint32 i = 0; i < pGameManager->getHeavyAiCount(); ++i)
+    {
+        QString id = pGameManager->getHeavyAiID(i);
+        QJSValue aiName = pInterpreter->doFunction(id, "getName");
+        defaultAiList.append(aiName.toString());
+    }
+    defaultAiList.append(tr("Closed"));
+
     QVector<QString> aiList = defaultAiList;
     if (m_pCampaign.get() != nullptr)
     {
@@ -362,8 +385,6 @@ void PlayerSelection::showPlayerSelection()
             aiList = {tr("Human"), tr("Open")};
         }
     }
-
-    Interpreter* pInterpreter = Interpreter::getInstance();
     QString function = "getDefaultPlayerColors";
     QJSValueList args;
     QJSValue ret = pInterpreter->doFunction("PLAYER", function, args);
@@ -846,12 +867,10 @@ void PlayerSelection::playerStartFundsChanged(float value, qint32 playerIdx)
     
 }
 void PlayerSelection::playerTeamChanged(qint32 value, qint32 playerIdx)
-{
-    
+{    
     spGameMap pMap = GameMap::getInstance();
     pMap->getPlayer(playerIdx)->setTeam(value);
-    playerDataChanged();
-    
+    playerDataChanged();    
 }
 
 void PlayerSelection::playerDataChanged()
@@ -1085,7 +1104,7 @@ void PlayerSelection::showSelectCOPerks(qint32 player)
     if (pPlayer->getCO(0) != nullptr || pPlayer->getCO(1) != nullptr)
     {
         Userdata* pUserdata = Userdata::getInstance();
-        auto hiddenList = pUserdata->getItemsList(GameEnums::ShopItemType_Perk, false);
+        auto hiddenList = pUserdata->getShopItemsList(GameEnums::ShopItemType_Perk, false);
         spPerkSelectionDialog pPerkSelectionDialog = new PerkSelectionDialog(pPlayer, pMap->getGameRules()->getMaxPerkCount(), false, hiddenList);
         oxygine::getStage()->addChild(pPerkSelectionDialog);
         connect(pPerkSelectionDialog.get(), &PerkSelectionDialog::sigFinished, [=]()
@@ -1158,7 +1177,15 @@ void PlayerSelection::selectAI(qint32 player)
     }
     else
     {
-        createAi(player, static_cast<GameEnums::AiTypes>(m_playerAIs[player]->getCurrentItem()));
+        QString aiName = m_playerAIs[player]->getCurrentItemText();
+        if (aiName == tr("Closed"))
+        {
+            createAi(player, GameEnums::AiTypes_Closed);
+        }
+        else
+        {
+            createAi(player, static_cast<GameEnums::AiTypes>(m_playerAIs[player]->getCurrentItem()));
+        }
     }
 }
 
@@ -1787,4 +1814,39 @@ void PlayerSelection::setPlayerReady(bool value)
 bool PlayerSelection::getPlayerReady()
 {
     return m_PlayerReady;
+}
+
+void PlayerSelection::changeAllTeams(qint32 value)
+{
+    spGameMap pMap = GameMap::getInstance();
+    qint32 playersPerTeam = pMap->getPlayerCount() / value;
+    qint32 freePlayer = pMap->getPlayerCount() - value * playersPerTeam;
+    qint32 upCountPlayers = playersPerTeam / 2;
+    qint32 player = 0;
+    for (qint32 team = 0; team < value; ++team)
+    {
+        for (qint32 i = 0; i < playersPerTeam - upCountPlayers; ++i)
+        {
+            m_playerTeams[player]->setCurrentItem(team);
+            playerTeamChanged(team, player);
+            ++player;
+        }
+    }
+    for (qint32 team = value - 1; team >= 0; --team)
+    {
+        for (qint32 i = 0; i < upCountPlayers; ++i)
+        {
+            m_playerTeams[player]->setCurrentItem(team);
+            playerTeamChanged(team, player);
+            ++player;
+        }
+        if (freePlayer > 0)
+        {
+            --freePlayer;
+            m_playerTeams[player]->setCurrentItem(team);
+            playerTeamChanged(team, player);
+            ++player;
+        }
+    }
+
 }

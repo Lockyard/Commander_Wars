@@ -420,6 +420,9 @@ void GameMap::updateSprites(qint32 xInput, qint32 yInput, bool editor, bool show
     }
     qint32 heigth = getMapHeight();
     qint32 width = getMapWidth();
+    setWidth(width * GameMap::getImageSize());
+    setHeight(heigth * GameMap::getImageSize());
+
     if ((xInput < 0) && (yInput < 0))
     {
         // update terrain sprites
@@ -513,6 +516,24 @@ void GameMap::killDeadUnits()
         }
     }
     
+}
+
+QString GameMap::getMapMusic() const
+{
+    return m_mapMusic;
+}
+
+void GameMap::clearMapMusic()
+{
+    setMapMusic("");
+}
+
+void GameMap::setMapMusic(const QString &mapMusic, qint32 startLoopMs, qint32 endLoopMs)
+{
+    m_mapMusic = mapMusic;
+    m_startLoopMs = startLoopMs;
+    m_endLoopMs = endLoopMs;
+    playMusic();
 }
 
 QString GameMap::getMapPath() const
@@ -995,6 +1016,9 @@ void GameMap::serializeObject(QDataStream& pStream) const
         pStream << false;
     }
     pStream << m_mapPath;
+    pStream << m_mapMusic;
+    pStream << m_startLoopMs;
+    pStream << m_endLoopMs;
 }
 
 void GameMap::readMapHeader(QDataStream& pStream,
@@ -1140,6 +1164,12 @@ void GameMap::deserializer(QDataStream& pStream, bool fast)
         {
             pStream >> m_mapPath;
         }
+        if (version > 9)
+        {
+            pStream >> m_mapMusic;
+            pStream >> m_startLoopMs;
+            pStream >> m_endLoopMs;
+        }
     }
     if (showLoadingScreen)
     {
@@ -1208,6 +1238,16 @@ void GameMap::showUnitInfo(qint32 player)
     emit sigShowUnitInfo(player);
 }
 
+void GameMap::showWiki()
+{
+    emit sigShowWiki();
+}
+
+void GameMap::showRules()
+{
+    emit sigShowRules();
+}
+
 void GameMap::startGame()
 {
     m_Recorder = new GameRecorder();
@@ -1223,7 +1263,7 @@ void GameMap::startGame()
         }
     }
     Userdata* pUserdata = Userdata::getInstance();
-    auto lockedUnits = pUserdata->getItemsList(GameEnums::ShopItemType_Unit, true);
+    auto lockedUnits = pUserdata->getShopItemsList(GameEnums::ShopItemType_Unit, false);
 
     for (qint32 i = 0; i < players.size(); i++)
     {
@@ -1736,8 +1776,6 @@ void GameMap::nextTurn()
 {
     m_Rules->checkVictory();
     enableUnits(m_CurrentPlayer.get());
-    Mainapp* pApp = Mainapp::getInstance();
-    pApp->getAudioThread()->clearPlayList();
     bool nextDay = nextPlayer();
     if (nextDay)
     {
@@ -1755,10 +1793,7 @@ void GameMap::nextTurn()
     {
         pMenu->updatePlayerinfo();
     }
-
-
-    m_CurrentPlayer->loadCOMusic();
-    pApp->getAudioThread()->playRandom();
+    playMusic();
     bool permanent = false;
     bool found = false;
     if ((m_Rules->getDayToDayScreen() == GameRules::DayToDayScreen::Permanent ||
@@ -1815,25 +1850,43 @@ void GameMap::nextTurn()
     }
 }
 
+void GameMap::playMusic()
+{
+    if (m_mapMusic.isEmpty())
+    {
+        Mainapp* pApp = Mainapp::getInstance();
+        pApp->getAudioThread()->clearPlayList();
+        m_CurrentPlayer->loadCOMusic();
+        pApp->getAudioThread()->playRandom();
+    }
+    else if (m_loadedMapMusic != m_mapMusic)
+    {
+        Mainapp* pApp = Mainapp::getInstance();
+        pApp->getAudioThread()->clearPlayList();
+        pApp->getAudioThread()->addMusic(m_mapMusic, m_startLoopMs, m_endLoopMs);
+        m_loadedMapMusic = m_mapMusic;
+        pApp->getAudioThread()->playRandom();
+    }
+}
+
 void GameMap::initPlayersAndSelectCOs()
 {
-    QStringList usedCOs;
     bool singleCO = m_Rules->getSingleRandomCO();
+    QStringList bannList = m_Rules->getCOBannlist();
     for (qint32 i = 0; i < getPlayerCount(); i++)
     {
         Player* pPlayer = GameMap::getInstance()->getPlayer(i);
         if (pPlayer->getCO(0) != nullptr)
         {
-            usedCOs.append(pPlayer->getCO(0)->getCoID());
+            bannList.removeAll(pPlayer->getCO(0)->getCoID());
         }
         if (pPlayer->getCO(1) != nullptr)
         {
-            usedCOs.append(pPlayer->getCO(1)->getCoID());
+            bannList.removeAll(pPlayer->getCO(1)->getCoID());
         }
     }
-    QStringList bannList = m_Rules->getCOBannlist();
     Userdata* pUserdata = Userdata::getInstance();
-    auto items = pUserdata->getItemsList(GameEnums::ShopItemType_CO, false);
+    auto items = pUserdata->getShopItemsList(GameEnums::ShopItemType_CO, false);
     for (const auto & item : items)
     {
         bannList.removeAll(item);
@@ -1858,8 +1911,8 @@ void GameMap::initPlayersAndSelectCOs()
         {
             qint32 count = 0;
             QStringList perkList = pPlayer->getCO(0)->getPerkList();
-            while (pPlayer->getCO(0)->getCoID() == "CO_RANDOM" || pPlayer->getCO(0)->getCoID().startsWith("CO_EMPTY_") ||
-                   (singleCO && usedCOs.contains(pPlayer->getCO(0)->getCoID())))
+            while (pPlayer->getCO(0)->getCoID() == "CO_RANDOM" ||
+                   pPlayer->getCO(0)->getCoID().startsWith("CO_EMPTY_"))
             {
                 pPlayer->setCO(bannList[GlobalUtils::randInt(0, bannList.size() - 1)], 0);
                 pPlayer->getCO(0)->setCoStyleFromUserdata();
@@ -1876,9 +1929,9 @@ void GameMap::initPlayersAndSelectCOs()
                 pPlayer->getCO(0)->setPerkList(perkList);
             }
         }
-        if (pPlayer->getCO(0) != nullptr)
+        if (pPlayer->getCO(0) != nullptr && singleCO)
         {
-            usedCOs.append(pPlayer->getCO(0)->getCoID());
+            bannList.removeAll(pPlayer->getCO(0)->getCoID());
         }
         if (pPlayer->getCO(1) != nullptr && (pPlayer->getCO(1)->getCoID() == "CO_RANDOM"))
         {
@@ -1887,8 +1940,7 @@ void GameMap::initPlayersAndSelectCOs()
             QStringList perkList = pPlayer->getCO(1)->getPerkList();
             while ((pPlayer->getCO(1)->getCoID() == "CO_RANDOM") ||
                    (pPlayer->getCO(1)->getCoID() == pPlayer->getCO(0)->getCoID()) ||
-                   (pPlayer->getCO(1)->getCoID().startsWith("CO_EMPTY_")) ||
-                   (singleCO && usedCOs.contains(pPlayer->getCO(1)->getCoID())))
+                   (pPlayer->getCO(1)->getCoID().startsWith("CO_EMPTY_")))
             {
                 pPlayer->setCO(bannList[GlobalUtils::randInt(0, bannList.size() - 1)], 1);
                 pPlayer->getCO(1)->setCoStyleFromUserdata();
@@ -1904,9 +1956,10 @@ void GameMap::initPlayersAndSelectCOs()
                 pPlayer->getCO(1)->setPerkList(perkList);
             }
         }
-        if (pPlayer->getCO(1) != nullptr)
+        if (pPlayer->getCO(1) != nullptr && singleCO)
         {
-            usedCOs.append(pPlayer->getCO(1)->getCoID());
+            bannList.removeAll(pPlayer->getCO(1)->getCoID());
+
         }
         // define army of this player
         pPlayer->defineArmy();

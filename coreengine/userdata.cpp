@@ -293,7 +293,7 @@ QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, boo
     return ret;
 }
 
-QStringList Userdata::getItemsList(GameEnums::ShopItemType type, bool bought)
+QStringList Userdata::getShopItemsList(GameEnums::ShopItemType type, bool bought)
 {
     QStringList ret;
     for (const auto & item : m_shopItems)
@@ -310,11 +310,14 @@ QStringList Userdata::getItemsList(GameEnums::ShopItemType type, bool bought)
 void Userdata::addShopItem(GameEnums::ShopItemType itemType, QString key, QString name, qint32 price, bool buyable)
 {
     bool found = false;
-    for (const auto & item : m_shopItems)
+    for (auto & item : m_shopItems)
     {
         if (item.itemType == itemType &&
             item.key == key)
         {
+            item.name = name;
+            item.price = price;
+            item.buyable = buyable;
             found = true;
             break;
         }
@@ -329,6 +332,19 @@ void Userdata::addShopItem(GameEnums::ShopItemType itemType, QString key, QStrin
         item.bought = false;
         item.itemType = itemType;
         m_shopItems.append(item);
+    }
+}
+
+void Userdata::removeShopItem(GameEnums::ShopItemType itemType, QString key)
+{
+    for (qint32 i = 0; i < m_shopItems.length(); ++i)
+    {
+        if (m_shopItems[i].itemType == itemType &&
+            m_shopItems[i].key == key)
+        {
+            m_shopItems.removeAt(i);
+            break;
+        }
     }
 }
 

@@ -1,21 +1,18 @@
 #pragma once
-#include "oxygine-include.h"
-#include "core/intrusive_ptr.h"
-#include "core/ref_counter.h"
-#include <unordered_map>
-#include <vector>
-
+#include "3rd_party/oxygine-framework/oxygine/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/core/intrusive_ptr.h"
+#include "3rd_party/oxygine-framework/oxygine/core/ref_counter.h"
+#include <QMultiMap>
 #include <qmutex.h>
 
 namespace oxygine
 {
-    inline void hash_combine(std::size_t& seed) { }
+    inline void hash_combine(std::size_t&) { }
 
     template <typename T, typename... Rest>
     inline void hash_combine(std::size_t& seed, const T& v, Rest... rest)
     {
-        std::hash<T> hasher;
-        seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= qHash(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         hash_combine(seed, rest...);
     }
 
@@ -37,8 +34,9 @@ namespace oxygine
         void removeUnused();
         size_t getTotalMaterials() const { return _materials.size(); }
 
+        static MaterialCache& mc();
     protected:
-        typedef std::unordered_multimap<size_t, spMaterialX> materials;
+        typedef QMultiMap<size_t, spMaterialX> materials;
         materials _materials;
 
         QMutex _lock;
@@ -46,7 +44,7 @@ namespace oxygine
 
         Material* clone_(const Material& other);
         void removeUnusedNoLock();
+    private:
+        static MaterialCache mcache;
     };
-
-    MaterialCache& mc();
 }

@@ -134,6 +134,7 @@ void Textbox::update(const oxygine::UpdateState& us)
     {
         m_Textfield->setHtmlText(m_Text);
     }
+    m_Textfield->setWidth( m_Textfield->getTextRect().getWidth());
     oxygine::Actor::update(us);
 }
 
@@ -252,3 +253,9 @@ void Textbox::KeyInput(oxygine::KeyEvent event)
     }
 }
 
+void Textbox::setEnabled(bool value)
+{
+    oxygine::Actor::setEnabled(value);
+    m_Textbox->setEnabled(value);
+    m_Textfield->setEnabled(value);
+}

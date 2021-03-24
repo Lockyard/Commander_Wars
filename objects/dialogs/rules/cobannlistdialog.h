@@ -4,7 +4,8 @@
 #include <QObject>
 #include <QVector>
 
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/base/checkbox.h"
 #include "objects/base/dropdownmenu.h"
@@ -32,6 +33,8 @@ public slots:
      * @brief saveBannlist
      */
     void saveBannlist(QString filename);
+private:
+    QVector<QString> getNameList();
 private:
     oxygine::spButton m_OkButton;
     oxygine::spButton m_ToggleAll;

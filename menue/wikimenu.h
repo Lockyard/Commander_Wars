@@ -3,13 +3,8 @@
 
 #include <QObject>
 
-#include "oxygine-framework.h"
 
-#include "objects/base/panel.h"
-#include "objects/base/textbox.h"
-#include "objects/base/dropdownmenu.h"
-
-#include "wiki/wikidatabase.h"
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 class Wikimenu : public QObject, public oxygine::Actor
 {
@@ -18,18 +13,9 @@ public:
     explicit Wikimenu();
 signals:
     void sigExitMenue();
-    void sigSearch(bool onlyTag);
-    void sigShowWikipage(WikiDatabase::pageData page);
 public slots:
     void exitMenue();
-    void showWikipage(WikiDatabase::pageData page);
-    void searchChanged(QString);
-    void search(bool onlyTag);
-    void tagChanged(qint32 item);
-private:
-    spTextbox m_SearchString;
-    spDropDownmenu m_Tags;
-    spPanel m_MainPanel;
+
 };
 
 #endif // WIKIMENU_H

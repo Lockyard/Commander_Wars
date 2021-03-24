@@ -1,7 +1,7 @@
-#include "ColorRectSprite.h"
-#include "../MaterialCache.h"
-#include "../RenderDelegate.h"
-#include "../RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/ColorRectSprite.h"
+#include "3rd_party/oxygine-framework/oxygine/MaterialCache.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
 
 namespace oxygine
 {
@@ -11,7 +11,7 @@ namespace oxygine
         STDMaterial mat;
         mat._base = STDRenderer::white;
 
-        _mat = mc().cache(mat);
+        _mat = MaterialCache::mc().cache(mat);
     }
 
     ColorRectSprite::~ColorRectSprite()

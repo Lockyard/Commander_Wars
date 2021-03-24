@@ -1,12 +1,12 @@
-#include "ResAnim.h"
-#include "Resources.h"
-#include "../Image.h"
-#include "../core/NativeTexture.h"
-#include "../core/VideoDriver.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResAnim.h"
+#include "3rd_party/oxygine-framework/oxygine/res/Resources.h"
+#include "3rd_party/oxygine-framework/oxygine/Image.h"
+#include "3rd_party/oxygine-framework/oxygine/core/NativeTexture.h"
+#include "3rd_party/oxygine-framework/oxygine/core/VideoDriver.h"
 
 namespace oxygine
 {
-    static AnimationFrame emptyFrame;
+    AnimationFrame ResAnim::emptyFrame;
     ResAnim::ResAnim(Resource* atlas) : _columns(1), _atlas(atlas), _scaleFactor(1.0f), _appliedScale(1.0f), _framerate(30)
     {
     }

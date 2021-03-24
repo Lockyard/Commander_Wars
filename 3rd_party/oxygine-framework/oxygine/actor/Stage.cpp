@@ -1,12 +1,10 @@
-#include "Stage.h"
-#include "../Clock.h"
-#include "../RenderState.h"
-#include "../STDRenderDelegate.h"
-#include "../core/oxygine.h"
-#include "../math/Rect.h"
-#include <sstream>
-
-#include "../core/gamewindow.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Stage.h"
+#include "3rd_party/oxygine-framework/oxygine/Clock.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/STDRenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/core/oxygine.h"
+#include "3rd_party/oxygine-framework/oxygine/math/Rect.h"
+#include "3rd_party/oxygine-framework/oxygine/core/gamewindow.h"
 
 namespace oxygine
 {
@@ -27,7 +25,6 @@ namespace oxygine
 
     void Stage::onDeactivate(Event*)
     {
-        //_active = false;
         core::reset();
     }
 
@@ -49,7 +46,6 @@ namespace oxygine
 
     void Stage::init(const Point& displaySize, const Point& gameSize)
     {
-        //_realDisplaySize = displaySize;
         setSize(gameSize);
 
         _viewport = calcCenteredViewport(displaySize, gameSize);
@@ -68,18 +64,9 @@ namespace oxygine
 
     RectF Stage::getDestRect() const
     {
-//        Q_ASSERT(0);
         Vector2 s = getSize() + getPosition();
         return RectF(-getPosition(), s);
     }
-
-    /*
-    bool Stage::handleEvent(const EventState &es)
-    {
-        bool handled = Actor::handleEvent(es);
-        return handled;
-    }
-    */
 
     void Stage::render(const QColor* clearColor, const Rect& viewport, const Matrix& view, const Matrix& proj)
     {

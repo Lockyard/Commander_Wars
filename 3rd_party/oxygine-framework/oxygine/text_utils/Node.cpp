@@ -1,10 +1,10 @@
-#include "Node.h"
-#include "../AnimationFrame.h"
-#include "../Font.h"
-#include "../MaterialCache.h"
-#include "../RenderState.h"
-#include "../STDRenderDelegate.h"
-#include "../res/ResFont.h"
+#include "3rd_party/oxygine-framework/oxygine/text_utils/Node.h"
+#include "3rd_party/oxygine-framework/oxygine/AnimationFrame.h"
+#include "3rd_party/oxygine-framework/oxygine/Font.h"
+#include "3rd_party/oxygine-framework/oxygine/MaterialCache.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/STDRenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResFont.h"
 
 namespace oxygine
 {
@@ -156,7 +156,7 @@ namespace oxygine
                     spSTDMaterial m = mat.clone();
                     m->_base = s.mat->_base;
 
-                    s.mat = mc().cache(*m.get());
+                    s.mat = MaterialCache::mc().cache(*m.get());
                 }
             }
         }
@@ -180,7 +180,9 @@ namespace oxygine
                 {
                     Symbol& s = _data[i];
                     if (s.code == '\n')
+                    {
                         rd.nextLine();
+                    }
                     else
                     {
                         const glyph* gl = font->getGlyph(s.code, opt);
@@ -199,14 +201,16 @@ namespace oxygine
                             }
                         }
 
-                        if (rd.mat->_base == gl->texture)
+                        if (rd.mat->_base.get() == gl->texture.get())
+                        {
                             s.mat = rd.mat;
+                        }
                         else
                         {
                             spSTDMaterial mat = rd.mat->clone();
                             mat->_base = gl->texture;
 
-                            s.mat = mc().cache(*mat.get());
+                            s.mat = MaterialCache::mc().cache(*mat.get());
                             rd.mat = s.mat;
                         }
                     }

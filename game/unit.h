@@ -3,7 +3,8 @@
 
 #include <QObject>
 #include <QVector>
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "coreengine/fileserializable.h"
 #include "coreengine/scriptvariables.h"
@@ -377,6 +378,12 @@ public slots:
      * @return combination of cloak and hidden
      */
     bool isStatusStealthed() const;
+    /**
+     * @brief isStatusStealthedAndInvisible
+     * @param pOwner
+     * @return
+     */
+    bool isStatusStealthedAndInvisible(Player* pPlayer) const;
     bool getHidden() const;
     void setHidden(bool Hidden);
     /**
@@ -395,13 +402,13 @@ public slots:
      * @param pPlayer
      * @return
      */
-    bool isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange = false, qint32 testX = -1, qint32 testY = -1);
+    bool isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange = false, qint32 testX = -1, qint32 testY = -1) const;
     /**
      * @brief hasTerrainHide
      * @param pPlayer
      * @return
      */
-    bool hasTerrainHide(Player* pPlayer);
+    bool hasTerrainHide(Player* pPlayer) const;
 
     qint32 getUnitRank() const;
     void setUnitRank(const qint32 &UnitRank);
@@ -442,7 +449,7 @@ public slots:
      * @brief getMovementType the movement type id
      * @return
      */
-    QString getMovementType();
+    QString getMovementType() const;
     /**
      * @brief setMovementType
      * @param Movementtype
@@ -688,7 +695,7 @@ public slots:
      * @brief useTerrainDefense
      * @return
      */
-    bool useTerrainDefense();
+    bool useTerrainDefense() const;
     /**
      * @brief getAttackHpBonus
      * @param position

@@ -3,7 +3,8 @@
 
 #include <QObject>
 
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/ruleselection.h"
 #include "objects/base/panel.h"
@@ -15,7 +16,7 @@ class RuleSelectionDialog : public QObject, public oxygine::Actor
 {
     Q_OBJECT
 public:
-    explicit RuleSelectionDialog(RuleSelection::Mode mode);
+    explicit RuleSelectionDialog(RuleSelection::Mode mode, bool enabled = true);
     virtual ~RuleSelectionDialog() = default;
 signals:
     void sigRulesChanged();

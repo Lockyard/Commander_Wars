@@ -10,6 +10,7 @@
 #include "coreengine/audiothread.h"
 #include "coreengine/globalutils.h"
 #include "coreengine/tweenaddcolorall.h"
+#include "coreengine/settings.h"
 
 #include "ai/proxyai.h"
 
@@ -34,7 +35,10 @@
 #include "objects/dialogs/dialogtextinput.h"
 #include "objects/dialogs/ingame/dialogattacklog.h"
 #include "objects/dialogs/ingame/dialogunitinfo.h"
+#include "objects/dialogs/rules/ruleselectiondialog.h"
 #include "objects/gameplayandkeys.h"
+
+#include "ingamescriptsupport/genericbox.h"
 
 #include "multiplayer/networkcommands.h"
 
@@ -42,6 +46,7 @@
 #include "network/localserver.h"
 
 #include "wiki/fieldinfo.h"
+#include "wiki/wikiview.h"
 
 #include "ingamescriptsupport/genericbox.h"
 
@@ -356,7 +361,8 @@ void GameMenue::connectMap()
     connect(pMap.get(), &GameMap::sigShowNicknameUnit, this, &GameMenue::showNicknameUnit, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowOptions, this, &GameMenue::showOptions, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowChangeSound, this, &GameMenue::showChangeSound, Qt::QueuedConnection);
-
+    connect(pMap.get(), &GameMap::sigShowWiki, this, &GameMenue::showWiki, Qt::QueuedConnection);
+    connect(pMap.get(), &GameMap::sigShowRules, this, &GameMenue::showRules, Qt::QueuedConnection);
 
     connect(m_IngameInfoBar->getMinimap(), &Minimap::clicked, pMap.get(), &GameMap::centerMap, Qt::QueuedConnection);
 }
@@ -602,7 +608,7 @@ void GameMenue::performAction(spGameAction pGameAction)
             }
             QVector<QPoint> path = pGameAction->getMovePath();
             Unit * pMoveUnit = pGameAction->getTargetUnit();
-            if (path.size() > 0 && pMoveUnit != nullptr)
+            if (path.size() > 1 && pMoveUnit != nullptr)
             {
                 QVector<QPoint> trapPath;
                 qint32 trapPathCost = 0;
@@ -647,8 +653,10 @@ void GameMenue::performAction(spGameAction pGameAction)
                     else
                     {
                         trapPath.push_front(point);
-                        if (point.x() != pMoveUnit->getX() ||
-                            point.y() != pMoveUnit->getY())
+                        qint32 x = pMoveUnit->getX();
+                        qint32 y = pMoveUnit->getY();
+                        if (point.x() != x ||
+                            point.y() != y)
                         {
                             QPoint previousPoint = path[i + 1];
                             trapPathCost += pMoveUnit->getMovementCosts(point.x(), point.y(), previousPoint.x(), previousPoint.y());
@@ -1111,7 +1119,7 @@ void GameMenue::cursorMoved(qint32 x, qint32 y)
 
 void GameMenue::updatePlayerinfo()
 {
-    
+    Mainapp::getInstance()->pauseRendering();
     m_pPlayerinfo->updateData();
     m_IngameInfoBar->updatePlayerInfo();
     spGameMap pMap = GameMap::getInstance();
@@ -1119,7 +1127,7 @@ void GameMenue::updatePlayerinfo()
     {
         pMap->getPlayer(i)->updateVisualCORange();
     }
-    
+    Mainapp::getInstance()->continueRendering();
 }
 
 void GameMenue::victory(qint32 team)
@@ -1186,6 +1194,18 @@ void GameMenue::showAttackLog(qint32 player)
         m_Focused = true;
     });
     addChild(pAttackLog);    
+}
+
+void GameMenue::showRules()
+{
+    m_Focused = false;
+    Console::print("showRuleSelection()", Console::eDEBUG);
+    spRuleSelectionDialog pRuleSelection = new RuleSelectionDialog(RuleSelection::Mode::Singleplayer, false);
+    connect(pRuleSelection.get(), &RuleSelectionDialog::sigOk, [=]()
+    {
+        m_Focused = true;
+    });
+    addChild(pRuleSelection);
 }
 
 void GameMenue::showUnitInfo(qint32 player)
@@ -1509,7 +1529,7 @@ void GameMenue::startGame()
     else
     {
         pApp->getAudioThread()->clearPlayList();
-        pMap->getCurrentPlayer()->loadCOMusic();
+        pMap->playMusic();
         pMap->updateUnitIcons();
         pMap->getGameRules()->createFogVision();
         pApp->getAudioThread()->playRandom();
@@ -1643,6 +1663,21 @@ void GameMenue::showExitGame()
     
 }
 
+void GameMenue::showWiki()
+{
+    Console::print("showWiki()", Console::eDEBUG);
+    m_Focused = false;
+    spGenericBox pBox = new GenericBox(false);
+    spWikiView pView = new WikiView(Settings::getWidth() - 40, Settings::getHeight() - 60);
+    pView->setPosition(20, 20);
+    pBox->addItem(pView);
+    connect(pBox.get(), &GenericBox::sigFinished, [=]()
+    {
+        m_Focused = true;
+    });
+    addChild(pBox);
+
+}
 void GameMenue::showSurrenderGame()
 {
     spGameMap pMap = GameMap::getInstance();

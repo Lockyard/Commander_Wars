@@ -7,7 +7,8 @@
 
 #include "objects/base/panel.h"
 
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/mapselection.h"
 
@@ -80,6 +81,7 @@ private:
     spPanel m_MapInfo;
     oxygine::spTextField m_MapName;
     oxygine::spTextField m_MapAuthor;
+    oxygine::spTextField m_MapPlayerCount;
     oxygine::spTextField m_MapDescription;
     oxygine::spActor m_pVictoryInfo;
     spMinimap m_pMinimap;

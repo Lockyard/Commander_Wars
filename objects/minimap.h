@@ -2,7 +2,8 @@
 #define MINIMAP_H
 
 #include <QObject>
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 class GameMap;
 typedef oxygine::intrusive_ptr<GameMap> spGameMap;
@@ -17,7 +18,7 @@ public:
     explicit Minimap();
     virtual ~Minimap();
 
-
+    void clear();
 signals:
     void clicked(qint32 x, qint32 y);
 public slots:

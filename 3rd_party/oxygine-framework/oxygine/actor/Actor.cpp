@@ -1,21 +1,17 @@
-#include "Actor.h"
-#include "Stage.h"
-#include "../Clock.h"
-#include "../core/Texture.h"
-#include "../core/gamewindow.h"
-#include "../math/AffineTransform.h"
-#include "../res/ResAnim.h"
-#include "../tween/Tween.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Actor.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Stage.h"
+#include "3rd_party/oxygine-framework/oxygine/Clock.h"
+#include "3rd_party/oxygine-framework/oxygine/core/Texture.h"
+#include "3rd_party/oxygine-framework/oxygine/core/gamewindow.h"
+#include "3rd_party/oxygine-framework/oxygine/math/AffineTransform.h"
+#include "3rd_party/oxygine-framework/oxygine/res/ResAnim.h"
+#include "3rd_party/oxygine-framework/oxygine/tween/Tween.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderState.h"
+#include "3rd_party/oxygine-framework/oxygine/RenderDelegate.h"
+#include "3rd_party/oxygine-framework/oxygine/math/OBBox.h"
 
-#include <sstream>
-#include <typeinfo>
+#include <qmath.h>
 
-#include "qmath.h"
-
-#include "../RenderState.h"
-#include <stdio.h>
-#include "../RenderDelegate.h"
-#include "../math/OBBox.h"
 
 namespace oxygine
 {
@@ -1072,6 +1068,22 @@ namespace oxygine
         return true;
     }
 
+    bool Actor::onScreen(RenderState& rs)
+    {
+        float width = oxygine::getStage()->getWidth();
+        float height = oxygine::getStage()->getHeight();
+        auto scaledSize = getScaledSize();
+        static constexpr float  extension = 50.0f;
+        if (rs.transform.x > width + extension ||
+            rs.transform.y > height + extension ||
+            rs.transform.x + scaledSize.x < -extension ||
+            rs.transform.y + scaledSize.y < -extension)
+        {
+            return false;
+        }
+        return true;
+    }
+
     void Actor::completeRender(const RenderState&)
     {
 
@@ -1083,10 +1095,10 @@ namespace oxygine
         {
             return false;
         }
-
-        //if (!_renderer->render(this, rs))
-        doRender(rs);
-
+        if (onScreen(rs))
+        {
+            doRender(rs);
+        }
         completeRender(rs);
         return true;
     }

@@ -184,9 +184,8 @@ public:
         AiTypes_NormalDefensive,
         AiTypes_Heavy,
         AiTypes_TestFirst,
-        AiTypes_Closed,
-        AiTypes_Max,        
-        AiTypes_Open    = 200,
+        AiTypes_Closed = 199,
+        AiTypes_Open,
     };
     Q_ENUM(AiTypes)
 

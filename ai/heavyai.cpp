@@ -8,23 +8,28 @@
 
 #include "game/player.h"
 #include "game/gameaction.h"
+#include "game/gamemap.h"
 
 #include "resource_management/unitspritemanager.h"
 
 const qint32 HeavyAi::minSiloDamage = 7000;
-const QString HeavyAi::heavyAiObject = "HEAVY_AI";
 
-HeavyAi::HeavyAi()
+// normally i'm not a big fan of this but else the function table gets unreadable
+using namespace std::placeholders;
+
+HeavyAi::HeavyAi(QString type)
     : CoreAI(GameEnums::AiTypes_Heavy),
       m_scoreInfos({
-{ACTION_CAPTURE,  std::bind(&HeavyAi::scoreCapture, this, std::placeholders::_1)},
-{ACTION_FIRE,     std::bind(&HeavyAi::scoreFire, this, std::placeholders::_1)},
+{ACTION_CAPTURE,  std::bind(&HeavyAi::scoreCapture,     this,   _1, _2)},
+{ACTION_FIRE,     std::bind(&HeavyAi::scoreFire,        this,   _1, _2)},
+{ACTION_WAIT,     std::bind(&HeavyAi::scoreWait,        this,   _1, _2)},
                    }),
-      m_InfluenceFrontMap(m_IslandMaps)
+      m_InfluenceFrontMap(m_IslandMaps),
+      m_aiName(type)
 {
     m_timer.setSingleShot(false);
     connect(&m_timer, &QTimer::timeout, this, &HeavyAi::process, Qt::QueuedConnection);
-    loadIni("heavy/heavy.ini");
+    loadIni("heavy/" + m_aiName.toLower() + ".ini");
 }
 
 void HeavyAi::readIni(QString name)
@@ -43,6 +48,20 @@ void HeavyAi::readIni(QString name)
         if(!ok)
         {
             m_actionScoreVariant = 0.05f;
+        }
+        m_stealthDistanceMultiplier = settings.value("StealthDistanceMultiplier", 2.00f).toFloat(&ok);
+        if(!ok)
+        {
+            m_actionScoreVariant = 2.0f;
+        }
+        else if (m_stealthDistanceMultiplier < 1.0f)
+        {
+            m_stealthDistanceMultiplier = 1.0f;
+        }
+        m_alliedDistanceModifier = settings.value("AlliedDistanceModifier", 5.0f).toFloat(&ok);
+        if(!ok)
+        {
+            m_actionScoreVariant = 5.0f;
         }
     }
 }
@@ -342,12 +361,16 @@ void HeavyAi::scoreActions(UnitData & unit)
         QVector<spGameAction> bestActions;
         float bestScore = 0.0f;
         QStringList actions = unit.m_pUnit->getActionList();
-        qint32 movePoints = unit.m_pUnit->getMovementpoints(unit.m_pUnit->getMapPosition());
-        auto moveTargets = unit.m_pPfs->getAllNodePoints(movePoints);
+        auto moveTargets = unit.m_pPfs->getAllNodePoints(unit.m_movepoints + 1);
         for (const auto & action : actions)
         {
-            if (!forbiddenActions.contains(action))
+            if (!forbiddenActions.contains(action) ||
+                (action == ACTION_WAIT && actions.contains(ACTION_CAPTURE)))
             {
+                if (action == ACTION_WAIT)
+                {
+                    prepareWaitPfs(unit, actions);
+                }
                 FunctionType type;
                 qint32 index = -1;
                 getFunctionType(action, type, index);
@@ -355,6 +378,7 @@ void HeavyAi::scoreActions(UnitData & unit)
                                       bestScore, bestScores, bestActions);
             }
         }
+        m_currentTargetedfPfs = nullptr;
         if (bestActions.size() > 0)
         {
             qint32 item = GlobalUtils::randInt(0, bestScores.size() - 1);
@@ -369,15 +393,26 @@ void HeavyAi::scoreActions(UnitData & unit)
     }
 }
 
-void HeavyAi::mutateActionForFields(UnitData & unit, const QVector<QPoint> & moveTargets,
+void HeavyAi::prepareWaitPfs(UnitData & unitData, QStringList & actions)
+{
+    if (m_currentTargetedfPfs.get() == nullptr)
+    {
+        QVector<QVector3D> targets;
+        getMoveTargets(unitData, actions, targets);
+        m_currentTargetedfPfs = new TargetedUnitPathFindingSystem(unitData.m_pUnit, targets, &m_MoveCostMap);
+        m_currentTargetedfPfs->explore();
+    }
+}
+
+void HeavyAi::mutateActionForFields(UnitData & unitData, const QVector<QPoint> & moveTargets,
                                     QString action, FunctionType type, qint32 index,
                                     float & bestScore, QVector<float> & bestScores,
                                     QVector<spGameAction> & bestActions)
 {
     for (const auto & target : moveTargets)
     {
-        QVector<QPoint> path = unit.m_pPfs->getPath(target.x(), target.y());
-        qint32 costs = unit.m_pPfs->getCosts(path);
+        QVector<QPoint> path = unitData.m_pPfs->getPath(target.x(), target.y());
+        qint32 costs = unitData.m_pPfs->getCosts(path);
         bool mutate = true;
         QVector<qint32> stepPosition;
         while (mutate)
@@ -386,11 +421,16 @@ void HeavyAi::mutateActionForFields(UnitData & unit, const QVector<QPoint> & mov
             spGameAction pAction  = new GameAction();
             pAction->setActionID(action);
             pAction->setMovepath(path, costs);
-            pAction->setTarget(QPoint(unit.m_pUnit->getX(), unit.m_pUnit->getY()));
+            pAction->setTarget(QPoint(unitData.m_pUnit->getX(), unitData.m_pUnit->getY()));
             if (pAction->canBePerformed())
             {
                 float score = 0;
-                mutate = mutateAction(pAction, type, index, step, stepPosition, score);
+                mutate = mutateAction(pAction, unitData, type, index, step, stepPosition, score);
+                if (score > 1.0f)
+                {
+                    // cap scoring
+                    score = 1.0f;
+                }
                 if (score > m_minActionScore)
                 {
                     if (score > bestScore)
@@ -428,7 +468,7 @@ void HeavyAi::mutateActionForFields(UnitData & unit, const QVector<QPoint> & mov
     }
 }
 
-bool HeavyAi::mutateAction(spGameAction pAction, FunctionType type, qint32 functionIndex, qint32 & step, QVector<qint32> & stepPosition, float & score)
+bool HeavyAi::mutateAction(spGameAction pAction, UnitData & unitData, FunctionType type, qint32 functionIndex, qint32 & step, QVector<qint32> & stepPosition, float & score)
 {
     bool ret = false;
     if (pAction->isFinalStep())
@@ -441,17 +481,21 @@ bool HeavyAi::mutateAction(spGameAction pAction, FunctionType type, qint32 funct
                 QJSValueList args;
                 QJSValue obj = pInterpreter->newQObject(pAction.get());
                 args << obj;
-                QJSValue erg = pInterpreter->doFunction(HeavyAi::heavyAiObject, pAction->getActionID(), args);
+                QJSValue erg = pInterpreter->doFunction(m_aiName, pAction->getActionID(), args);
                 if (erg.isNumber())
                 {
-                    score = erg.toInt();
+                    score = erg.toNumber();
                 }
                 break;
             }
             case FunctionType::CPlusPlus:
             {
-                score = m_scoreInfos[functionIndex].callback(pAction);
+                score = m_scoreInfos[functionIndex].callback(pAction, unitData);
                 break;
+            }
+            default:
+            {
+                Q_ASSERT(false);
             }
         }
         ret = true;
@@ -487,7 +531,7 @@ bool HeavyAi::mutateAction(spGameAction pAction, FunctionType type, qint32 funct
                     {
                         CoreAI::addMenuItemData(pAction, actionList[i], costList[i]);
                         stepPosition[step] = i;
-                        ret = mutateAction(pAction, type, functionIndex, step, stepPosition, score);
+                        ret = mutateAction(pAction, unitData, type, functionIndex, step, stepPosition, score);
                         break;
                     }
                 }
@@ -510,7 +554,7 @@ bool HeavyAi::mutateAction(spGameAction pAction, FunctionType type, qint32 funct
             {
                 CoreAI::addSelectedFieldData(pAction, (*pFields)[i]);
                 stepPosition[step] = i;
-                ret = mutateAction(pAction, type, functionIndex, step, stepPosition, score);
+                ret = mutateAction(pAction, unitData, type, functionIndex, step, stepPosition, score);
                 break;
             }
         }
@@ -518,23 +562,23 @@ bool HeavyAi::mutateAction(spGameAction pAction, FunctionType type, qint32 funct
     return ret;
 }
 
-float HeavyAi::scoreCapture(spGameAction action)
+float HeavyAi::scoreCapture(spGameAction action, UnitData & unitData)
 {
     // todo
-    return 20;
+    return 1;
 }
 
-float HeavyAi::scoreFire(spGameAction action)
+float HeavyAi::scoreFire(spGameAction action, UnitData & unitData)
 {
     // todo
-    return 0;
+    return 0.9;
 }
 
 void HeavyAi::getFunctionType(QString action, FunctionType & type, qint32 & index)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     index = -1;
-    if (pInterpreter->exists(heavyAiObject, action))
+    if (pInterpreter->exists(m_aiName, action))
     {
         type = FunctionType::JavaScript;
     }
@@ -565,47 +609,208 @@ void HeavyAi::scoreActionWait()
         if (!unit.m_pUnit->getHasMoved() &&
             unit.m_action.get() == nullptr)
         {
-            QVector<float> bestScores;
-            QVector<spGameAction> bestActions;
-            float bestScore = 0.0f;
-            QString action = ACTION_WAIT;
-            spGameAction pAction = nullptr;
-            FunctionType type;
-            qint32 index = -1;
-            getFunctionType(action, type, index);
-            qint32 movePoints = unit.m_pUnit->getMovementpoints(unit.m_pUnit->getMapPosition());
-            auto moveTargets = unit.m_pPfs->getAllNodePoints(movePoints);
-            QVector<QVector3D> targets;
-            getMoveTargets(unit, targets);
-            m_currentTargetefPfs = new TargetedUnitPathFindingSystem(unit.m_pUnit, targets, &m_MoveCostMap);
-            m_currentTargetefPfs->explore();
-            mutateActionForFields(unit, moveTargets, action, type, index,
-                                  bestScore, bestScores, bestActions);
-            m_currentTargetefPfs = nullptr;
-            if (bestActions.size() > 0)
+            QStringList actions = unit.m_pUnit->getActionList();
+            if (actions.contains(ACTION_WAIT))
             {
-                qint32 item = GlobalUtils::randInt(0, bestScores.size() - 1);
-                unit.m_score = bestScores[item];
-                unit.m_action = bestActions[item];
-            }
-            else
-            {
-                unit.m_score = 0.0f;
-                unit.m_action = nullptr;
+                QVector<float> bestScores;
+                QVector<spGameAction> bestActions;
+                float bestScore = 0.0f;
+                QString action = ACTION_WAIT;
+                spGameAction pAction = nullptr;
+                FunctionType type;
+                qint32 index = -1;
+                getFunctionType(action, type, index);
+                auto moveTargets = unit.m_pPfs->getAllNodePoints(unit.m_movepoints + 1);
+                prepareWaitPfs(unit, actions);
+                mutateActionForFields(unit, moveTargets, action, type, index,
+                                      bestScore, bestScores, bestActions);
+                m_currentTargetedfPfs = nullptr;
+                if (bestActions.size() > 0)
+                {
+                    qint32 item = GlobalUtils::randInt(0, bestScores.size() - 1);
+                    unit.m_score = bestScores[item];
+                    unit.m_action = bestActions[item];
+                }
+                else
+                {
+                    unit.m_score = 0.0f;
+                    unit.m_action = nullptr;
+                }
             }
         }
     }
 }
 
-void HeavyAi::getMoveTargets(UnitData & unit, QVector<QVector3D> & targets)
+void HeavyAi::getMoveTargets(UnitData & unit, QStringList & actions, QVector<QVector3D> & targets)
 {
     // todo
+    spGameMap pMap = GameMap::getInstance();
+    qint32 mapWidth = pMap->getMapWidth();
+    qint32 mapHeight = pMap->getMapHeight();
+    qint32 unitIslandIdx = getIslandIndex(unit.m_pUnit);
+    qint32 minFirerange = unit.m_pUnit->getMinRange(unit.m_pUnit->getPosition());
+    qint32 maxFirerange = unit.m_pUnit->getMaxRange(unit.m_pUnit->getPosition());
+    spQmlVectorPoint pTargetFields = GlobalUtils::getCircle(minFirerange, maxFirerange);
+    for (qint32 x = 0; x < mapWidth; ++x)
+    {
+        for (qint32 y = 0; y < mapHeight; ++y)
+        {
+            if (unit.m_pUnit->canMoveOver(x, y) &&
+                onSameIsland(unitIslandIdx, unit.m_pUnit->getX(), unit.m_pUnit->getY(), x, y))
+            {
+                Terrain* pTerrain = pMap->getTerrain(x, y);
+                addCaptureTargets(actions, pTerrain, targets);
+                addAttackTargets(unit.m_pUnit, pTerrain, pTargetFields.get(), targets);
+                // todo implement that list
+                //                addRepairTargets();
+                //                addSupportTargets();
+                //                // transporting stuff
+                //                addCaptureTransporterTargets();
+                //                addTransporterTargets();
+                //                addUnloadTargets(); // capture and attack once
+                //                addLoadingTargets();
+                //                // we need reparing / supplying
+                //                addRepairTargets();
+                //                addRefillTargets();
+                //                addFlareTargets();
+                //                addOoziumTargets();
+                //                addBlackbombTargets();
+                //                addCustomTargets();
+            }
+        }
+    }
 }
 
-float HeavyAi::scoreWait(spGameAction action)
+void HeavyAi::addCaptureTargets(const QStringList & actions,
+                                Terrain* pTerrain, QVector<QVector3D>& targets)
 {
-    return 0.0f;
+    if (actions.contains(ACTION_CAPTURE) ||
+        actions.contains(ACTION_MISSILE))
+    {
+        qint32 x = pTerrain->getX();
+        qint32 y = pTerrain->getY();
+        bool missileTarget = hasMissileTarget();
+        Building* pBuilding = pTerrain->getBuilding();
+        if (pBuilding != nullptr &&
+            pBuilding->isCaptureOrMissileBuilding(missileTarget) &&
+            pBuilding->getTerrain()->getUnit() == nullptr &&
+            pBuilding->isEnemyBuilding(m_pPlayer))
+        {
+            qint32 captureDistanceModifier = getMovingToCaptureDistanceModifier();
+            if (captureDistanceModifier < 1)
+            {
+                captureDistanceModifier = 1;
+            }
+            QVector3D possibleTarget(x, y, captureDistanceModifier);
+            if (!targets.contains(possibleTarget))
+            {
+                targets.append(possibleTarget);
+            }
+        }
+    }
+}
+
+qint32 HeavyAi::getMovingToCaptureDistanceModifier()
+{
     // todo
+    return 1.0f;
+}
+
+void HeavyAi::addAttackTargets(Unit* pUnit, Terrain* pTerrain, QmlVectorPoint* pTargetFields, QVector<QVector3D> & targets)
+{
+    spGameMap pMap = GameMap::getInstance();
+    qint32 x = pTerrain->getX();
+    qint32 y = pTerrain->getY();
+    for (qint32 i = 0; i < pTargetFields->size(); ++i)
+    {
+        qint32 targetX = pTargetFields->at(i).x() + x;
+        qint32 targetY = pTargetFields->at(i).y() + y;
+        if (pMap->onMap(targetX, targetY))
+        {
+            Terrain* pTargetTerrain = pMap->getTerrain(targetX, targetY);
+            Unit* pEnemy = pTargetTerrain->getUnit();
+            if (pEnemy != nullptr &&
+                pUnit->isAttackable(pEnemy, true))
+            {
+                Unit* pTargetUnit = pTerrain->getUnit();
+                float alliedmultiplier = 1.0f;
+                if (pTargetUnit != nullptr &&
+                    pTargetUnit->getOwner()->checkAlliance(m_pPlayer) == GameEnums::Alliance_Friend)
+                {
+                    alliedmultiplier = m_alliedDistanceModifier;
+                }
+                qint32 stealthMalus = 0;
+                if (pEnemy->isStatusStealthedAndInvisible(m_pPlayer))
+                {
+                    stealthMalus = m_stealthDistanceMultiplier;
+                }
+                qint32 attackDistanceModifier = getMovingToAttackDistanceModifier();
+                QVector3D possibleTarget(x, y, (stealthMalus + attackDistanceModifier) * alliedmultiplier);
+                if (!targets.contains(possibleTarget))
+                {
+                    targets.append(possibleTarget);
+                    break;
+                }
+            }
+            else
+            {
+                Building* pBuilding = pTargetTerrain->getBuilding();
+                if ((pBuilding != nullptr &&
+                     pBuilding->getHp() > 0 &&
+                     m_pPlayer->isEnemy(pBuilding->getOwner()) &&
+                     pUnit->isEnvironmentAttackable(pBuilding->getBuildingID())) ||
+                    (enableNeutralTerrainAttack &&
+                     isAttackOnTerrainAllowed(pTerrain) &&
+                     pUnit->isEnvironmentAttackable(pTerrain->getID())))
+                {
+                    Unit* pTargetUnit = pTerrain->getUnit();
+                    float alliedmultiplier = 1.0f;
+                    if (pTargetUnit != nullptr &&
+                        pTargetUnit->getOwner()->checkAlliance(m_pPlayer) == GameEnums::Alliance_Friend)
+                    {
+                        alliedmultiplier = m_alliedDistanceModifier;
+                    }
+                    qint32 attackDistanceModifier = getMovingToAttackEnvironmentDistanceModifier();
+                    QVector3D possibleTarget(x, y, (attackDistanceModifier) * alliedmultiplier);
+                    if (!targets.contains(possibleTarget))
+                    {
+                        targets.append(possibleTarget);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+qint32 HeavyAi::getMovingToAttackDistanceModifier()
+{
+    // todo
+    return 1.0f;
+}
+
+qint32 HeavyAi::getMovingToAttackEnvironmentDistanceModifier()
+{
+    // todo
+    return 1.0f;
+}
+
+
+float HeavyAi::scoreWait(spGameAction action, UnitData & unitData)
+{
+    float score = 0.0f;
+    auto targetPath = m_currentTargetedfPfs->getTargetPath();
+    QPoint target = action->getActionTarget();
+    if (targetPath.contains(target))
+    {
+        QVector<QPoint> movePath = unitData.m_pPfs->getClosestReachableMovePath(target);
+        if (movePath.size() > 0)
+        {
+            // todo
+            score = m_minActionScore + static_cast<float>(movePath.size() - 1) * 0.5f / static_cast<float>(unitData.m_movepoints);
+        }
+    }
+    return score;
 }
 
 void HeavyAi::scoreProduction()
@@ -632,17 +837,27 @@ void HeavyAi::getProductionInputVector(Building* pBuilding, Unit* pUnit)
     }
     else
     {
-        in[BuildingEntry::CaptureUnit] = 1;
+        in[BuildingEntry::CaptureUnit] = -1;
     }
     float value = getAiCoUnitMultiplier(m_pPlayer->getCO(0), pUnit);
     value += getAiCoUnitMultiplier(m_pPlayer->getCO(1), pUnit);
-    in[BuildingEntry::CoUnitValue] = value / CO::MAX_CO_UNIT_VALUE;
+    in[BuildingEntry::CoUnitValue] = value / (CO::MAX_CO_UNIT_VALUE * 2);
     float maxMovementpoints = 10;
     in[BuildingEntry::Movementpoints] = pUnit->getMovementpoints(QPoint(pBuilding->getX(), pBuilding->getY())) / maxMovementpoints;
 }
 
 bool HeavyAi::buildUnits()
 {
+    scoreUnitBuilding();
     // todo
+    for (qint32 i = 0; i < m_BuildingData.size(); ++i)
+    {
+
+    }
     return false;
+}
+
+void HeavyAi::scoreUnitBuilding()
+{
+    // todo
 }

@@ -19,7 +19,7 @@
 
 #include "spritingsupport/spritecreator.h"
 
-#include "oxygine/KeyEvent.h"
+#include "3rd_party/oxygine-framework/oxygine/KeyEvent.h"
 
 // values which differ from release to debug build
 #ifdef GAMEDEBUG
@@ -181,32 +181,32 @@ void Console::print(QString message, eLogLevels MsgLogLevel)
         {
             case eDEBUG:
             {
-                qDebug(msg.toStdString().c_str());
+                qDebug("%s", msg.toStdString().c_str());
                 prefix = "DEBUG: ";
                 break;
             }
             case eINFO:
             {
-                qInfo(msg.toStdString().c_str());
+                qInfo("%s", msg.toStdString().c_str());
                 prefix = "INFO: ";
                 break;
             }
             case eWARNING:
             {
-                qWarning(msg.toStdString().c_str());
+                qWarning("%s", msg.toStdString().c_str());
                 prefix = "WARNING: ";
                 break;
             }
             case eERROR:
             {
-                qCritical(msg.toStdString().c_str());
+                qCritical("%s", msg.toStdString().c_str());
                 prefix = "CRITICAL: ";
                 break;
             }
             case eFATAL:
             {
                 prefix = "FATAL: ";
-                qFatal(msg.toStdString().c_str());
+                qFatal("%s", msg.toStdString().c_str());
                 break;
             }
             default:
@@ -328,7 +328,7 @@ void Console::createfunnymessage(qint32 message){
             printmessage = "What? I should work faster? Look at your PC even a snake is faster than your CPU";
             break;
         case 3:
-            printmessage = "I know this Quest. Nothing can happen! Sorry we couldn't find their corps!";
+            printmessage = "I know this Quest. Nothing can happen! Sorry we could not find their corps!";
             break;
         case 4:
             printmessage = "1+1=10 ... What you don't understand Binary Stuff -> I can't work with such stupid Users.";

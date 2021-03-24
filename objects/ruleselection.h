@@ -2,7 +2,8 @@
 #define RULESELECTION_H
 
 #include <QObject>
-#include "oxygine-framework.h"
+
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "objects/base/multislider.h"
 #include "objects/base/textbox.h"
@@ -22,7 +23,7 @@ public:
         Singleplayer,
         Multiplayer,
     };
-    explicit RuleSelection(qint32 width, Mode mode);
+    explicit RuleSelection(qint32 width, Mode mode, bool enabled = true);
     virtual ~RuleSelection();
     void showRuleSelection();
     void confirmRuleSelectionSetup();
@@ -48,6 +49,7 @@ private:
     spMultislider m_pWeatherSlider;
     spTextbox m_MapScriptFile;
     Mode m_mode;
+    bool m_ruleChangeEabled{true};
 };
 
 #endif // RULESELECTION_H

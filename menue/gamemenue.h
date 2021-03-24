@@ -173,6 +173,10 @@ public slots:
      */
     void showAttackLog(qint32 player);
     /**
+     * @brief showRuleSelection
+     */
+    void showRules();
+    /**
      * @brief showAttackLog
      */
     void showUnitInfo(qint32 player);
@@ -257,6 +261,10 @@ public slots:
      * @brief showSaveAndExitGame
      */
     void showSaveAndExitGame();
+    /**
+     * @brief showWiki
+     */
+    void showWiki();
 protected slots:
     /**
      * @brief updateTimer

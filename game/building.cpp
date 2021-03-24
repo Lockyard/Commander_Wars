@@ -110,15 +110,38 @@ bool Building::getVisionHide()
 
 void Building::setUnitOwner(Unit* pUnit)
 {
-    setOwner(pUnit->getOwner());
+    if (pUnit != nullptr)
+    {
+        setOwner(pUnit->getOwner());
+    }
 }
 
 void Building::setOwner(Player* pOwner)
 {
+    Player* prevOwner = m_pOwner;
     // change ownership
     m_pOwner = pOwner;
     // update sprites :)
-    updateBuildingSprites(false);
+    bool visible = true;
+    spGameMap pMap = GameMap::getInstance();
+    qint32 x = Building::getX();
+    qint32 y = Building::getY();
+
+    if (pMap.get() != nullptr &&
+        pMap->getCurrentViewPlayer() != nullptr &&
+        pMap->onMap(x, y))
+    {
+        visible = pMap->getCurrentViewPlayer()->getFieldVisible(x, y);
+    }
+    if (m_pBuildingSprites.size() == 0 ||
+        prevOwner == nullptr)
+    {
+        updateBuildingSprites(false);
+    }
+    else
+    {
+        updatePlayerColor(visible);
+    }
 }
 
 Player* Building::getOwner()
@@ -197,6 +220,8 @@ void Building::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode)
             pSprite->setScale(((GameMap::getImageSize() ) * width) / pAnim->getWidth());
             pSprite->setPosition(-pSprite->getScaledWidth() + GameMap::getImageSize(), -pSprite->getScaledHeight() + GameMap::getImageSize());
         }
+        setSize(pAnim->getWidth(),
+                pAnim->getHeight());
         this->addChild(pSprite);
         m_pBuildingSprites.append(pSprite);
         m_addPlayerColor.append(mode);
@@ -425,7 +450,7 @@ QStringList Building::getActionList()
     QStringList retList;
     if (ret.isString())
     {
-       retList = ret.toString().split(",");
+        retList = ret.toString().split(",");
     }
     else
     {
@@ -965,6 +990,12 @@ qint32 Building::getHp() const
 void Building::setHp(const qint32 &Hp)
 {
     m_Hp = Hp;
+}
+
+bool Building::isEnemyBuilding(Player* pPlayer)
+{
+    return (m_pOwner == nullptr || !m_pOwner->getIsDefeated()) &&
+            pPlayer->isEnemy(m_pOwner);
 }
 
 void Building::serializeObject(QDataStream& pStream) const

@@ -5,6 +5,7 @@
 #include "coreengine/audiothread.h"
 #include "coreengine/userdata.h"
 #include "resource_management/fontmanager.h"
+#include "resource_management/cospritemanager.h"
 
 #include <QDir>
 #include <QQmlEngine>
@@ -57,6 +58,8 @@ void Interpreter::init()
     globalObject().setProperty("settings", settings);
     QJSValue userdata = newQObject(Userdata::getInstance());
     globalObject().setProperty("userdata", userdata);
+    QJSValue coSpriteManager = newQObject(COSpriteManager::getInstance());
+    globalObject().setProperty("coSpriteManager", coSpriteManager);
 
     GameEnums::registerEnums();
 
@@ -73,7 +76,12 @@ void Interpreter::openScript(QString script, bool setup)
     QFile scriptFile(script);
     if (!scriptFile.open(QIODevice::ReadOnly))
     {
-        QString error = "Error: attemp to read File " + script + " which couldn't be opened.";
+        QString error = "Error: attemp to read file " + script + " which could not be opened.";
+        Console::print(error, Console::eERROR);
+    }
+    else if (!scriptFile.exists())
+    {
+        QString error = "Error: unable to open non existing file " + script + ".";
         Console::print(error, Console::eERROR);
     }
     else
@@ -327,6 +335,16 @@ bool Interpreter::exists(QString object, QString function)
         {
             return true;
         }
+    }
+    return false;
+}
+
+bool Interpreter::exists(QString object)
+{
+    QJSValue objPointer = globalObject().property(object);
+    if (objPointer.isObject())
+    {
+        return true;
     }
     return false;
 }

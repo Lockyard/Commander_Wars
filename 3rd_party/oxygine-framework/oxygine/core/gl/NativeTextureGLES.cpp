@@ -1,9 +1,8 @@
-#include "NativeTextureGLES.h"
-#include "../gamewindow.h"
-#include "../../Image.h"
-#include "../ImageDataOperations.h"
-#include "../NativeTexture.h"
-#include <stdio.h>
+#include "3rd_party/oxygine-framework/oxygine/core/gl/NativeTextureGLES.h"
+#include "3rd_party/oxygine-framework/oxygine/core/gamewindow.h"
+#include "3rd_party/oxygine-framework/oxygine/core/ImageDataOperations.h"
+#include "3rd_party/oxygine-framework/oxygine/core/NativeTexture.h"
+#include "3rd_party/oxygine-framework/oxygine/Image.h"
 
 #ifndef GL_COMPRESSED_RGBA8_ETC2_EAC
 #   define GL_COMPRESSED_RGBA8_ETC2_EAC      0x9278
@@ -266,15 +265,10 @@ namespace oxygine
             GameWindow* window = oxygine::GameWindow::getWindow();
             window->glActiveTexture(GL_TEXTURE7);
             window->glBindTexture(GL_TEXTURE_2D, (GLuint) _id);
-            GLenum er = window->glGetError();
+            window->glGetError();
             ImageData src = ImageData(_width, _height, (int)(_data.size() / _height), _format, &_data.front());
             ImageData locked = src.getRect(_lockRect);
-
-            //glPixelStorei (GL_UNPACK_ALIGNMENT,  1);//byte align
-            er = window->glGetError();
-
-            //todo add EXT_unpack_subimage support
-
+            window->glGetError();
             Image mt;
             mt.init(_lockRect.getWidth(), _lockRect.getHeight(), _format);
             ImageData q = mt.lock();
@@ -283,14 +277,10 @@ namespace oxygine
 
             glPixel glp = SurfaceFormat2GL(_format);
 
-
-
             window->glTexSubImage2D(GL_TEXTURE_2D, 0,
                                     _lockRect.getX(), _lockRect.getY(), _lockRect.getWidth(), _lockRect.getHeight(),
                                     glp.format, glp.type, locked.data);
-
-            er = window->glGetError();
-
+            window->glGetError();
             _lockFlags = 0;
         }
     }
@@ -331,9 +321,9 @@ namespace oxygine
 
     }
 
-    nativeTextureHandle NativeTextureGLES::getHandle() const
+    GLuint NativeTextureGLES::getHandle() const
     {
-        return (nativeTextureHandle)_id;
+        return reinterpret_cast<GLuint>(_id);
     }
 
     unsigned int NativeTextureGLES::getFboID() const
