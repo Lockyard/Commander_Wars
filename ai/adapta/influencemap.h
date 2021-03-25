@@ -6,7 +6,9 @@
 #include <QVector>
 #include <qtextstream.h>
 #include "ai/islandmap.h"
-#include "oxygine-framework.h"
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
+
+#include "coreengine/qmlvector.h"
 
 class Player;
 class Unit;
@@ -33,27 +35,31 @@ public:
      * @param pPfs
      * @param unitWeight
      */
-    void addUnitInfluence(Unit* pUnit, UnitPathFindingSystem* pPfs, qint32 unitWeight);
+    void addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, float unitWeight);
 
     /**
      * @brief show shows graphically the influence map by coloring tiles
      */
-    void show();
+    void showColoredTiles();
     /**
-     * @brief showFull works as show but also displays the numerical value
+     * @brief showValues show on each tile the influence value
      */
-    void showFull();
+    void showValues();
     /**
-     * @brief hide hides the influence map shown with show or showFull
+     * @brief showAll shows both color and value for each tile depending on the influence
+     */
+    void showAllInfo();
+    /**
+     * @brief hide hides the influence map shown with any show method
      */
     void hide();
 
-    inline qint32 getValueAt(qint32 x, qint32 y);
+    inline float getInfluenceValueAt(qint32 x, qint32 y);
 
 private:
     qint32 m_mapWidth{0};
     qint32 m_mapHeight{0};
-    QVector<qint32> m_influenceMap2D;
+    QVector<float> m_influenceMap2D;
     const QVector<spIslandMap> & m_islands;
 
     constexpr static const QColor M_POSITIVE_COLOR{QColorConstants::Blue};
@@ -71,10 +77,13 @@ private:
      */
     QVector<oxygine::spTextField> m_infoTextMap;
 
-    inline void addValueAt(qint32 value, qint32 x, qint32 y);
+    inline void addValueAt(float value, qint32 x, qint32 y);
 
     void initializeInfoTilesMap();
     inline oxygine::spColorRectSprite getInfoTileAt(qint32 x, qint32 y);
+    inline oxygine::spTextField getInfoTextAt(qint32 x, qint32 y);
+
+
 
 };
 

@@ -44,36 +44,22 @@ void TestFirstAI::process() {
 
         // create influence map at the start of the turn
         m_influenceMap.reset();
-        m_inffMap.reset();
 
         for (qint32 i= 0; i < pUnits->size(); i++)
         {
             Unit* pUnit = pUnits->at(i);
-            UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
-            pPfs->setIgnoreEnemies(pEnemyUnits);
-            pPfs->explore();
-            m_influenceMap.addUnitInfluence(pUnit, pPfs, pUnit->getCosts());
-            m_inffMap.addUnitInfluence(pUnit, pPfs, pUnit->getMovementpoints(QPoint(pUnit->getX(), pUnit->getY())));
+            m_influenceMap.addUnitInfluence(pUnit, pEnemyUnits, pUnit->getCosts()*.001f);
         }
 
         for (qint32 i= 0; i < pEnemyUnits->size(); i++)
         {
             Unit* pUnit = pEnemyUnits->at(i);
-            UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
-            pPfs->setIgnoreEnemies(pUnits);
-            pPfs->explore();
-            //negative weight since are enemies
-            m_influenceMap.addUnitInfluence(pUnit, pPfs, pUnit->getCosts()*-1);
-            m_inffMap.addUnitInfluence(pUnit, pPfs, pUnit->getMovementpoints(QPoint(pUnit->getX(), pUnit->getY())));
+
+            //negative weight since are enemies, and this ai's units as enemies of the considered unit
+            m_influenceMap.addUnitInfluence(pUnit, pUnits, pUnit->getCosts()*-.001f);
         }
 
-        m_inffMap.updateOwners();
-        m_inffMap.findFrontLines();
-
-        //m_influenceMap.show();
-        //m_influenceMap.hide();
-        m_inffMap.show();
-        m_inffMap.showFrontlines();
+        m_influenceMap.showAllInfo();
 
         Console::print("TestAI front lines created", Console::eDEBUG);
     }
