@@ -373,8 +373,13 @@ set(${PROJECT_NAME}_SRCS
         ai/normalai.cpp
         ai/heavyai.cpp
         ai/influencefrontmap.cpp
-        ai/testfirstai.cpp
+        ai/genetic/weightvector.cpp
+        ai/genetic/evofunctions.cpp
+        ai/genetic/evolutionmanager.cpp
         ai/adapta/influencemap.cpp
+        ai/testfirstai.cpp
+
+
 
         ai/neuralnetwork/neural/edge.cpp
         ai/neuralnetwork/neural/layer.cpp
