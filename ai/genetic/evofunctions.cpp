@@ -1,10 +1,26 @@
 #include "evofunctions.h"
 #include <QRandomGenerator>
 #include <QTime>
+#include <QtMath>
 #include "coreengine/console.h"
 #include "weightvector.h"
 
+
+
 namespace evofunc {
+
+    //todo dt
+    void debugPrintPopulationAndFitnesses(QVector<WeightVector>& population, QVector<float>& customFitnesses, float totalFitness) {
+        QString res = "Selection started. Population-custom fitnesses:\n";
+        for(qint32 i=0; i < population.size(); i++) {
+            res+= "("+ QString::number(i) + ")" + population[i].toQString() + "(F:" + QString::number(population[i].getFitness()) +
+                    ", CF:" + QString::number(customFitnesses.at(i)) + ", %:" + QString::number(customFitnesses.at(i)/totalFitness*100) + ")\n";
+        }
+        res+="(total fitness:" + QString::number(totalFitness) + ")\n";
+
+        Console::print(res, Console::eDEBUG);
+    }
+
 
     WeightVector splitMiddleCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2) {
         WeightVector res = WeightVector(weightVector_1);
@@ -60,12 +76,14 @@ namespace evofunc {
 
     QVector<QPair<WeightVector*, WeightVector*>> adaptaSelection(QVector<WeightVector>& population, qint32 couplesToReturn) {
         QVector<float> customFitnesses(population.size());
-        float totalFitness(0);
+        float totalFitness(0.0f);
         QVector<QPair<WeightVector*, WeightVector*>> selectedCouples;
         selectedCouples.reserve(couplesToReturn);
 
         customFitnesses = generateCustomWeightedFitnesses(population);
-        totalFitness = std::accumulate(customFitnesses.begin(), customFitnesses.end(), 0);
+        totalFitness = std::accumulate(customFitnesses.begin(), customFitnesses.end(), 0.0f);
+
+        debugPrintPopulationAndFitnesses(population, customFitnesses, totalFitness);
 
         QRandomGenerator random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
         double randomTarget = 0;
@@ -117,24 +135,15 @@ namespace evofunc {
         //generate custom positive fitnesses from the original fitnesses, which go from to -10 to 10
         for(qint32 i=0; i < population.size(); i++) {
             float fitness = population.at(i).getFitness();
-            //base fitness since is custom here should go from -10 to 10, decided in training phase
-            if(fitness < -10)
-                fitness = 0;
-            if(fitness < -5)
-                fitness+=10;
-            else if(fitness < -1)
-                fitness += 15;
-            else if(fitness < 1)
-                fitness += 20;
-            else if(fitness < 5)
-                fitness += 25;
-            else
-                fitness +=30;
-
+            fitness = (fitness + 10.0f)*0.1f;
+            fitness = static_cast<float>(qPow(fitness, 4));
             customFitnesses[i] = fitness;
         }
 
         return customFitnesses;
     }
+
+
+
 
 }

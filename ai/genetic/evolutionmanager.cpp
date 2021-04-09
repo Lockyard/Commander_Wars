@@ -201,6 +201,9 @@ bool EvolutionManager::performOneEvolutionStep() {
         newPopulation.append(newChild);
     }
 
+    m_population.clear();
+    m_population = QVector(newPopulation);
+
     m_generationNumber++;
     m_isPopulationSorted = false;
     return true;

@@ -9,6 +9,13 @@ namespace evofunc {
     //default crossover functions
     WeightVector splitMiddleCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2);
     WeightVector splitRandomCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2);
+
+    /**
+     * @brief mixRandomCrossoverFct create a new vector deciding at each postition to get the weight of vector 1 or 2
+     * @param weightVector_1
+     * @param weightVector_2
+     * @return
+     */
     WeightVector mixRandomCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2);
 
     /**

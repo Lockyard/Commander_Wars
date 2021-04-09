@@ -43,9 +43,9 @@ QVector<float> WeightVector::getQVector() {
 QString WeightVector::toQString() {
     QString ret = "[";
     for(qint32 i = 0; i < m_weights.size()-1; i++) {
-        ret += QString::number(m_weights[i]) + ", ";
+        ret += QString::number(m_weights[i], 'f', 3) + ", ";
     }
-    ret += QString::number(m_weights[m_weights.size()-1]) + "]";
+    ret += QString::number(m_weights[m_weights.size()-1], 'f', 3) + "]";
     return ret;
 }
 
