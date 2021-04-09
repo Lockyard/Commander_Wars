@@ -2,7 +2,6 @@
 
 #include "coreengine/mainapp.h"
 #include "coreengine/globalutils.h"
-#include "coreengine/console.h"
 #include "ai/coreai.h"
 
 #include "game/gamemap.h"
@@ -83,9 +82,6 @@ void InfluenceMap::addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, fl
 
         //increment the influence on this specific point, according to the multiplier, the given weight and unit's hp
         addValueAt( unitWeight * hpValue * multiplier, point.x(), point.y());
-        Console::print("influence value at (" + QString::number(point.x()) + ", " +
-                       QString::number(point.y()) + ") is " +
-                       QString::number(getInfluenceValueAt(point.x(), point.y())), Console::eDEBUG);
     }
 
 }
