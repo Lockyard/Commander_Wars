@@ -38,6 +38,10 @@ public:
     void setPopulation(QVector<WeightVector> newPopulation);
     QVector<WeightVector>& getPopulation();
 
+    inline qint32 getPopulationSize() {
+        return m_populationSize;
+    }
+
     void resetGeneration();
     qint32 getGeneration();
 
