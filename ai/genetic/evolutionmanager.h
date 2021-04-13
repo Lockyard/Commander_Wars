@@ -15,9 +15,14 @@ class EvolutionManager
 public:
     EvolutionManager();
 
-    EvolutionManager(qint32 weightVectorLength, qint32 populationSize, float minWeight, float maxWeight,
+    EvolutionManager(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight,
                      evoenums::CrossoverType crossoverType = evoenums::CrossoverType::mixRandom, float mutationProbability = 0.05f);
 
+    void initialize(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight, qint32 elitismDegree, qint32 randomismDegree);
+
+
+    bool loadPopulationFromJsonFile(QString filename);
+    bool savePopulationToJsonFile(QString filename);
 
     /**
      * @brief createRandomPopulation create a new population with specified parameters. This remove the old population, if any
@@ -42,6 +47,9 @@ public:
         return m_populationSize;
     }
 
+
+
+    void setGeneration(qint32 newgen);
     void resetGeneration();
     qint32 getGeneration();
 
@@ -49,17 +57,23 @@ public:
      * @brief setElitismDegree how many of the best elements, across all evolution, should be kept. Best elements are copied
      * in the next gen, so If this equals the population's size then it's trivial the evolution since it's only a copy of the
      * last population. Default is 1
-     * @param bestElementsToKeep
      */
-    void setElitismDegree(qint32 bestElementsToKeep);
+    void setElitismDegree(qint32 elitismDegree);
+
+    inline qint32 getElitismDegree() {
+        return m_elitismDegree;
+    }
 
     /**
      * @brief setRandomismDegree set how many new totally random samples should be generated at each new generaion,
      * ignoring selection and crossover. Default is 0 since is not a general wanted behaviour.
      * It should be a low number wrt the population size
-     * @param newRandomSamples
      */
-    void setRandomismDegree(qint32 newRandomSamples);
+    void setRandomismDegree(qint32 randomismDegree);
+
+    inline qint32 getRandomismDegree() {
+        return m_randomismDegree;
+    }
 
     /**
      * @brief maximizeFitness this indicates to the evo manager that better fitnesses are higher ones. This is the default
@@ -131,9 +145,11 @@ public:
      * @return
      */
     WeightVector getNthBestWeightVector(qint32 bestWeightVectorIndex);
+    void sortPopulationByFitness();
 
     QString toQStringPopulation();
 
+    void writePopulation(QJsonArray &populationArray);
 private:
 
     static const qint32 infinite;
@@ -147,8 +163,8 @@ private:
 
     qint32 m_populationSize;
     qint32 m_weightVectorLength;
-    qint32 m_bestElementsToKeep{1};
-    qint32 m_newRandomSamples{0};
+    qint32 m_elitismDegree{1};
+    qint32 m_randomismDegree{0};
     qint32 m_generationNumber{0};
     float m_minWeight{0};
     float m_maxWeight{1};
@@ -163,7 +179,7 @@ private:
     QPair<WeightVector, WeightVector> (*m_selectionFunction) (QVector<WeightVector>& population);
 
 
-    void sortPopulationByFitness();
+
 };
 
 #endif // EVOLUTIONMANAGER_H

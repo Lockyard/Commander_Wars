@@ -142,8 +142,4 @@ namespace evofunc {
 
         return customFitnesses;
     }
-
-
-
-
 }
