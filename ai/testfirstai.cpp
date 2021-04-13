@@ -12,16 +12,26 @@
 #include "game/gamemap.h"
 #include "game/unitpathfindingsystem.h"
 #include "resource_management/unitspritemanager.h"
+#include "genetic/evofunctions.h"
+#include "ai/adapta/trainingmanager.h"
+
 
 TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_TestFirst),
     m_influenceMap(m_IslandMaps), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;
+
+    TrainingManager::instance().setupForMatch();
+    TrainingManager::instance().assignWeightVector();
 }
 
 
 void TestFirstAI::readIni(QString name) {
     QString a = name;
+}
+
+void TestFirstAI::testPrint() {
+    Console::print("TESTPRINT it's working!" , Console::eDEBUG);
 }
 
 
@@ -69,17 +79,13 @@ void TestFirstAI::process() {
     if(moveAUnit(pUnits)) {}
     else if(buildAUnit(pBuildings)){}
     else{
-
         finishTurn();
     }
-
-
 }
 
 bool TestFirstAI::moveAUnit(spQmlVectorUnit pUnits) {
     //just move any available unit and make it capture stuff, then build other infantries. Just for test
     for(qint32 i = 0; i < pUnits->size(); i++) {
-
         Unit* pUnit = pUnits->at(i);
         qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
         Console::print("movePoints of unit at (" + QString::number(pUnit->getPosition().x()) + ", " +
@@ -166,3 +172,6 @@ void TestFirstAI::finishTurn() {
     rebuildIslandMaps = true;
     CoreAI::finishTurn();
 }
+
+
+

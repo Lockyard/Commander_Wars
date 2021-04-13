@@ -4,6 +4,7 @@
 #include "coreai.h"
 #include "adapta/influencemap.h"
 #include "influencefrontmap.h"
+#include "ai/genetic/evolutionmanager.h"
 
 /**
  * @brief The TestFirstAI class is just a AI playground where I can understand which methods and stuff I have to do in order
@@ -18,6 +19,9 @@ public:
     virtual void process() override;
 
     virtual void readIni(QString name) override;
+
+public slots:
+    void testPrint();
 protected:
     virtual void finishTurn() override;
 
@@ -34,6 +38,8 @@ private:
     bool moveAUnit(spQmlVectorUnit pUnits);
 
     bool buildAUnit(spQmlVectorBuilding pBuildings);
+
+
 
 };
 
