@@ -51,7 +51,7 @@ void TrainingManager::loadIni(QString filename) {
 
         //load stuff for the evolution manager
         settings.beginGroup("EvolutionManager");
-        qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation;
+        qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation, crossoverType;
         float minWeight, maxWeight;
         populationSize = settings.value("PopulationSize", 10).toInt(&ok);
         if(!ok)
@@ -75,8 +75,12 @@ void TrainingManager::loadIni(QString filename) {
         if(!ok)
             maxWeight = 10.0f;
         settings.endGroup();
+        crossoverType = settings.value("CrossoverFunction", 2).toInt(&ok);
+        if(!ok)
+            crossoverType = 2;
 
-        m_evolutionManager.initialize(populationSize, weightVectorLength, minWeight, maxWeight, elitismDegree, randomismDegree);
+        m_evolutionManager.initialize(populationSize, weightVectorLength, minWeight, maxWeight, elitismDegree,
+                                      randomismDegree, evoenums::CrossoverType(crossoverType));
         m_evolutionManager.setGeneration(generation);
 
     } else {
@@ -86,7 +90,7 @@ void TrainingManager::loadIni(QString filename) {
         m_currWVIndex = 0;
         m_currWVMatchNumber = 0;
 
-        m_evolutionManager.initialize(10, 10, -10.0f, 10.0f, 2, 1);
+        m_evolutionManager.initialize(10, 10, -10.0f, 10.0f, 2, 1, evoenums::CrossoverType::mixRandom);
         m_evolutionManager.setGeneration(0);
     }
 }
@@ -102,6 +106,7 @@ void TrainingManager::saveState(QString iniFilename) {
     qint32 saveIndex, maxSaveIndex;
     QString saveNamePrefix;
     QString saveNameExtension;
+    QString saveNameMostRecent;
     saveIndex = settings.value("NextSaveIndex", 0).toInt(&ok);
     if(!ok)
         saveIndex = 0;
@@ -110,12 +115,16 @@ void TrainingManager::saveState(QString iniFilename) {
         maxSaveIndex = 10;
     saveNamePrefix = settings.value("SaveNamePrefix", "resources/aidata/adapta/pop_record_").toString();
     saveNameExtension = settings.value("SaveNameExtension", ".json").toString();
+    saveNameMostRecent = settings.value("SaveNameMostRecent", "resources/aidata/adapta/pop_record_last.json").toString();
 
-    //save a population file in the correct backup file
+
+    //save a population file in the correct backup file...
     m_populationFileName = saveNamePrefix + QString::number(saveIndex) + saveNameExtension;
     m_evolutionManager.savePopulationToJsonFile(m_populationFileName);
     settings.setValue("NextSaveIndex", saveIndex+1);
     settings.endGroup();
+    //...and save also a copy on the file holding the most recent save
+    m_evolutionManager.savePopulationToJsonFile(saveNameMostRecent);
 
     //update the file name to be load to the last one
     settings.beginGroup("TrainingInfo");
@@ -178,6 +187,8 @@ void TrainingManager::onVictory() {
 
 
 //private fncts
+
+
 void TrainingManager::initializeEvolutionManager() {
     Interpreter::setCppOwnerShip(this);
     Mainapp* pApp = Mainapp::getInstance();
@@ -185,6 +196,7 @@ void TrainingManager::initializeEvolutionManager() {
 
     //load ini also set some stuff for the evolution manager
     loadIni("resources/aidata/adapta/training.ini");
+    //load population
     bool loadOk = m_evolutionManager.loadPopulationFromJsonFile(m_populationFileName);
     if(!loadOk) {
         Console::print("Creating random population", Console::eDEBUG);

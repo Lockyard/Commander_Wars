@@ -18,7 +18,8 @@ public:
     EvolutionManager(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight,
                      evoenums::CrossoverType crossoverType = evoenums::CrossoverType::mixRandom, float mutationProbability = 0.05f);
 
-    void initialize(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight, qint32 elitismDegree, qint32 randomismDegree);
+    void initialize(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight, qint32 elitismDegree,
+                    qint32 randomismDegree, evoenums::CrossoverType crossoverType);
 
 
     bool loadPopulationFromJsonFile(QString filename);
@@ -91,11 +92,11 @@ public:
      */
     void setFitnessFunction(float (*fitnessFunction)(WeightVector weightVector));
     /**
-     * @brief setCrossoverFunctionType set the type of the crossover among the ones in the enum. If 'custom' is selected, make sure
+     * @brief setCrossoverFunction set the crossover among the ones in the enum. If 'custom' is selected, make sure
      * to set the function with the setCrossoverFunction(...) function
      * @param crossoverType
      */
-    void setCrossoverFunctionType(evoenums::CrossoverType crossoverType);
+    void setCrossoverFunction(evoenums::CrossoverType crossoverType);
 
     /**
      * @brief setCrossoverFunction set the crossover fct for this evolution manager. The crossover fct works with 2 Vectors of weights and
@@ -104,8 +105,7 @@ public:
      * @param setThisAsCrossoverFunction default is true. If false the set function will be used only if the type of crossover function
      * is set to custom
      */
-    void setCrossoverFunction(WeightVector (*crossoverFunction) (WeightVector weightVector_1, WeightVector weightVector_2),
-                              bool setThisAsCrossoverFunction = true);
+    void setCrossoverFunction(WeightVector (*crossoverFunction) (WeightVector weightVector_1, WeightVector weightVector_2));
 
     /**
      * @brief setMutationFunction the mutation func used to mutate a weights Vector
@@ -153,8 +153,6 @@ public:
 private:
 
     static const qint32 infinite;
-
-    evoenums::CrossoverType m_crossoverType{evoenums::CrossoverType::splitMiddle};
 
     /**
      * @brief m_population all vectors of weights representing the current population

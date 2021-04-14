@@ -20,7 +20,6 @@ EvolutionManager::EvolutionManager()
 
 EvolutionManager::EvolutionManager(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight,
                                    evoenums::CrossoverType crossoverType, float mutationProbability) :
-    m_crossoverType(crossoverType),
     m_populationSize(populationSize),
     m_weightVectorLength(weightVectorLength),
     m_minWeight(minWeight),
@@ -34,31 +33,19 @@ EvolutionManager::EvolutionManager(qint32 populationSize, qint32 weightVectorLen
         m_maxWeight = tmp;
     }
 
-    switch(m_crossoverType) {
-    case evoenums::splitMiddle:
-        m_crossoverFunction = evofunc::splitMiddleCrossoverFct;
-        break;
-    case evoenums::splitRandom:
-        m_crossoverFunction = evofunc::splitRandomCrossoverFct;
-        break;
-    case evoenums::mixRandom:
-        m_crossoverFunction = evofunc::mixRandomCrossoverFct;
-        break;
-    case evoenums::custom:
-    default:
-        break;
-    }
+    setCrossoverFunction(crossoverType);
 }
 
 
 void EvolutionManager::initialize(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight,
-                                  qint32 elitismDegree, qint32 randomismDegree) {
+                                  qint32 elitismDegree, qint32 randomismDegree, evoenums::CrossoverType crossoverType) {
     m_populationSize = populationSize;
     m_weightVectorLength = weightVectorLength;
     m_minWeight = minWeight;
     m_maxWeight = maxWeight;
     m_elitismDegree = elitismDegree;
     m_randomismDegree = randomismDegree;
+    setCrossoverFunction(crossoverType);
 }
 
 
@@ -195,8 +182,7 @@ void EvolutionManager::setFitnessFunction(float (*fitnessFunction)(WeightVector 
 }
 
 
-void EvolutionManager::setCrossoverFunctionType(evoenums::CrossoverType crossoverType) {
-
+void EvolutionManager::setCrossoverFunction(evoenums::CrossoverType crossoverType) {
     switch(crossoverType) {
     case evoenums::CrossoverType::splitMiddle:
         m_crossoverFunction = evofunc::splitMiddleCrossoverFct;
@@ -205,17 +191,16 @@ void EvolutionManager::setCrossoverFunctionType(evoenums::CrossoverType crossove
         m_crossoverFunction = evofunc::splitRandomCrossoverFct;
         break;
     case evoenums::CrossoverType::mixRandom:
-    default:
         m_crossoverFunction = evofunc::mixRandomCrossoverFct;
+        break;
+    case evoenums::CrossoverType::custom:
+    default:
+        m_crossoverFunction = nullptr;
     }
 }
 
 
-void EvolutionManager::setCrossoverFunction(WeightVector (*crossoverFunction) (WeightVector weightVector_1, WeightVector weightVector_2),
-                          bool setThisAsCrossoverFunction) {
-    if(setThisAsCrossoverFunction)
-        m_crossoverType = evoenums::CrossoverType::custom;
-
+void EvolutionManager::setCrossoverFunction(WeightVector (*crossoverFunction) (WeightVector weightVector_1, WeightVector weightVector_2)) {
     m_crossoverFunction = crossoverFunction;
 }
 

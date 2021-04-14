@@ -19,10 +19,10 @@ float WeightVector::operator[](qint32 index) {
 }
 
 
-
 void WeightVector::overwriteWeight(qint32 index, float newWeight) {
     m_weights[index] = newWeight;
 }
+
 
 void WeightVector::overwrite(QVector<float> newWeightVector) {
     m_weights.clear();
