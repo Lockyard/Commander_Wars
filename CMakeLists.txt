@@ -378,6 +378,7 @@ set(${PROJECT_NAME}_SRCS
         ai/genetic/evolutionmanager.cpp
         ai/adapta/trainingmanager.cpp
         ai/adapta/influencemap.cpp
+        ai/adaptaai.cpp
         ai/testfirstai.cpp
 
 
