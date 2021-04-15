@@ -41,6 +41,7 @@ private:
 
     QString m_iniFileName;
     QString m_populationFileName;
+    QString m_saveNameBestRecords;
 
     //params to know when to save
     //save population each time a new best fit vector appears?
@@ -50,6 +51,8 @@ private:
     //<= 0 to never save automatically after N generations
     qint32 m_genNumberTargetSave;
     qint32 m_currGenNumberCount;
+    //save parameters for best records of all time
+    qint32 m_bestRecordsToSave;
 
 
     //counters for matches and vectors, to know which vector at each match should be used and when it's going to be evaluated

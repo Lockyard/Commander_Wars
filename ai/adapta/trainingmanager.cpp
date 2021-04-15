@@ -6,8 +6,8 @@
 #include <QJsonObject>
 #include "ai/genetic/evofunctions.h"
 
-TrainingManager::TrainingManager(QObject *parent) : QObject(parent), m_currGenNumberCount(0), m_totalGenCount(0),
-    m_continueTraining(true), m_isEvoManagerInitialized(false)
+TrainingManager::TrainingManager(QObject *parent) : QObject(parent), m_continueTraining(true), m_currGenNumberCount(0),
+    m_totalGenCount(0), m_isEvoManagerInitialized(false)
     {}
 
 bool TrainingManager::s_isInstanceInitialized = false;
@@ -31,10 +31,17 @@ void TrainingManager::loadIni(QString filename) {
         m_maxGenerationCount = settings.value("MaxGenerationCount", 1000).toInt(&ok);
         if(!ok)
             m_maxGenerationCount = 1000;
+        settings.endGroup();
+
+        settings.beginGroup("SaveInfo");
         m_saveOnNewBestFit = settings.value("SaveOnNewBestFit", true).toBool();
         m_genNumberTargetSave = settings.value("GenerationNumberTargetSave", -1).toInt(&ok);
         if(!ok)
             m_genNumberTargetSave = 10;
+        m_bestRecordsToSave = settings.value("BestRecordsToSave", 3).toInt(&ok);
+        if(!ok)
+            m_bestRecordsToSave = 3;
+        m_saveNameBestRecords = settings.value("SaveNameBestRecords", "resources/aidata/adapta/best_records_alltime.json").toString();
         settings.endGroup();
 
         settings.beginGroup("CurrentState");
@@ -83,6 +90,8 @@ void TrainingManager::loadIni(QString filename) {
                                       randomismDegree, evoenums::CrossoverType(crossoverType));
         m_evolutionManager.setGeneration(generation);
 
+        m_evolutionManager.setEliteRecordsNumber(m_bestRecordsToSave);
+
     } else {
         Console::print("Training manager couldn't load ini file (" + filename + ")! Default values applied", Console::eWARNING);
         m_matchNumberTarget = 10;
@@ -107,6 +116,7 @@ void TrainingManager::saveState(QString iniFilename) {
     QString saveNamePrefix;
     QString saveNameExtension;
     QString saveNameMostRecent;
+    QString saveNameBestRecords;
     saveIndex = settings.value("NextSaveIndex", 0).toInt(&ok);
     if(!ok)
         saveIndex = 0;
@@ -118,6 +128,7 @@ void TrainingManager::saveState(QString iniFilename) {
     saveNameMostRecent = settings.value("SaveNameMostRecent", "resources/aidata/adapta/pop_record_last.json").toString();
 
 
+
     //save a population file in the correct backup file...
     m_populationFileName = saveNamePrefix + QString::number(saveIndex) + saveNameExtension;
     m_evolutionManager.savePopulationToJsonFile(m_populationFileName);
@@ -125,6 +136,8 @@ void TrainingManager::saveState(QString iniFilename) {
     settings.endGroup();
     //...and save also a copy on the file holding the most recent save
     m_evolutionManager.savePopulationToJsonFile(saveNameMostRecent);
+    //Also save
+
 
     //update the file name to be load to the last one
     settings.beginGroup("TrainingInfo");
@@ -243,7 +256,7 @@ void TrainingManager::advanceMatchCount() {
 void TrainingManager::evaluateFitnessOfCurrentWV() {
     //TODO put a real fitness calculation and not a dummy one
     QVector<float> wVec = m_evolutionManager.getPopulation()[m_currWVIndex].getQVector();
-    float dummyFitness = std::accumulate(wVec.begin(), wVec.end(), 0.0f) * .1f;
+    float dummyFitness = std::accumulate(wVec.begin(), wVec.end(), 0.0f) * .1f * wVec.size();
     m_evolutionManager.getPopulation()[m_currWVIndex].setFitness(dummyFitness);
     Console::print("Vector " + QString::number(m_currWVIndex+1) + "/" +
                    QString::number(m_evolutionManager.getPopulationSize()) +
@@ -269,5 +282,13 @@ void TrainingManager::saveIfProgress() {
     } else if(m_genNumberTargetSave > 0 && m_currGenNumberCount >= m_genNumberTargetSave) {
         m_currGenNumberCount = 0;
         saveState(m_iniFileName);
+    }
+    //this is separate, but save also the best records if option is enabled and there are new ones
+    if(m_bestRecordsToSave > 0) {
+        //if the update actually inserts new records, save them
+        if(m_evolutionManager.updateEliteRecords()) {
+            Console::print("New elite records, saving them in '" + m_saveNameBestRecords + "'", Console::eDEBUG);
+            m_evolutionManager.saveEliteRecords(m_saveNameBestRecords);
+        }
     }
 }

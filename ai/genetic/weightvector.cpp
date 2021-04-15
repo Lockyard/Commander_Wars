@@ -4,6 +4,8 @@
 
 QRandomGenerator WeightVector::random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
 
+WeightVector::WeightVector():m_weights() {}
+
 WeightVector::WeightVector(qint32 size)
 {
     m_weights.reserve(size);
@@ -16,6 +18,16 @@ WeightVector::WeightVector(QVector<float> weights) {
 
 float WeightVector::operator[](qint32 index) {
     return m_weights[index];
+}
+
+bool WeightVector::operator==(const WeightVector &other) const {
+    if(m_weights.size() != other.m_weights.size())
+        return false;
+    for(qint32 i = 0; i < m_weights.size(); i++) {
+        if(m_weights[i] != other.m_weights[i])
+            return false;
+    }
+    return true;
 }
 
 

@@ -95,7 +95,7 @@ bool EvolutionManager::savePopulationToJsonFile(QString filename) {
     }
 
     QJsonArray populationArray;
-    writePopulation(populationArray);
+    writePopulationToJson(m_population, populationArray);
 
     saveFile.write(QJsonDocument(populationArray).toJson());
 
@@ -246,7 +246,12 @@ bool EvolutionManager::performOneEvolutionStep() {
 
     //create m new completely random samples in the population
     for(qint32 i = 0; i < m_randomismDegree; i++) {
-        newPopulation.append(WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeight, m_maxWeight));
+        WeightVector randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeight, m_maxWeight);
+        //avoid adding a duplicate vector, although it's extremely improbable to generate a duplicate randomly
+        while(newPopulation.contains(randomWV)) {
+            randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeight, m_maxWeight);
+        }
+        newPopulation.append(randomWV);
     }
 
     //take all other pairs of parents according to selection
@@ -258,6 +263,14 @@ bool EvolutionManager::performOneEvolutionStep() {
     for(qint32 i = 0; i < parentsCouples.size(); i++) {
         WeightVector newChild = m_crossoverFunction( *(parentsCouples.at(i).first), *(parentsCouples.at(i).second));
         m_mutationFunction(newChild, m_minWeight, m_maxWeight, m_mutationProbability);
+
+        //modify the child until it's a different sample, if it happens that's identical to another already existing one
+        float boostedMutationProbability = m_mutationProbability > 0 ? m_mutationProbability : .1f;
+        while(newPopulation.contains(newChild)) {
+            boostedMutationProbability *= 1.2f;
+            boostedMutationProbability = boostedMutationProbability > 1 ? 1 : boostedMutationProbability;
+            m_mutationFunction(newChild, m_minWeight, m_maxWeight, boostedMutationProbability);
+        }
         newPopulation.append(newChild);
     }
 
@@ -279,9 +292,73 @@ WeightVector EvolutionManager::getNthBestWeightVector(qint32 bestWeightVectorInd
 }
 
 
-void EvolutionManager::sortPopulationByFitness() {
-    std::sort(m_population.begin(), m_population.end(), WeightVector::isMoreFitThan);
-    m_isPopulationSorted = true;
+void EvolutionManager::sortPopulationByFitness(QVector<WeightVector> &populationToSort) {
+    std::sort(populationToSort.begin(), populationToSort.end(), WeightVector::isMoreFitThan);
+}
+
+
+void EvolutionManager::setEliteRecordsNumber(qint32 elitesToSave) {
+    elitesToSave = elitesToSave > 0 ? elitesToSave : 0;
+    m_eliteRecordSize = elitesToSave;
+    //if there are more records than there should be now, remove all extra records in the back of the records
+    if(m_eliteRecords.size() > elitesToSave) {
+        m_eliteRecords.remove(elitesToSave, m_eliteRecords.size() - elitesToSave);
+        m_eliteRecordMinFitness = m_eliteRecords[elitesToSave-1].getFitness();
+    } else {
+        m_eliteRecords.reserve(elitesToSave);
+    }
+}
+
+
+bool EvolutionManager::updateEliteRecords() {
+    //if size is 0 then is set to not update elite records
+    if(m_eliteRecordSize == 0)
+        return false;
+    bool isRecordsChanged = false;
+    //if is not even fully filled yet, fill it with only new vectors until reaches target or curr population is over
+    if(m_eliteRecords.size() < m_eliteRecordSize) {
+        for(qint32 i=0; i < m_population.size() && m_eliteRecords.size() < m_eliteRecordSize; i++) {
+            //if the records don't contain this vector
+            if(!m_eliteRecords.contains(m_population[i])) {
+                //append a copy
+                m_eliteRecords.append(m_population[i]);
+                //update eventually the minimum recorded elite fitness
+                if(m_population[i].getFitness() < m_eliteRecordMinFitness)
+                    m_eliteRecordMinFitness = m_population[i].getFitness();
+                isRecordsChanged = true;
+            }
+        }
+        //sort since it's not sorted
+        sortPopulationByFitness(m_eliteRecords);
+
+    }
+    //if it's filled already*, add new vectors only if they are more fit than the current minimum among the elite records
+    //* if it's not
+    for(qint32 i=0; i < m_population.size(); i++) {
+        //if better, insert it and notify that the records changed
+        if(insertNewEliteRecordIfBetter(m_population[i]))
+            isRecordsChanged = true;
+    }
+
+    return isRecordsChanged;
+}
+
+
+bool EvolutionManager::saveEliteRecords(QString filename) {
+    QFile saveFile(filename);
+
+    if (!saveFile.open(QIODevice::WriteOnly)) {
+        Console::print("Couldn't open save file to save elite records! Printing Elite records in log:\n" +
+                       toQStringEliteRecords(), Console::eWARNING);
+        return false;
+    }
+    //write the records in the json array, then create the document
+    QJsonArray eliteRecordsArray;
+    writePopulationToJson(m_eliteRecords, eliteRecordsArray);
+
+    saveFile.write(QJsonDocument(eliteRecordsArray).toJson());
+
+    return true;
 }
 
 
@@ -290,21 +367,48 @@ QString EvolutionManager::toQStringPopulation() {
     for(qint32 i=0; i < m_population.size()-1; i++) {
         ret += m_population[i].toQString() + ",\n";
     }
-    ret += m_population[m_population.size()-1].toQString();
+    ret += m_population.last().toQString();
     return ret;
 }
 
 
-void EvolutionManager::writePopulation(QJsonArray &populationArray) {
-    for(qint32 i=0; i < m_populationSize; i++) {
+QString EvolutionManager::toQStringEliteRecords() {
+    QString ret = "Elite Records (generation " + QString::number(m_generationNumber) + "):\n";
+    for(qint32 i=0; i < m_eliteRecords.size()-1; i++) {
+        ret += m_eliteRecords[i].toQString() + ",\n";
+    }
+    ret += m_eliteRecords.last().toQString();
+    return ret;
+}
+
+
+void EvolutionManager::writePopulationToJson(QVector<WeightVector> &populationToWrite, QJsonArray &populationArray) {
+    for(qint32 i=0; i < populationToWrite.size(); i++) {
         QJsonObject wvObject;
-        m_population[i].writeToJson(wvObject);
+        populationToWrite[i].writeToJson(wvObject);
         populationArray.append(wvObject);
     }
 }
 
 
-
+bool EvolutionManager::insertNewEliteRecordIfBetter(const WeightVector &newWV) {
+    //if the records don't contain this vector and the vector has a fitness better than the minimum of the elite ones
+    if(newWV.getFitness() > m_eliteRecordMinFitness && !m_eliteRecords.contains(newWV)) {
+        //remove last record
+        m_eliteRecords.removeLast();
+        //find the index of the first vector less fit than the new one, then insert it
+        qint32 insertIndex =
+                m_eliteRecords.indexOf(*std::upper_bound(m_eliteRecords.begin(), m_eliteRecords.end(), newWV,
+                                       [](WeightVector wv1, WeightVector wv2) -> bool { return WeightVector::isMoreFitThan(wv1, wv2); }));
+        if(insertIndex != -1)
+            m_eliteRecords.insert(insertIndex, newWV);
+        else
+            m_eliteRecords.append(newWV);
+        m_eliteRecordMinFitness = m_eliteRecords.last().getFitness();
+        return true;
+    } else
+        return false;
+}
 
 
 

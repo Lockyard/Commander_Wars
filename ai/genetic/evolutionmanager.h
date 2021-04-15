@@ -145,11 +145,41 @@ public:
      * @return
      */
     WeightVector getNthBestWeightVector(qint32 bestWeightVectorIndex);
-    void sortPopulationByFitness();
+
+
+    /**
+     * @brief sortPopulationByFitness sort A generic vector of weightvectors, according to fitness
+     * @param populationToSort
+     */
+    void sortPopulationByFitness(QVector<WeightVector> &populationToSort);
+
+    /**
+     * @brief sortPopulationByFitness sort the population of this evolution manager, from most fit to least fit
+     */
+    void inline sortPopulationByFitness() {
+        sortPopulationByFitness(m_population);
+        m_isPopulationSorted = true;
+    }
+
+    /**
+     * @brief setEliteRecordsNumber set how many best vectors should be kept in a record. updateEliteRecords() must be called
+     * since the evolution manager doesn't know when the fitnesses are set
+     * @param elitesToSave
+     */
+    void setEliteRecordsNumber(qint32 elitesToSave);
+    /**
+     * @brief updateEliteRecords update the elite records with vectors from the current population if (different) new fit ones exist
+     * @return true if an update was done. False if nothing changed in the records
+     */
+    bool updateEliteRecords();
+
+    bool saveEliteRecords(QString filename);
+
 
     QString toQStringPopulation();
+    QString toQStringEliteRecords();
 
-    void writePopulation(QJsonArray &populationArray);
+    void writePopulationToJson(QVector<WeightVector> &populationToWrite, QJsonArray &populationArray);
 private:
 
     static const qint32 infinite;
@@ -177,6 +207,18 @@ private:
     QPair<WeightVector, WeightVector> (*m_selectionFunction) (QVector<WeightVector>& population);
 
 
+    //elite records
+    QVector<WeightVector> m_eliteRecords;
+    qint32 m_eliteRecordSize{0};
+    float m_eliteRecordMinFitness = infinite;
+
+    /**
+     * @brief insertNewEliteRecord removes the last occurrence of the elite record vector and insert in the right position
+     * the new one
+     * @param newWV
+     * @return true if the vector was inserted since better than at least one of the records
+     */
+    bool insertNewEliteRecordIfBetter(const WeightVector &newWV);
 
 };
 

@@ -11,7 +11,7 @@
 class WeightVector
 {
 public:
-    WeightVector() = delete;
+    WeightVector();
     WeightVector(qint32 size);
     WeightVector(QVector<float> weights);
 
@@ -35,7 +35,14 @@ public:
 
     ~WeightVector() = default;
 
+    //member access opt
     float operator[](qint32 index);
+    //comparison opts
+    bool operator==(const WeightVector &other) const;
+    inline bool operator!=(const WeightVector &other) const {
+        return !operator==(other);
+    }
+
 
     inline qint32 size() const {
         return m_weights.size();
@@ -63,6 +70,15 @@ public:
 
     inline static bool isMoreFitThan(WeightVector wv1, WeightVector wv2) {
         return wv1.m_fitness > wv2.m_fitness;
+    }
+
+    inline static bool isLessFitThanFitness(WeightVector wv, float fitness) {
+        return wv.m_fitness < fitness;
+    }
+
+
+    inline static bool isMoreFitThanFitness(WeightVector wv, float fitness) {
+        return wv.m_fitness > fitness;
     }
 
     QString toQString();
