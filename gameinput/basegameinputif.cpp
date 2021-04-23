@@ -113,7 +113,7 @@ BaseGameInputIF* BaseGameInputIF::createAi(GameEnums::AiTypes type)
             ret = new ProxyAi();
             break;
         }
-        case GameEnums::AiTypes_TestFirst:
+        case GameEnums::AiTypes_Adapta:
         {
             ret = new TestFirstAI();
             break;
