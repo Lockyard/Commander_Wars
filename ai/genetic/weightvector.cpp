@@ -11,19 +11,17 @@ WeightVector::WeightVector(qint32 size)
     m_weights.reserve(size);
 }
 
-WeightVector::WeightVector(QVector<float> weights) {
-    m_weights = QVector(weights);
+WeightVector::WeightVector(std::vector<float> weights) {
+    m_weights = weights;
 }
 
 
-float WeightVector::operator[](qint32 index) {
-    return m_weights[index];
-}
+
 
 bool WeightVector::operator==(const WeightVector &other) const {
     if(m_weights.size() != other.m_weights.size())
         return false;
-    for(qint32 i = 0; i < m_weights.size(); i++) {
+    for(quint32 i = 0; i < m_weights.size(); i++) {
         if(m_weights[i] != other.m_weights[i])
             return false;
     }
@@ -31,14 +29,10 @@ bool WeightVector::operator==(const WeightVector &other) const {
 }
 
 
-void WeightVector::overwriteWeight(qint32 index, float newWeight) {
-    m_weights[index] = newWeight;
-}
-
 
 void WeightVector::overwrite(QVector<float> newWeightVector) {
     m_weights.clear();
-    m_weights.append(newWeightVector);
+    m_weights = std::vector<float>(newWeightVector.begin(), newWeightVector.end());
 }
 
 
@@ -47,14 +41,14 @@ void WeightVector::setFitness(float fitness) {
 }
 
 
-QVector<float> WeightVector::getQVector() const {
+std::vector<float> WeightVector::getVector() const {
     return m_weights;
 }
 
 
 QString WeightVector::toQString() {
     QString ret = "[";
-    for(qint32 i = 0; i < m_weights.size()-1; i++) {
+    for(quint32 i = 0; i < m_weights.size()-1; i++) {
         ret += QString::number(m_weights[i], 'f', 3) + ", ";
     }
     ret += QString::number(m_weights[m_weights.size()-1], 'f', 3) + "]";
@@ -64,7 +58,7 @@ QString WeightVector::toQString() {
 void WeightVector::writeToJson(QJsonObject &json) const {
     json["fitness"] = m_fitness;
     QJsonArray weightsArray;
-    for(qint32 i = 0; i < m_weights.size(); i++) {
+    for(quint32 i = 0; i < m_weights.size(); i++) {
         weightsArray.append(m_weights.at(i));
     }
     json["weights"] = weightsArray;
@@ -79,14 +73,14 @@ void WeightVector::readFromJson(const QJsonObject &json) {
         m_weights.clear();
         QJsonArray weightsArray = json["weights"].toArray();
         for(qint32 weightIndex=0; weightIndex<weightsArray.size(); weightIndex++) {
-            m_weights.append(static_cast<float>(weightsArray[weightIndex].toDouble()));
+            m_weights.push_back(static_cast<float>(weightsArray[weightIndex].toDouble()));
         }
     }
 }
 
 WeightVector WeightVector::generateFromJson(const QJsonObject &json) {
     float fitness = 0;
-    QVector<float> weights;
+    std::vector<float> weights;
 
     if (json.contains("fitness") && json["fitness"].isDouble())
             fitness = static_cast<float>(json["fitness"].toDouble());
@@ -94,7 +88,7 @@ WeightVector WeightVector::generateFromJson(const QJsonObject &json) {
     if(json.contains("weights") && json["weights"].isArray()) {
         QJsonArray weightsArray = json["weights"].toArray();
         for(qint32 weightIndex=0; weightIndex<weightsArray.size(); weightIndex++) {
-            weights.append(static_cast<float>(weightsArray[weightIndex].toDouble()));
+            weights.push_back(static_cast<float>(weightsArray[weightIndex].toDouble()));
         }
     }
 
@@ -107,7 +101,7 @@ WeightVector WeightVector::generateFromJson(const QJsonObject &json) {
 
 
 WeightVector WeightVector::generateRandomWeightVector(qint32 size, float minWeight, float maxWeight) {
-    QVector<float> weights;
+    std::vector<float> weights;
     weights.reserve(size);
 
     if(minWeight > maxWeight) {
@@ -120,7 +114,7 @@ WeightVector WeightVector::generateRandomWeightVector(qint32 size, float minWeig
 
     //generate N floats from minWeight to maxWeight
     for(qint32 i = 0; i < size; i++) {
-        weights.append(random.bounded(randBound) + minWeight);
+        weights.push_back(random.bounded(randBound) + minWeight);
     }
 
     return WeightVector(weights);

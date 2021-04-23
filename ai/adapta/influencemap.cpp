@@ -8,6 +8,7 @@
 #include "game/unitpathfindingsystem.h"
 #include "resource_management/unitspritemanager.h"
 #include "resource_management/fontmanager.h"
+#include "coreengine/console.h"
 
 #include <qfile.h>
 
@@ -16,7 +17,7 @@
  * @brief InfluenceMap::InfluenceMap create with specified islands. Set to 0 all map
  * @param islands
  */
-InfluenceMap::InfluenceMap(const QVector<spIslandMap> & islands) : m_islands(islands)
+InfluenceMap::InfluenceMap()
 {
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
@@ -26,12 +27,57 @@ InfluenceMap::InfluenceMap(const QVector<spIslandMap> & islands) : m_islands(isl
     m_mapHeight = pMap->getMapHeight();
 
     m_influenceMap2D.resize(m_mapWidth * m_mapHeight);
+}
+
+InfluenceMap::InfluenceMap(adaenums::iMapType type) {
+    Mainapp* pApp = Mainapp::getInstance();
+    this->moveToThread(pApp->getWorkerthread());
+    Interpreter::setCppOwnerShip(this);
+    spGameMap pMap = GameMap::getInstance();
+    m_mapWidth = pMap->getMapWidth();
+    m_mapHeight = pMap->getMapHeight();
+
+    m_influenceMap2D.resize(m_mapWidth * m_mapHeight);
+
+    m_type = type;
+}
+
+InfluenceMap::InfluenceMap(const InfluenceMap &other) {
+    Mainapp* pApp = Mainapp::getInstance();
+    this->moveToThread(pApp->getWorkerthread());
+    Interpreter::setCppOwnerShip(this);
+    spGameMap pMap = GameMap::getInstance();
+    m_mapWidth = pMap->getMapWidth();
+    m_mapHeight = pMap->getMapHeight();
+
+    m_influenceMap2D.reserve(m_mapWidth * m_mapHeight);
 
     for (qint32 i=0; i<m_mapWidth*m_mapHeight; i++) {
-        m_influenceMap2D.append(0);
+        m_influenceMap2D.push_back(other.m_influenceMap2D.at(i));
     }
 
+    m_weight = other.m_weight;
 }
+
+InfluenceMap::InfluenceMap(InfluenceMap &&other) {
+    Mainapp* pApp = Mainapp::getInstance();
+    this->moveToThread(pApp->getWorkerthread());
+    Interpreter::setCppOwnerShip(this);
+    spGameMap pMap = GameMap::getInstance();
+    m_mapWidth = pMap->getMapWidth();
+    m_mapHeight = pMap->getMapHeight();
+
+    m_influenceMap2D.reserve(m_mapWidth * m_mapHeight);
+
+    for (qint32 i=0; i<m_mapWidth*m_mapHeight; i++) {
+        m_influenceMap2D.push_back(other.m_influenceMap2D.at(i));
+    }
+
+    other.m_influenceMap2D.clear();
+
+    m_weight = other.m_weight;
+}
+
 
 InfluenceMap::~InfluenceMap(){
     if(isInfoTilesMapInitialized) {
@@ -46,13 +92,13 @@ InfluenceMap::~InfluenceMap(){
 }
 
 void InfluenceMap::reset() {
-    for(qint32 i = 0; i < m_influenceMap2D.size(); i++) {
-        m_influenceMap2D.replace(i, 0);
+    for(quint32 i = 0; i < m_influenceMap2D.size(); i++) {
+        m_influenceMap2D[i] = 0;
     }
 }
 
 
-void InfluenceMap::addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, float unitWeight) {
+void InfluenceMap::addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, float unitWeight, adaenums::propagationType propagationType) {
 
     float hpValue = pUnit->getHpRounded()*.1f;
     qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
@@ -84,6 +130,12 @@ void InfluenceMap::addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, fl
         addValueAt( unitWeight * hpValue * multiplier, point.x(), point.y());
     }
 
+}
+
+void InfluenceMap::weightedAddMap(InfluenceMap &sumMap) {
+    for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
+        m_influenceMap2D[i] += sumMap.m_influenceMap2D[i] * sumMap.m_weight;
+    }
 }
 
 
@@ -147,14 +199,42 @@ void InfluenceMap::hide() {
     }
 }
 
-inline float InfluenceMap::getInfluenceValueAt(qint32 x, qint32 y) {
-    return m_influenceMap2D[y*m_mapWidth + x];
+
+QString InfluenceMap::toQString() {
+    QString res = "";
+    for(qint32 y = 0; y < m_mapHeight; y++) {
+        res += "|";
+        for(qint32 x = 0; x < m_mapWidth; x++) {
+            res += QString::number(getInfluenceValueAt(x, y), 'f', 2)+"|";
+        }
+        res += "\n";
+    }
 }
 
-inline void InfluenceMap::addValueAt(float value, qint32 x, qint32 y) {
-    m_influenceMap2D[y*m_mapWidth + x] += value;
+//static
+InfluenceMap InfluenceMap::weightedSum(InfluenceMap &infMap1, InfluenceMap &infMap2) {
+    InfluenceMap res;
+
+    for(quint32 i=0; i < infMap1.m_influenceMap2D.size(); i++) {
+        res.m_influenceMap2D[i] = infMap1.m_influenceMap2D[i]*infMap1.m_weight +
+                                    infMap2.m_influenceMap2D[i]*infMap2.m_weight;
+    }
+
+    Console::print("Summing map 1 and 2:\n" + infMap1.toQString() + infMap2.toQString() +"\nResult:" + res.toQString(),
+                   Console::eDEBUG);
+
+    return res;
 }
 
+float InfluenceMap::getWeight() const
+{
+    return m_weight;
+}
+
+void InfluenceMap::setWeight(float weight)
+{
+    m_weight = weight;
+}
 
 
 void InfluenceMap::initializeInfoTilesMap() {
@@ -185,7 +265,7 @@ void InfluenceMap::initializeInfoTilesMap() {
             sprite->setPosition(x * GameMap::getImageSize(), y * GameMap::getImageSize());
             sprite->setPriority(static_cast<qint32>(Mainapp::ZOrder::MarkedFields));
             pMap->addChild(sprite);
-            m_infoTilesMap.append(sprite);
+            m_infoTilesMap.push_back(sprite);
 
             //add a textfield on this tile
             oxygine::spTextField pTextField = new oxygine::TextField();
@@ -198,18 +278,10 @@ void InfluenceMap::initializeInfoTilesMap() {
             pTextField->setFontSize(12);
             pTextField->setPriority(static_cast<qint32>(Mainapp::ZOrder::Animation));
             pMap->addChild(pTextField);
-            m_infoTextMap.append(pTextField);
+            m_infoTextMap.push_back(pTextField);
 
         }
     }
 
     isInfoTilesMapInitialized = true;
-}
-
-inline oxygine::spColorRectSprite InfluenceMap::getInfoTileAt(qint32 x, qint32 y) {
-    return m_infoTilesMap[y*m_mapWidth + x];
-}
-
-inline oxygine::spTextField InfluenceMap::getInfoTextAt(qint32 x, qint32 y) {
-    return m_infoTextMap[y*m_mapWidth + x];
 }

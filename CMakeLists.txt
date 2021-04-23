@@ -376,8 +376,12 @@ set(${PROJECT_NAME}_SRCS
         ai/genetic/weightvector.cpp
         ai/genetic/evofunctions.cpp
         ai/genetic/evolutionmanager.cpp
+        ai/adapta/AdaptaEnums.cpp
         ai/adapta/trainingmanager.cpp
         ai/adapta/influencemap.cpp
+        ai/adapta/adaptamodule.cpp
+        ai/adapta/buildingmodule.cpp
+        ai/adapta/multiinfluencenetworkmodule.cpp
         ai/adaptaai.cpp
         ai/testfirstai.cpp
 

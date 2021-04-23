@@ -255,7 +255,7 @@ void TrainingManager::advanceMatchCount() {
 
 void TrainingManager::evaluateFitnessOfCurrentWV() {
     //TODO put a real fitness calculation and not a dummy one
-    QVector<float> wVec = m_evolutionManager.getPopulation()[m_currWVIndex].getQVector();
+    std::vector<float> wVec = m_evolutionManager.getPopulation()[m_currWVIndex].getVector();
     float dummyFitness = std::accumulate(wVec.begin(), wVec.end(), 0.0f) * .1f * wVec.size();
     m_evolutionManager.getPopulation()[m_currWVIndex].setFitness(dummyFitness);
     Console::print("Vector " + QString::number(m_currWVIndex+1) + "/" +

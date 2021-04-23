@@ -16,8 +16,109 @@
 #include "ai/adapta/trainingmanager.h"
 
 
-TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_TestFirst),
-    m_influenceMap(m_IslandMaps), m_inffMap(m_IslandMaps)
+////////////////////////////////////////////////////////////////
+#include <chrono> // for std::chrono functions
+
+class MyTimer
+{
+private:
+    // Type aliases to make accessing nested type easier
+    using clock_t = std::chrono::high_resolution_clock;
+    using second_t = std::chrono::duration<double, std::ratio<1>>;
+
+    std::chrono::time_point<clock_t> m_beg;
+
+public:
+    MyTimer() : m_beg(clock_t::now()){
+    }
+
+    void reset()
+    {
+        m_beg = clock_t::now();
+    }
+
+    double elapsed() const
+    {
+        return std::chrono::duration_cast<second_t>(clock_t::now() - m_beg).count();
+    }
+};
+
+inline void fai(qint32 num) {num++;};
+
+/**
+ * @brief testSpeedOfVectors
+ * From what resulted, on average for 30M length vectors, QVector did around 1.5 secs, QVector of QVector 3 secs,
+ * std vector 0.15 (ten times less!) and a standard array even faster (0.1)
+ */
+void testSpeedOfVectors() {
+    QVector<float> milione3;
+    qint32 bigN = 10'000'000;
+    milione3.resize(bigN*3);
+    QVector<QVector<float>> splitMilione;
+    std::vector<float> milione3StdV;
+    milione3StdV.resize(bigN*3);
+    float* floatArray = new float[bigN*3];
+    splitMilione.reserve(3);
+    for(qint32 i = 0; i < 3; i++) {
+        splitMilione.append(QVector<float>(bigN));
+    }
+    std::vector<std::vector<float>> splitMilioneStd;
+    splitMilioneStd.reserve(3);
+    for(qint32 i = 0; i < 3; i++) {
+        splitMilioneStd.push_back(std::vector<float>(bigN));
+    }
+
+    MyTimer t1;
+    for(qint32 i=0; i < 3; i++) {
+        for(qint32 j=0; j < bigN; j++) {
+            milione3[i*bigN + j]++;
+        }
+    }
+    double elapsed = t1.elapsed();
+    Console::print("using Qvector, " + QString::number(elapsed) + " seconds passed", Console::eINFO);
+
+    MyTimer t2;
+    for(qint32 i=0; i < 3; i++) {
+        for(qint32 j=0; j < bigN; j++) {
+            splitMilione[i][j]++;
+        }
+    }
+    double elapsed2 = t2.elapsed();
+    Console::print("using Qvector of Qvector, " + QString::number(elapsed2) + " seconds passed", Console::eINFO);
+
+    MyTimer t3;
+    for(qint32 i=0; i < 3; i++) {
+        for(qint32 j=0; j < bigN; j++) {
+            milione3StdV[i*bigN + j]++;
+        }
+    }
+    double elapsed3 = t3.elapsed();
+    Console::print("using std vector, " + QString::number(elapsed3) + " seconds passed", Console::eINFO);
+
+    MyTimer t4;
+    for(qint32 i=0; i < 3; i++) {
+        for(qint32 j=0; j < bigN; j++) {
+            floatArray[i*bigN + j]++;
+        }
+    }
+    double elapsed4 = t4.elapsed();
+    Console::print("using an array, " + QString::number(elapsed4) + " seconds passed", Console::eINFO);
+
+    MyTimer t5;
+    for(qint32 i=0; i < 3; i++) {
+        for(qint32 j=0; j < bigN; j++) {
+            splitMilioneStd[i][j]++;
+        }
+    }
+    double elapsed5 = t5.elapsed();
+    Console::print("using std vector of std vector, " + QString::number(elapsed5) + " seconds passed", Console::eINFO);
+
+    delete[] floatArray;
+}
+/////////////////////////////////////////////////
+
+TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta),
+    m_influenceMap(), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;
 
@@ -30,6 +131,7 @@ void TestFirstAI::readIni(QString name) {
     QString a = name;
 }
 
+//todo remove this
 void TestFirstAI::testPrint() {
     Console::print("TESTPRINT it's working!" , Console::eDEBUG);
 }
@@ -48,6 +150,7 @@ void TestFirstAI::process() {
     // create island maps at the start of turn
     if (rebuildIslandMaps)
     {
+        testSpeedOfVectors();
         rebuildIslandMaps = false;
         // remove island maps of the last turn
         m_IslandMaps.clear();

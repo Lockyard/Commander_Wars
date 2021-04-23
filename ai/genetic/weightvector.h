@@ -13,11 +13,11 @@ class WeightVector
 public:
     WeightVector();
     WeightVector(qint32 size);
-    WeightVector(QVector<float> weights);
+    WeightVector(std::vector<float> weights);
 
     WeightVector(const WeightVector &other) {
         m_fitness = other.m_fitness;
-        m_weights = QVector(other.m_weights);
+        m_weights = std::vector<float>(other.m_weights);
     }
 
     WeightVector(WeightVector &&other){
@@ -29,14 +29,16 @@ public:
 
     WeightVector& operator=(const WeightVector &other) {
         m_fitness = other.m_fitness;
-        m_weights = QVector(other.m_weights);
+        m_weights = std::vector<float>(other.m_weights);
         return *this;
     }
 
     ~WeightVector() = default;
 
     //member access opt
-    float operator[](qint32 index);
+    inline float operator[](qint32 index) {
+        return m_weights[index];
+    }
     //comparison opts
     bool operator==(const WeightVector &other) const;
     inline bool operator!=(const WeightVector &other) const {
@@ -48,7 +50,9 @@ public:
         return m_weights.size();
     }
 
-    void overwriteWeight(qint32 index, float newWeight);
+    inline void overwriteWeight(qint32 index, float newWeight) {
+        m_weights[index] = newWeight;
+    }
 
     void overwrite(QVector<float> newWeightVector);
 
@@ -62,7 +66,7 @@ public:
         return m_fitness;
     }
 
-    QVector<float> getQVector() const;
+    std::vector<float> getVector() const;
 
     inline static bool isLessFitThan(WeightVector wv1, WeightVector wv2) {
         return wv1.m_fitness < wv2.m_fitness;
@@ -90,7 +94,7 @@ public:
     static WeightVector generateRandomWeightVector(qint32 size, float minWeight, float maxWeight);
 
 private:
-    QVector<float> m_weights;
+    std::vector<float> m_weights;
     float m_fitness{0};
 
     static QRandomGenerator random;

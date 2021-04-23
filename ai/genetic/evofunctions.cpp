@@ -52,7 +52,7 @@ namespace evofunc {
 
         QRandomGenerator random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
         qint32 minSize = weightVector_1.size() < weightVector_2.size() ? weightVector_1.size() : weightVector_2.size();
-        WeightVector res = WeightVector(QVector<float>(minSize));
+        WeightVector res = WeightVector(std::vector<float>(minSize));
 
         //on each position get randomly an item from 1 or 2
         for(qint32 i = 0; i < minSize; i++) {
