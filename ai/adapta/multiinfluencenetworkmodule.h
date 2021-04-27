@@ -105,7 +105,7 @@ private:
     //[n0_outmap, n1_outmap...]
     std::vector<InfluenceMap> m_unitOutputMaps;
 
-    //riprendi inizializza il dmg chart per usarlo velocemente poi in match
+
     std::vector<float> m_dmgChart;
 
     //private methods
