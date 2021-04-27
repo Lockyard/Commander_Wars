@@ -10,6 +10,7 @@
 #include "AdaptaEnums.h"
 
 #include "coreengine/qmlvector.h"
+#include <QtMath>
 
 class Player;
 class Unit;
@@ -33,16 +34,33 @@ public:
     InfluenceMap(InfluenceMap &&other);
     virtual ~InfluenceMap();
     void reset();
+
     /**
-     * @brief addUnitInfluence add to the influence map the influence of a unit, with its weight
-     * and given the type of propagation
+     * @brief Add the influence that a unit exercise on the map, based on where it can attack.
+     * This gives a weight = attackWeight on tiles it can attack in 1 turn, and lower weights for tile it can attack in N
+     * turns. max turn range is given by steps. (if steps == 1 for instance, all tiles it can attack in 1 turn have
+     * attackWeight and all others 0, while if steps == 2 also the tiles reachable in 2 turns where this unit can attack
+     * have a weight, which is attackWeight * stepMultiplier. At distance 3 turns is atkWeight * stepMultiplier^2, etc
+     * this DOES NOT CHECK IF THE UNIT HAS AMMO since the given influence is custom anyway. So check it before calling it if
+     * is important
+     * set steps = -2 to add an influence value for all tiles reachable by that unit
+     * steps for indirect can be set to differentiate indirect units, since they are heavier to compute. the default set it equal to steps
      */
-    void addUnitInfluence(Unit* pUnit, spQmlVectorUnit pEnemyUnits, float unitWeight, adaenums::propagationType propagationType);
+    void addUnitAtkInfluence(Unit* pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3);
+
+    void addUnitValueInfluence(Unit* pUnit, QPoint startingPoint, bool ignoreEnemies, float unitWeight);
+
+    /**
+     * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should
+     */
+    void addUnitDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
 
     /**
      * @brief sum 1:1 the values of sumMap into this map, weighted wrt sumMap's weight
      */
     void weightedAddMap(InfluenceMap &sumMap);
+
+    float getCurrMaxAbsInfluence();
 
     /**
      * @brief show shows graphically the influence map by coloring tiles
@@ -65,7 +83,7 @@ public:
         return m_influenceMap2D[y*m_mapWidth + x];
     }
 
-    QString toQString();
+    QString toQString(qint32 precision = 3);
 
     static InfluenceMap weightedSum(InfluenceMap &infMap1, InfluenceMap &infMap2);
 
@@ -84,6 +102,7 @@ public:
         m_weight = weight;
     }
 
+
 private:
     /**
      * @brief m_weight the weight of this influence map. Can be used when summing more influence maps
@@ -98,6 +117,9 @@ private:
     static const char M_ALPHA_SHOW{127}; //127/255 = 0.5 alpha
     static const char M_ALPHA_HIDE{0};
     bool isInfoTilesMapInitialized{false};
+
+    adaenums::iMapType m_type;
+
     /**
      * @brief m_infoTilesVector a vector containing sprites and stuff to show graphical info on each tile, if show is called
      */
@@ -107,6 +129,10 @@ private:
      * value on each tile
      */
     std::vector<oxygine::spTextField> m_infoTextMap;
+
+    inline void setValueAt(float value, qint32 x, qint32 y) {
+        m_influenceMap2D[y*m_mapWidth + x] = value;
+    }
 
     inline void addValueAt(float value, qint32 x, qint32 y) {
         m_influenceMap2D[y*m_mapWidth + x] += value;
@@ -121,9 +147,37 @@ private:
         return m_infoTextMap[y*m_mapWidth + x];
     }
 
-    adaenums::iMapType m_type;
+    /**
+     * @brief quick manhattan distance between 2 points. It shouldn't be here such a function probably
+     */
+    inline static qint32 pointDistance(QPoint p1, QPoint p2) {
+        return qAbs(p1.x() - p2.x()) + qAbs(p1.y() - p2.y());
+    }
+
+    inline static qint32 pointDistance(qint32 x1, qint32 y1, qint32 x2, qint32 y2) {
+        return qAbs(x1 - x2) + qAbs(y1 - y2);
+    }
 
 
+    inline void markAttackArea(qint32 minRange, qint32 maxRange, qint32 pointX, qint32 pointY, std::vector<qint32> &atkTilesMap2D, qint32 markValue) {
+        //mark with attackRange all reachable tiles
+        qint32 minX = qMax(pointX - maxRange, 0);
+        qint32 maxX = qMin(pointX + maxRange, m_mapWidth - 1);
+        qint32 minY = qMax(pointY - maxRange, 0);
+        qint32 maxY = qMin(pointY + maxRange, m_mapHeight - 1);
+        //search efficiently for all tiles this indirect unit can attack in range
+        for(qint32 x = minX; x <= maxX; x++) {
+            for(qint32 y = minY; y <= maxY; y++) {
+                qint32 distance = pointDistance(x, y, pointX, pointY);
+                if(distance <= maxRange && distance >= minRange) {
+                    qint32 index = y*m_mapWidth + x;
+                    if(atkTilesMap2D[index] > markValue) {
+                        atkTilesMap2D[index] = markValue;
+                    }
+                }
+            }
+        }
+    }
 };
 
 #endif // INFLUENCEMAP_H
