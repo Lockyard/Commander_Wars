@@ -51,9 +51,42 @@ public:
     void addUnitValueInfluence(Unit* pUnit, QPoint startingPoint, bool ignoreEnemies, float unitWeight);
 
     /**
-     * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should
+     * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should do damage, targeting
+     * the poin enemyTargetPoint. This works only for direct units
      */
-    void addUnitDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
+    void addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
+
+    /**
+     * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should do damage, targeting
+     * the poin enemyTargetPoint. This works only for indirect units
+     */
+    void addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
+
+
+    /**
+     * @brief a faster version of the omonym - "fast" method. the damage decrease with distance from target point
+     * since the unit is indirect can be not precise since will not consider how near the unit is from a point where it can attack
+     * the unit, rather its distance with the target unit
+     */
+    void addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp = -1);
+
+    /**
+     * @brief add the dmgValue that an indirect unit would do to an enemy in the target point. Fast version to be easier to
+     * compute, althought it's not precise this way
+     * dmgValue is added to all cells which can reach the target point in 1 turn (which is without moving the unit)
+     * then this value is decreased for each further cell from these ones by x^negExp depending on pure tile distance.
+     * negExp must be negative or funny stuff will happen
+     */
+    void addUnitIndirectDmgValueInfluenceFaster(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp = -1);
+
+
+
+    /**
+     * @brief add an influence on all map, of defense based on each tile's number of stars relative to the unit,
+     * an additional mutliplier if there's a friendly building and a multiplier to eventually disincentivize going
+     * on friendly factories pPlayer is used to identify friendly buildings
+     */
+    void addMapDefenseInfluence(Player* pPlayer, Unit* pUnit, float weightPerStar, float friendlyBuildingMultiplier, float friendlyFactoryMultiplier);
 
     /**
      * @brief sum 1:1 the values of sumMap into this map, weighted wrt sumMap's weight
@@ -138,6 +171,11 @@ private:
         m_influenceMap2D[y*m_mapWidth + x] += value;
     }
 
+    inline void setValueIfGreaterAt(float value, qint32 x, qint32 y) {
+        if(value > m_influenceMap2D[y*m_mapWidth + x])
+            m_influenceMap2D[y*m_mapWidth + x] = value;
+    }
+
     void initializeInfoTilesMap();
     inline oxygine::spColorRectSprite getInfoTileAt(qint32 x, qint32 y) {
         return m_infoTilesMap[y*m_mapWidth + x];
@@ -173,6 +211,27 @@ private:
                     qint32 index = y*m_mapWidth + x;
                     if(atkTilesMap2D[index] > markValue) {
                         atkTilesMap2D[index] = markValue;
+                    }
+                }
+            }
+        }
+    }
+
+    inline void markAttackAreaIfCanMoveOver(Unit* pUnit, qint32 minRange, qint32 maxRange, qint32 pointX, qint32 pointY, std::vector<qint32> &atkTilesMap2D, qint32 markValue) {
+        qint32 minX = qMax(pointX - maxRange, 0);
+        qint32 maxX = qMin(pointX + maxRange, m_mapWidth - 1);
+        qint32 minY = qMax(pointY - maxRange, 0);
+        qint32 maxY = qMin(pointY + maxRange, m_mapHeight - 1);
+        //search efficiently for all tiles this indirect unit can attack in range
+        for(qint32 x = minX; x <= maxX; x++) {
+            for(qint32 y = minY; y <= maxY; y++) {
+                if(pUnit->canMoveOver(x, y)) {
+                    qint32 distance = pointDistance(x, y, pointX, pointY);
+                    if(distance <= maxRange && distance >= minRange) {
+                        qint32 index = y*m_mapWidth + x;
+                        if(atkTilesMap2D[index] > markValue) {
+                            atkTilesMap2D[index] = markValue;
+                        }
                     }
                 }
             }

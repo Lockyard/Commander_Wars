@@ -255,11 +255,10 @@ void InfluenceMap::addUnitValueInfluence(Unit *pUnit, QPoint startPoint, bool ig
     }
 }
 
-void InfluenceMap::addUnitDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
+void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
     //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
     UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
-    pPfs->setIgnoreEnemies(false);
-
+    pPfs->setIgnoreEnemies(true);
     pPfs->setMovepoints(-2);
     pPfs->setStartPoint(enemyTargetPoint.x(), enemyTargetPoint.y());
     pPfs->explore();
@@ -280,7 +279,7 @@ void InfluenceMap::addUnitDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enem
                 (point.x() == enemyTargetPoint.x() && point.y() == enemyTargetPoint.y() - 1) ||
                 (point.x() == enemyTargetPoint.x() && point.y() == enemyTargetPoint.y() + 1)) {
             qint32 fieldCost = pPfs->getTargetCosts(point.x(), point.y());
-            if(fieldCost == PathFindingSystem::infinite)
+            if(fieldCost < 0) //not reachable
                 multiplier = 0.0f;
             else
                 multiplier = 1.0f;
@@ -288,13 +287,175 @@ void InfluenceMap::addUnitDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enem
         //if is another reachable point, give weight asintotically from 1 to 0 based on distance
         else {
             qint32 fieldCost = pPfs->getTargetCosts(point.x(), point.y());
-            multiplier = qExp(-fieldCost);
+            multiplier = qPow(fieldCost, -1);
         }
 
         //overwrite weight only if is better than current one
         if(getInfluenceValueAt(point.x(), point.y()) < dmgValue * multiplier) {
             //increment the influence on this specific point, according to the multiplier
             setValueAt(dmgValue * multiplier, point.x(), point.y());
+        }
+    }
+}
+
+
+void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
+    qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
+    qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
+    qint32 targetX = enemyTargetPoint.x();
+    qint32 targetY = enemyTargetPoint.y();
+
+    std::vector<qint32> markedTiles2D(m_mapWidth * m_mapHeight, PathFindingSystem::infinite);
+
+    markAttackAreaIfCanMoveOver(pAttackerTypeUnit, minRange, maxRange, targetX, targetY, markedTiles2D, 0);
+
+    //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
+    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
+    pPfs->setMovepoints(-2);
+    pPfs->setIgnoreEnemies(true);
+
+    qint32 fieldCost;
+
+    for(qint32 y=0; y < m_mapHeight; y++) {
+        for(qint32 x=0; x < m_mapWidth; x++) {
+            //if is a tile attackable in 1 turn, explore from there
+            if(markedTiles2D[y*m_mapWidth + x] == 0) {
+                pPfs->setStartPoint(x, y);
+                pPfs->explore();
+
+                auto points = pPfs->getAllNodePoints();
+                for(const auto &point : points) {
+                    //if on the marked tile there's a higher cost, overwrite it
+                    fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+                    if(fieldCost < 0)
+                        fieldCost = PathFindingSystem::infinite;
+                    if(markedTiles2D[point.y()*m_mapWidth + point.x()] > fieldCost) {
+                        markedTiles2D[point.y()*m_mapWidth + point.x()] = fieldCost;
+                    }
+                }
+            }
+        }
+    }
+    //now markedTiles2D is set. Each tile contains how does it cost to reach any tile to shoot to the desired unit
+    for(qint32 y=0; y < m_mapHeight; y++) {
+        for(qint32 x=0; x < m_mapWidth; x++) {
+            fieldCost = markedTiles2D[y*m_mapWidth + x];
+            if(fieldCost==0) {
+                setValueIfGreaterAt(dmgValue, x, y);
+            } else if(fieldCost != PathFindingSystem::infinite) {
+                setValueIfGreaterAt(dmgValue * qPow(fieldCost+1, -1), x, y);
+            }
+
+        }
+    }
+
+}
+
+void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp) {
+    qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
+    qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
+    qint32 targetX = enemyTargetPoint.x();
+    qint32 targetY = enemyTargetPoint.y();
+
+    std::vector<qint32> markedTiles2D(m_mapWidth * m_mapHeight, PathFindingSystem::infinite);
+
+    //mark all tiles at distance 0 to maxRange with 0
+    markAttackAreaIfCanMoveOver(pAttackerTypeUnit, 0, maxRange, targetX, targetY, markedTiles2D, 0);
+
+    //set now values for tiles from where the unit can attack the target
+    for(qint32 y=0; y < m_mapHeight; y++) {
+        for(qint32 x=0; x < m_mapWidth; x++) {
+            //now set the actual value on the tiles marked with 0, only if they are at distance gte than minRange
+            if(markedTiles2D[y*m_mapWidth + x] == 0) {
+                if(pointDistance(x, y, targetX, targetY) >= minRange)
+                    setValueIfGreaterAt(dmgValue, x, y);
+            }
+        }
+    }
+
+    //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
+    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
+    pPfs->setMovepoints(-2);
+    pPfs->setIgnoreEnemies(true);
+    pPfs->setStartPoint(targetX, targetY);
+    pPfs->explore();
+
+    qint32 fieldCost;
+
+    auto points = pPfs->getAllNodePoints();
+    for(const auto &point : points) {
+        //exclude the marked tiles, which are the one too near to the unit, already marked or excluded
+        if(markedTiles2D[point.y()*m_mapWidth + point.x()] != 0) {
+            fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+            setValueIfGreaterAt(dmgValue * qPow(fieldCost, negExp), point.x(), point.y());
+        }
+    }
+}
+
+void InfluenceMap::addUnitIndirectDmgValueInfluenceFaster(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp) {
+    qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
+    qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
+    qint32 targetX = enemyTargetPoint.x();
+    qint32 targetY = enemyTargetPoint.y();
+    qint32 yDistance, xDistance, distance;
+
+    for(qint32 y = 0; y < m_mapWidth; y++) {
+        yDistance = qAbs(targetY - y);
+        xDistance = qAbs(targetX);
+        distance = yDistance + xDistance;
+        for(qint32 x = 0; x < m_mapWidth; x++) {
+            if(pAttackerTypeUnit->canMoveOver(x, y)) {
+                if(distance <= maxRange) {
+                    if(distance >= minRange) {
+                        //if is on tiles reachable in 1 attack
+                        setValueIfGreaterAt(dmgValue, x, y);
+                    } //else if is on tiles too near the attacked unit, set nothing
+                }
+                //if are tiles farther in range than max range, decrease with x^-negExp
+                else {
+                    setValueIfGreaterAt(dmgValue * qPow((distance+1), negExp), x, y);
+                }
+            }
+
+            if(x < targetX) {
+                distance--;
+            }
+            else {
+                distance++;
+            }
+
+        }
+    }
+}
+
+void InfluenceMap::addMapDefenseInfluence(Player* pPlayer, Unit* pUnit, float weightPerStar, float friendlyBuildingMultiplier, float friendlyFactoryMultiplier) {
+    if(!pUnit->useTerrainDefense())
+        return;
+    Building* pBuilding;
+    for(qint32 y=0; y < m_mapHeight; y++) {
+        for(qint32 x=0; x < m_mapWidth; x++) {
+            if(!pUnit->canMoveOver(x, y))
+                continue;
+            pBuilding = GameMap::getInstance()->getTerrain(x, y)->getBuilding();
+            if(pBuilding) {
+                if(pBuilding->getOwnerID() == pPlayer->getPlayerID()) {
+                    //if is a friendly production building, add its defense plus the other 2 multipliers
+                    if(pBuilding->isProductionBuilding()) {
+                        addValueAt(friendlyBuildingMultiplier * friendlyFactoryMultiplier * weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                    }
+                    //if it's just a normal friendly building, add the friendly multiplier but not the factoryMultiplier
+                    else {
+                        addValueAt(friendlyBuildingMultiplier * weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                    }
+                }
+                //if is a neutral or enemy building, just add its defense
+                else {
+                    addValueAt(weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                }
+            } else {
+                //if is a standard terrain, just add the star amount * weightPerStar
+                addValueAt(weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+            }
         }
     }
 }

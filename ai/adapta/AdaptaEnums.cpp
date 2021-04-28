@@ -7,10 +7,12 @@ iMapType getInfluenceMapTypeFromString(QString name, iMapType defaultType) {
         return iMapType::NONE;
     if(name == "STD_ATTACK")
         return iMapType::STD_ATTACK;
-    if(name == "STD_DANGER")
-        return iMapType::STD_DANGER;
+    if(name == "STD_DAMAGE")
+        return iMapType::STD_DAMAGE;
     if(name == "STD_VALUE")
         return iMapType::STD_VALUE;
+    if(name == "STD_MAPDEFENSE")
+        return iMapType::STD_MAPDEFENSE;
     if(name == "CUSTOM_1")
         return iMapType::CUSTOM_1;
 

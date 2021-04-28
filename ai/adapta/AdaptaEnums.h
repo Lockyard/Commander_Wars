@@ -14,16 +14,21 @@ namespace adaenums {
  */
 enum iMapType {
     NONE = 0,
-    STD_ATTACK,
-    STD_DANGER,
-    STD_VALUE,
-    CUSTOM_1
+    STD_ATTACK, //the influence of attack all units have
+    STD_DAMAGE, //the influence of potential damage done to all enemy units in field
+    STD_VALUE, //the general influence based on units' values
+    STD_MAPDEFENSE, //the influence given by each single tile's terrain/building (local to each tile, not propagated)
+    CUSTOM_1 //custom 1 uses attack type propagation, but gives custom weights
 };
 
 enum propagationType {
     STEP1, //propagate only where the unit can walk to in 1 turn
     STEP2, //propagate where the unit can walk to in 1 turn at max weight, then in 2 turns at half weight
+    STEP3, //same in 3 turns
     ATTACK1, //propagate where the unit can attack to in 1 turn
+    ATTACK2, //same in 2 turns, on tiles attackable on 2nd turn do half influence
+    ATTACK3, //etc, on tiles reachable in 3 turns do 1/4th of influence
+    DEFENSE_GENERAL, //
 };
 
 /**
