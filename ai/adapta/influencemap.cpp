@@ -98,7 +98,7 @@ void InfluenceMap::reset() {
 }
 
 
-void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect) {
+void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect) {
     qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
     if(stepsForIndirect == -3)
         stepsForIndirect = steps;
@@ -110,7 +110,6 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         //values >= 0 indicate in how many steps the unit REACHES that tile, (-1, so 0 are the tiles reachable in 1 step, etc)
         std::vector<qint32> stepTilesMap2D(m_mapHeight*m_mapWidth, PathFindingSystem::infinite);
 
-        UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
         pPfs->setIgnoreEnemies(false);
         //double the move points of the unit. used to calculate the influence on 2 steps
         pPfs->setMovepoints(movePoints*stepsForIndirect);
@@ -157,7 +156,6 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         //values >= 0 indicat in how many steps the unit CAN ATTACK that tile (-1 again)
         std::vector<qint32> atkTilesMap2D(m_mapHeight*m_mapWidth, -1);
 
-        UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
         pPfs->setIgnoreEnemies(false);
         //double the move points of the unit. used to calculate the influence on 2 steps
         pPfs->setMovepoints(movePoints*steps);
@@ -216,10 +214,8 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
     }
 }
 
-void InfluenceMap::addUnitValueInfluence(Unit *pUnit, QPoint startPoint, bool ignoreEnemies, float unitWeight) {
-    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pUnit);
+void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs, QPoint startPoint, bool ignoreEnemies, float unitWeight) {
     pPfs->setIgnoreEnemies(ignoreEnemies);
-    //double the move points of the unit. used to calculate the influence on 2 steps
     pPfs->setMovepoints(-2);
     pPfs->setStartPoint(startPoint.x(), startPoint.y());
     pPfs->explore();
@@ -255,14 +251,11 @@ void InfluenceMap::addUnitValueInfluence(Unit *pUnit, QPoint startPoint, bool ig
     }
 }
 
-void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
-    //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
-    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
+void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue) {
     pPfs->setIgnoreEnemies(true);
     pPfs->setMovepoints(-2);
     pPfs->setStartPoint(enemyTargetPoint.x(), enemyTargetPoint.y());
     pPfs->explore();
-
 
     auto points = pPfs->getAllNodePoints();
     //for each reachable point by this unit
@@ -299,7 +292,7 @@ void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoin
 }
 
 
-void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
+void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue) {
     qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
     qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
     qint32 targetX = enemyTargetPoint.x();
@@ -309,8 +302,6 @@ void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPo
 
     markAttackAreaIfCanMoveOver(pAttackerTypeUnit, minRange, maxRange, targetX, targetY, markedTiles2D, 0);
 
-    //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
-    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
     pPfs->setMovepoints(-2);
     pPfs->setIgnoreEnemies(true);
 
@@ -351,7 +342,7 @@ void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPo
 
 }
 
-void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp) {
+void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue, float negExp) {
     qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
     qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
     qint32 targetX = enemyTargetPoint.x();
@@ -373,8 +364,6 @@ void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit,
         }
     }
 
-    //qint32 movePoints = pAttackerTypeUnit->getMovementpoints(pAttackerTypeUnit->getPosition());
-    UnitPathFindingSystem* pPfs = new UnitPathFindingSystem(pAttackerTypeUnit);
     pPfs->setMovepoints(-2);
     pPfs->setIgnoreEnemies(true);
     pPfs->setStartPoint(targetX, targetY);
@@ -463,6 +452,12 @@ void InfluenceMap::addMapDefenseInfluence(Player* pPlayer, Unit* pUnit, float we
 void InfluenceMap::weightedAddMap(InfluenceMap &sumMap) {
     for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
         m_influenceMap2D[i] += sumMap.m_influenceMap2D[i] * sumMap.m_weight;
+    }
+}
+
+void InfluenceMap::weightedAddMap(InfluenceMap &sumMap, float customWeight) {
+    for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
+        m_influenceMap2D[i] += sumMap.m_influenceMap2D[i] * customWeight;
     }
 }
 

@@ -4,6 +4,8 @@
 #include "adaptamodule.h"
 #include "ai/adapta/influencemap.h"
 #include "ai/genetic/weightvector.h"
+#include "ai/utils/damagechart.h"
+#include "game/unitpathfindingsystem.h"
 #include <QVector>
 
 /**
@@ -15,6 +17,11 @@ class MultiInfluenceNetworkModule : public AdaptaModule
 {
     Q_OBJECT
 public:
+    struct UnitData {
+        Unit* m_pUnit;
+        spUnitPathFindingSystem m_pPfs;
+    };
+
     MultiInfluenceNetworkModule();
 
     virtual void readIni(QString filename) override;
@@ -71,6 +78,12 @@ private:
     QStringList m_unitList;
     QStringList m_unitListFull;
 
+    //this is long N (like m_unitList) and contains at each position in parallel an instantiation of a unit with that ID
+    //this unit is not in game but is used to retrieve the unit type's properties
+    std::vector<Unit> m_unitTypesVector;
+    //just to have the pathfinding systems for the types
+    std::vector<UnitData> m_unitTypesDataVector;
+
     std::vector<qint32> m_unitCount;
 
     //[n0_l0, n0_l1,.., n0_lL, n1_l0,.., nN,lL]
@@ -80,6 +93,9 @@ private:
 
     float m_minMapWeight{-1.0};
     float m_maxMapWeight{1.0};
+
+    std::vector<UnitData> m_armyUnitData;
+    std::vector<UnitData> m_enemyUnitData;
 
     //weightvector and stuff to sort better the weights loaded from it
     /*[n0_k0_m0,.., n0_k0_mM, n0_k1_m0,.., n0_kK_mM, n1_k0_m0,.., nN_kK_mM,
@@ -105,17 +121,28 @@ private:
     //[n0_outmap, n1_outmap...]
     std::vector<InfluenceMap> m_unitOutputMaps;
 
+    //vector where at index n is contained the index m, to quickly translate where unit n of m_unitList is in the full array
+    //of units m_unitListFull
+    std::vector<quint32> m_nToMIndexes;
+    std::map<QString, qint32> m_unitIDToMIndexMap;
 
-    std::vector<float> m_dmgChart;
+    DamageChart m_damageChart;
+    //how much is valued each star of defense in the STD_MAPDEFENSE maps, if any. Plus other values for these maps
+    float m_weightPerStar{10};
+    float m_friendlyBuildingMultiplier{1.5f};
+    float m_friendlyFactoryMultiplier{0.1f};
+
 
     //private methods
     void defaultInitializeUnitList(QStringList &unitList);
 
+    void initUnitData(std::vector<UnitData> &unitDataVector, QmlVectorUnit* pUnits);
+
     void computeGlobalInfluenceMap(InfluenceMap &influenceMap, bool isCustom=false, quint32 customNum=0);
     /**
-     * @brief compute the local influence map #localMapNum (l) of unit #unitNum (n)
+     * @brief compute the local influence map &influenceMap of unit #unitNum (n), and if isCustom, the #customNum (k)
      */
-    void computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 localMapNum, quint32 unitNum, bool isCustom=false, quint32 customNum=0);
+    void computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum, bool isCustom=false, quint32 customNum=0);
 
 
     /**
@@ -149,6 +176,8 @@ private:
     inline InfluenceMap& influenceMapOfUnit(qint32 localMapNumber, qint32 unitNumber) {
         return m_unitInfluenceMaps[unitNumber*m_customMapsPerUnit + localMapNumber];
     }
+
+
 
 };
 

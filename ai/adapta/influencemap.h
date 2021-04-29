@@ -46,21 +46,21 @@ public:
      * set steps = -2 to add an influence value for all tiles reachable by that unit
      * steps for indirect can be set to differentiate indirect units, since they are heavier to compute. the default set it equal to steps
      */
-    void addUnitAtkInfluence(Unit* pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3);
+    void addUnitAtkInfluence(Unit* pUnit, UnitPathFindingSystem* pPfs,float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3);
 
-    void addUnitValueInfluence(Unit* pUnit, QPoint startingPoint, bool ignoreEnemies, float unitWeight);
+    void addUnitValueInfluence(Unit* pUnit, UnitPathFindingSystem* pPfs, QPoint startingPoint, bool ignoreEnemies, float unitWeight);
 
     /**
      * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should do damage, targeting
      * the poin enemyTargetPoint. This works only for direct units
      */
-    void addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
+    void addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue);
 
     /**
      * @brief propagate the dmgValue, interpreted as the positions where the pAttackerTypeUnit should do damage, targeting
      * the poin enemyTargetPoint. This works only for indirect units
      */
-    void addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue);
+    void addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue);
 
 
     /**
@@ -68,7 +68,7 @@ public:
      * since the unit is indirect can be not precise since will not consider how near the unit is from a point where it can attack
      * the unit, rather its distance with the target unit
      */
-    void addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp = -1);
+    void addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue, float negExp = -1);
 
     /**
      * @brief add the dmgValue that an indirect unit would do to an enemy in the target point. Fast version to be easier to
@@ -92,6 +92,12 @@ public:
      * @brief sum 1:1 the values of sumMap into this map, weighted wrt sumMap's weight
      */
     void weightedAddMap(InfluenceMap &sumMap);
+
+    /**
+     * @brief sum 1:1 the values of sumMap into this map, but weighted accordingly to the given customWeight
+     * instead of the sumMap's one
+     */
+    void weightedAddMap(InfluenceMap &sumMap, float customWeight);
 
     float getCurrMaxAbsInfluence();
 
