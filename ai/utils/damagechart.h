@@ -1,0 +1,59 @@
+#ifndef DAMAGECHART_H
+#define DAMAGECHART_H
+#include <vector>
+#include <QStringList>
+#include "game/unit.h"
+
+/**
+ * @brief The DamageChart class stores a damage chart to have a faster retrieaval of base damage of unit type a to unit type b,
+ * with both types of ammo. The chart is custom in size and types of units
+ */
+class DamageChart
+{
+public:
+    DamageChart();
+    explicit DamageChart(QStringList unitIDsList);
+    explicit DamageChart(std::vector<QString> unitIDsVector);
+    DamageChart(DamageChart &other);
+    DamageChart(DamageChart &&other);
+    ~DamageChart() = default;
+
+    void initialize(QStringList unitIDsList);
+    void initialize(std::vector<QString> unitIDsVector);
+
+    /**
+     * @brief fast way to retrieve the damage done by attacker to defender. the indices are relative to the stringlist/vector
+     * passed on the constructor
+     */
+    inline float getBaseDmg(qint32 mAttacker, qint32 mDefender);
+
+    /**
+     * @brief a bit slower way to retrieve the damage done by attacker to defender, using IDs
+     */
+    float getBaseDmg(QString attackerID, QString defenderID);
+
+    /**
+     * @brief get the highest base damage the unit attacker do to unit defender (indices are like in getBaseDmg(qint32, qint32)
+     * This accounts also if the unit has ammos left to determine highest damage
+     */
+    float getBaseDmgWithAmmo(Unit* pUnit, qint32 mAttacker, qint32 mDefender);
+
+
+private:
+    std::vector<QString> m_unitIDs;
+    std::vector<float> m_dmgChart1; //MxM the base damage unit m1 does to unit m2 with weapon 1
+    std::vector<float> m_dmgChart2; //MxM same but with weap 2
+    qint32 m_totalUnits; //number of total units. It's the size of the unit IDs vector
+
+    void initializeCharts();
+
+    float inline dmgChart1At(qint32 mAtt, qint32 mDef) {
+        return m_dmgChart1[mAtt*m_totalUnits + mDef];
+    }
+
+    float inline dmgChart2At(qint32 mAtt, qint32 mDef) {
+        return m_dmgChart2[mAtt*m_totalUnits + mDef];
+    }
+};
+
+#endif // DAMAGECHART_H
