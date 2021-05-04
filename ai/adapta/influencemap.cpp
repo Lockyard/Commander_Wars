@@ -215,11 +215,13 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs,
 }
 
 void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs, QPoint startPoint, bool ignoreEnemies, float unitWeight) {
+    //tmch
+    pUnit->getAmmo1();
+
     pPfs->setIgnoreEnemies(ignoreEnemies);
     pPfs->setMovepoints(-2);
     pPfs->setStartPoint(startPoint.x(), startPoint.y());
     pPfs->explore();
-
 
     auto points = pPfs->getAllNodePoints();
     //for each reachable point by this unit
@@ -252,6 +254,9 @@ void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPf
 }
 
 void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue) {
+    //tmch
+    pAttackerTypeUnit->getAmmo1();
+
     pPfs->setIgnoreEnemies(true);
     pPfs->setMovepoints(-2);
     pPfs->setStartPoint(enemyTargetPoint.x(), enemyTargetPoint.y());
@@ -468,6 +473,13 @@ float InfluenceMap::getCurrMaxAbsInfluence() {
             maxInfluence = qAbs(m_influenceMap2D[i]);
     }
     return maxInfluence;
+}
+
+
+void InfluenceMap::sortNodePointsByInfluence(QVector<QPoint> & nodePoints) {
+    std::sort(nodePoints.begin(), nodePoints.end(), [this](QPoint p1, QPoint p2) {
+        return getInfluenceValueAt(p1.x(), p1.y()) > getInfluenceValueAt(p2.x(), p2.y());
+    });
 }
 
 

@@ -102,6 +102,11 @@ public:
     float getCurrMaxAbsInfluence();
 
     /**
+     * @brief sortNodePointsByInfluence sort the points in order from highest to lowest influence in this map
+     */
+    void sortNodePointsByInfluence(QVector<QPoint> & nodePoints);
+
+    /**
      * @brief show shows graphically the influence map by coloring tiles
      */
     void showColoredTiles();
@@ -118,9 +123,15 @@ public:
      */
     void hide();
 
+
     inline float getInfluenceValueAt(qint32 x, qint32 y) {
         return m_influenceMap2D[y*m_mapWidth + x];
     }
+
+    inline void setInfluenceValueAt(float value, qint32 x, qint32 y) {
+        m_influenceMap2D[y*m_mapWidth + x] = value;
+    }
+
 
     QString toQString(qint32 precision = 3);
 
