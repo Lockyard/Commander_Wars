@@ -1,5 +1,6 @@
 #include "damagechart.h"
 #include "resource_management/weaponmanager.h"
+#include "game/gamemap.h"
 #include <QtMath>
 
 DamageChart::DamageChart() : m_totalUnits(0) {
@@ -85,6 +86,40 @@ float DamageChart::getBaseDmgWithAmmo(Unit *pUnit, qint32 mAttacker, qint32 mDef
     return qMax(dmg1, dmg2);
 }
 
+float DamageChart::getDmg(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender, float attackerHp, float defenderHp) {
+    //if < 0, which is default value, use actual units hps, otherwise use the given virtual hp (even if higher than 10, althought it doesn't really make sense)
+    if(attackerHp < 0)
+        attackerHp = pAttacker->getHp();
+    if(defenderHp < 0)
+        defenderHp = pDefender->getHp();
+    float dmg1 = 0.0f;
+    float dmg2 = 0.0f;
+    if(pAttacker->hasAmmo1()) {
+        dmg1 = dmgChart1At(mAttacker, mDefender);
+    }
+    if(pAttacker->hasAmmo2()) {
+        dmg2 = dmgChart2At(mAttacker, mDefender);
+    }
+    //dmg1 is used to store t, total damage
+    dmg1 = dmg1 > dmg2 ? dmg1 : dmg2; //pick the highest damage the unit can do
+    dmg1 *= attackerHp / Unit::MAX_UNIT_HP;
+    float defHpLost = Unit::MAX_UNIT_HP - defenderHp;
+    qint32 defStars = GameMap::getInstance()->getTerrain(pDefender->getX(), pDefender->getY())->getDefense(pDefender);
+    //it's the same as [ dmg1 - defStars * (dmg1 * .1f - dmg1 * .01f * defHpLost) ]
+    return dmg1 * (1 - defStars * (.1f - defHpLost * .01f));
+}
+
+
+std::pair<float, float> DamageChart::getFundsDmgBidirectional(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender) {
+    float dmgFundsDone = getFundsDmg(pAttacker, pDefender, mAttacker, mDefender);
+    float dmgFundsReceived = 0.0f;
+    //if one unit is indirect, there's no counterdamage
+    if(pAttacker->getBaseMinRange() > 1 || pDefender->getBaseMinRange() > 1) {
+        float dmgToEnemyDone = getDmg(pAttacker, pDefender, mAttacker, mDefender);
+        dmgFundsReceived = getFundsDmg(pDefender, pAttacker, mDefender, mAttacker, qMax(0.0f, pDefender->getHp() - dmgToEnemyDone));
+    }
+    return std::pair<float, float>(dmgFundsDone, dmgFundsReceived);
+}
 
 
 

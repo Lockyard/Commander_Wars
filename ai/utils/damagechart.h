@@ -6,7 +6,9 @@
 
 /**
  * @brief The DamageChart class stores a damage chart to have a faster retrieaval of base damage of unit type a to unit type b,
- * with both types of ammo. The chart is custom in size and types of units
+ * with both types of ammo. The chart is custom in size and types of units.
+ * Since this class is meant to be faster than calling the JS scripts, it does the calculations on its own and doesn't call
+ * scripts function (except maybe in future explicitly called methods which do so)
  */
 class DamageChart
 {
@@ -22,8 +24,8 @@ public:
     void initialize(std::vector<QString> unitIDsVector);
 
     /**
-     * @brief fast way to retrieve the damage done by attacker to defender. the indices are relative to the stringlist/vector
-     * passed on the constructor
+     * @brief fast way to retrieve the damage done by attacker to defender. the passed indices are relative to the
+     * stringlist/vector passed on the constructor
      */
     inline float getBaseDmg(qint32 mAttacker, qint32 mDefender);
 
@@ -37,6 +39,31 @@ public:
      * This accounts also if the unit has ammos left to determine highest damage
      */
     float getBaseDmgWithAmmo(Unit* pUnit, qint32 mAttacker, qint32 mDefender);
+
+    /**
+     * @brief get the damage done by the attacker type of unit to the defender according to the real AWDS formula, except for
+     * luck. This consider defense and ammos
+     * Formula is from AWDS
+     * if attackerStrength and defenderStrength are set, in range (0, 10], this virtual strength of the unit will be considered
+     * they can be set higher than 10 but it shouldn't have sense
+     */
+    float getDmg(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender, float attackerVirtualHp = -1, float defenderVirtualHp = -1);
+
+    /**
+     * @brief get the damage done in funds by the attacker type of unit to the defender according to the real AWDS formula,
+     * except for luck. This consider defense and ammos
+     * Formula is from AWDS
+     */
+    inline float getFundsDmg(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender, float attackerVirtualHp = -1, float defenderVirtualHp = -1) {
+        return qMin(pDefender->getCosts() * pDefender->getHp() / Unit::MAX_UNIT_HP,
+                    getDmg(pAttacker, pDefender, mAttacker, mDefender, attackerVirtualHp, defenderVirtualHp) * pDefender->getCosts());
+    }
+
+
+    /**
+     * @brief get funds damage both done and received after attack
+     */
+    std::pair<float, float> getFundsDmgBidirectional(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender);
 
 
 private:
