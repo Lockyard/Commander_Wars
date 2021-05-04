@@ -32,4 +32,23 @@ float getUnitWeightFromIMapType(Unit* pReferenceUnit, iMapType type, Unit* pTarg
     }
 }
 
+QString iMapTypeToQString(iMapType type) {
+    switch(type) {
+    case NONE:
+        return "NONE";
+    case STD_ATTACK:
+        return "STD_ATTACK";
+    case STD_DAMAGE:
+        return "STD_DAMAGE";
+    case STD_VALUE:
+        return "STD_VALUE";
+    case STD_MAPDEFENSE:
+        return "STD_MAPDEFENSE";
+    case CUSTOM_1:
+        return "CUSTOM_1";
+    default:
+        return "UNK_MAP_TYPE";
+    }
+}
+
 }

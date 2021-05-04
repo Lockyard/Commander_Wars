@@ -44,6 +44,12 @@ bool isCustomType(iMapType type);
  * its
  */
 float getUnitWeightForUnitFromIMapType(Unit* pReferenceUnit, iMapType type, Unit* pTargetUnit);
+
+/**
+ * @brief get the QString name of a iMapType
+ */
+QString iMapTypeToQString(iMapType type);
 }
+
 
 #endif // ADAPTAENUMS_H
