@@ -13,10 +13,13 @@ class AdaptaAI : public CoreAI
     Q_OBJECT
 public:
     AdaptaAI();
+    AdaptaAI(AdaptaAI &other) = default;
 
     virtual void readIni(QString name) override;
 
     virtual void process() override;
+
+    void addSelectedFieldData(spGameAction pGameAction, qint32 pointX, qint32 pointY);
 
 protected:
     virtual void finishTurn() override;
@@ -25,13 +28,16 @@ protected:
 
 private:
     //all loaded modules of the adapta
-    QVector<AdaptaModule> m_modules;
-    QVector<BuildingModule> m_buildingModules;
+    QVector<AdaptaModule*> m_modules;
+    QVector<BuildingModule*> m_buildingModules;
 
     QVector<float> m_unitBidVector;
 
     bool m_isFirstProcessOfTurn;
     bool m_ignoreBids;
+
+    friend class AdaptaModule;
+    friend class MultiInfluenceNetworkModule;
 };
 
 #endif // ADAPTAAI_H

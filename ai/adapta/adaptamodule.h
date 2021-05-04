@@ -32,32 +32,41 @@ public:
     virtual ~AdaptaModule() = default;
 
     //Methods to be overridden. I wanted to make this class abstract, but it breaks QVectors, so this is it
-    virtual void readIni(QString name){};
+    virtual void readIni(QString name) = 0;
     /**
      * @brief processStartOfTurn calculate bids for this turn and process stuff for the start of turn
      */
-    virtual void processStartOfTurn(){};
+    virtual void processStartOfTurn() = 0;
 
     /**
      * @brief processHighestBidUnit process the action for the highest bid unit of this module
-     * @param weighted
      */
-    virtual void processHighestBidUnit(){};
-    virtual void processUnit(Unit* pUnit){};
-    virtual void notifyUnitUsed(Unit* pUnit){};
-    virtual bool assignWeightVector(WeightVector weightVector){return false;};
+    virtual bool processHighestBidUnit() = 0;
+    virtual bool processUnit(Unit* pUnit) = 0;
+    virtual void notifyUnitUsed(Unit* pUnit) = 0;
 
-    virtual float getBidFor(Unit* pUnit);
+    virtual float getBidFor(Unit* pUnit) = 0;
     /**
      * @brief getHighestBid get the value of the highest bid done by this module. By default the bid is weighted by
      * this module's weight (see [set]moduleWeight())
      */
-    virtual float getHighestBid(bool weighted = true);
-    virtual Unit* getHighestBidUnit();
+    virtual float getHighestBid(bool weighted = true) = 0;
+    virtual Unit* getHighestBidUnit() = 0;
+
+
+    virtual bool assignWeightVector(WeightVector weightVector) = 0;
+
+    /**
+     * @brief get in QString format a state of the module.
+     */
+    virtual QString toQString(){return "";};
 
     //getters, setters
     float moduleWeight() const;
     void setModuleWeight(float moduleWeight);
+
+    Player *getPPlayer() const;
+    void setPPlayer(Player *pPlayer);
 
 protected:
     //how much this module's bids are weighted by the adapta AI. default is 1 so that no modifications are done to the bids

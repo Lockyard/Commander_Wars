@@ -1,10 +1,15 @@
-#include "multiinfluencenetworkmodule.h"
+﻿#include "multiinfluencenetworkmodule.h"
+
+#include "ai/coreai.h"
 #include <QSettings>
+#include "game/gamemap.h"
+#include "ai/utils/AiUtilsFunctions.h"
+#include "coreengine/console.h"
 
 
-MultiInfluenceNetworkModule::MultiInfluenceNetworkModule()
-{
 
+
+MultiInfluenceNetworkModule::MultiInfluenceNetworkModule(Player* pPlayer, AdaptaAI* ai) : AdaptaModule(pPlayer), m_pAdapta(ai) {
 }
 
 
@@ -27,9 +32,9 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
     m_unitTypesVector.reserve(m_unitAmount);
     m_unitTypesDataVector.reserve(m_unitAmount);
     for(qint32 i=0; i < m_unitAmount; i++) {
-        m_unitTypesVector.push_back(Unit(m_unitList[i], nullptr, false));
+        m_unitTypesVector.push_back(new Unit(m_unitList[i], m_pPlayer, false));
         UnitData data;
-        data.m_pUnit = &m_unitTypesVector[i];
+        data.m_pUnit = m_unitTypesVector[i];
         data.m_pPfs = new UnitPathFindingSystem(data.m_pUnit);
         m_unitTypesDataVector.push_back(data);
     }
@@ -55,7 +60,7 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
 
     m_customMapsPerUnit = 0; //K, incremented now if any
     m_stdMapsPerUnit = 0; //S, incremented now if any
-    m_totalMapsPerUnit = 0;
+    m_localMapsPerUnit = 0;
 
     //initialize all maps for each unit
     if(!unitInfMaps.contains("NONE") && unitInfMaps.size() > 0) {
@@ -65,11 +70,11 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
             else
                 m_stdMapsPerUnit++;
         } //here K and S are correct
-        m_totalMapsPerUnit = unitInfMaps.size(); //L = S + K
+        m_localMapsPerUnit = unitInfMaps.size(); //L = S + K
 
-        m_unitInfluenceMaps.reserve(m_unitAmount * m_totalMapsPerUnit); //N * (K + S)
+        m_unitInfluenceMaps.reserve(m_unitAmount * m_localMapsPerUnit); //N * (K + S)
         for(qint32 n=0; n < m_unitAmount; n++) {
-            for(qint32 l=0; l < m_totalMapsPerUnit; l++) {
+            for(qint32 l=0; l < m_localMapsPerUnit; l++) {
                 //create an influence map of the specified type
                 m_unitInfluenceMaps.push_back(InfluenceMap(adaenums::getInfluenceMapTypeFromString(unitInfMaps.at(l))));
             }
@@ -159,7 +164,7 @@ void MultiInfluenceNetworkModule::processStartOfTurn() {
             k=0; //reset k
             m_unitOutputMaps[n].reset(); //reset output map to 0
             //compute each local map and add it to the output, weighted
-            for(qint32 l=0; l < m_totalMapsPerUnit; l++) {
+            for(qint32 l=0; l < m_localMapsPerUnit; l++) {
                 InfluenceMap &infMap = influenceMapOfUnit(l, n);
                 if(adaenums::isCustomType(infMap.getType())) {
                     computeLocalInfluenceMap(infMap, n, true, k);
@@ -182,23 +187,140 @@ void MultiInfluenceNetworkModule::processStartOfTurn() {
  * @brief processHighestBidUnit process the action for the highest bid unit of this module
  * @param weighted
  */
-void MultiInfluenceNetworkModule::processHighestBidUnit() {
-
+bool MultiInfluenceNetworkModule::processHighestBidUnit() {
+    //todo do bid system, for now is just process any usable unit
+    spQmlVectorUnit pUnits = m_pPlayer->getUnits();
+    for(qint32 i=0; i < pUnits->size(); i++) {
+        if(!(pUnits->at(i)->getHasMoved()) && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+            return processUnit(pUnits->at(i));
+        }
+    }
+    return false;
 }
 
-void MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
+bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
     if(pUnit->getHasMoved())
-        return;
+        return false;
     InfluenceMap &finalMap = m_unitOutputMaps[m_unitList.indexOf(pUnit->getUnitID())];
-    QList<QPoint> excludePoint;
-    //if is direct
-    if(pUnit->getBaseMinRange() > 1) {
-
+    //if is indirect, boost the weight on its tile if there are targets
+    if(pUnit->getBaseMinRange() > 1 ) {
+        QVector3D bestTarget = findNearestHighestDmg(pUnit->getPosition(), pUnit);
+        if(bestTarget.z() > 0) {
+            finalMap.setInfluenceValueAt(finalMap.getInfluenceValueAt(pUnit->getX(), pUnit->getY()) * m_indirectsTileStillMultiplier,
+                                         pUnit->getX(), pUnit->getY());
+        }
     }
+
+    Console::print("Final Map influence for unit [" + pUnit->getUnitID() + ", (" + pUnit->getX() + ", " + pUnit->getY() +
+                   ")]:\n" + finalMap.toQString(), Console::eDEBUG);
+    QList<QPoint> excludePoint;
+
+    UnitPathFindingSystem* pPfs;
+    for(quint32 i=0; i < m_armyUnitData.size(); i++) {
+        if(m_armyUnitData[i].m_pUnit == pUnit) {
+            pPfs = m_armyUnitData[i].m_pPfs.get();
+            break;
+        }
+    }
+    pPfs->setMovepoints(pUnit->getMovementpoints(pUnit->getPosition()));
+    pPfs->setIgnoreEnemies(false);
+    pPfs->explore();
+
+    auto points = pPfs->getAllNodePoints();
+    finalMap.sortNodePointsByInfluence(points);
+
+
+    //check in each point, sorted by best influence, if the unit can perform an attack action or a wait action, if it can't,
+    //try next point
+    for(qint32 i=0; i < points.size(); i++) {
+        Console::print("Best point N°" + QString::number(i+1) + ": (" + QString::number(points[i].x()) + ", " +
+                       QString::number(points[i].y()), Console::eDEBUG);
+        QVector3D bestTarget = findNearestHighestDmg(points[i], pUnit);
+
+        //if found something to attack, do action, go to point and attack
+        if(bestTarget.z() > 0) {
+            spGameAction pAction = new GameAction(CoreAI::ACTION_FIRE);
+            pAction->setTarget(pUnit->getPosition());
+            QVector<QPoint> path = pPfs->getPath(static_cast<qint32>(points[i].x()), static_cast<qint32>(points[i].y()));
+            pAction->setMovepath(path, pPfs->getCosts(path));
+            m_pAdapta->addSelectedFieldData(pAction, bestTarget.x(), bestTarget.y());
+
+            if (pAction->isFinalStep() && pAction->canBePerformed())
+            {
+                emit m_pAdapta->performAction(pAction);
+                return true;
+            }
+        }
+        //Here an attackable unit was not found. If the next point, if any, has same influence, go on and try that point.
+        else if(i< points.size() - 1 &&
+                finalMap.getInfluenceValueAt(points[i].x(), points[i].y()) == finalMap.getInfluenceValueAt(points[i+1].x(), points[i+1].y())) {
+            continue;
+        }
+        //if the best point has no associated attackable unit then just move there
+        else {
+            spGameAction pAction = new GameAction(CoreAI::ACTION_WAIT);
+            pAction->setTarget(pUnit->getPosition());
+            QVector<QPoint> path = pPfs->getPath(static_cast<qint32>(points[i].x()), static_cast<qint32>(points[i].y()));
+            pAction->setMovepath(path, pPfs->getCosts(path));
+
+            if(pAction->canBePerformed()) {
+                emit m_pAdapta->performAction(pAction);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void MultiInfluenceNetworkModule::notifyUnitUsed(Unit* pUnit) {
+    //do nothing here really, just a tmch
+    pUnit->getUnitID();
+}
 
+
+float MultiInfluenceNetworkModule::getBidFor(Unit* pUnit) {
+    //todo change bid system, for now is just > 0 if the unit can be used, 0 otherwise
+    if(!pUnit->getHasMoved() && m_unitList.contains(pUnit->getUnitID())) {
+        return m_moduleWeight;
+    }
+    else {
+        return 0.0f;
+    }
+}
+/**
+ * @brief getHighestBid get the value of the highest bid done by this module. By default the bid is weighted by
+ * this module's weight (see [set]moduleWeight())
+ */
+float MultiInfluenceNetworkModule::getHighestBid(bool weighted/*=true*/) {
+
+    //todo change this when there will be actual bids
+
+    float weight = weighted ? m_moduleWeight : 1.0f;
+    //for now return a bid > 0 if there are available units that this module can move
+    bool availableUnits = false;
+    spQmlVectorUnit pUnits = m_pPlayer->getUnits();
+    for(qint32 i=0; i < pUnits->size(); i++) {
+        if(!(pUnits->at(i)->getHasMoved()) && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+            availableUnits = true;
+            break;
+        }
+    }
+    if(availableUnits) {
+        return weight;
+    } else {
+        return 0.0f;
+    }
+}
+
+Unit* MultiInfluenceNetworkModule::getHighestBidUnit() {
+    //todo change bid system
+    spQmlVectorUnit pUnits = m_pPlayer->getUnits();
+    for(qint32 i=0; i<pUnits->size(); i++) {
+        if(!pUnits->at(i)->getHasMoved() && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+            return pUnits->at(i);
+        }
+    }
+    return nullptr;
 }
 
 
@@ -216,7 +338,7 @@ bool MultiInfluenceNetworkModule::assignWeightVector(WeightVector assignedWV) {
     qint32 GK = m_globalCustomMapsAmount; //GK = global custom maps amount
     qint32 K = m_customMapsPerUnit; //K = local custom maps amount
     qint32 S = m_stdMapsPerUnit; //S = local standard maps amount
-    qint32 L = m_totalMapsPerUnit; //L = S + K, all local maps amount
+    qint32 L = m_localMapsPerUnit; //L = S + K, all local maps amount
 
     qint32 globalMapsUnitWeightsOffset = N*K*M;
     qint32 mapWeightsOffset = globalMapsUnitWeightsOffset + M*GK;
@@ -254,12 +376,89 @@ bool MultiInfluenceNetworkModule::assignWeightVector(WeightVector assignedWV) {
             }
         }
     }
-
     return true;
 }
 
 qint32 MultiInfluenceNetworkModule::getRequiredWeightVectorLength() {
     return m_requiredVectorLength;
+}
+
+
+QString MultiInfluenceNetworkModule::toQString() {
+    QString res = "";
+    //units in unit list (N)
+    res+= "Unit List: \n";
+    for(qint32 n=0; n< m_unitList.size(); n++) {
+        res += m_unitList[n] + (n == m_unitList.size() - 1 ? "\nUnit List Full:\n" : ", ");
+    }
+    //units in unit list full (M)
+    for(qint32 m=0; m < m_unitListFull.size(); m++) {
+        res += m_unitListFull[m] + (m == m_unitListFull.size() - 1 ? "\nLocal Maps:\n" : ", ");
+    }
+    //local maps and their single mapweights (L)
+    for(qint32 l=0; l< m_localMapsPerUnit; l++) {
+        res += adaenums::iMapTypeToQString(m_unitInfluenceMaps[l].getType()) + " [" + QString::number(m_unitInfluenceMaps[l].getWeight(), 'f', 3) +
+                (l==m_localMapsPerUnit-1 ? "]\nGlobal Maps with weight for each unit:\n" : "], ");
+    }
+    //global maps (G)
+    if(m_globalInfluenceMaps.size() > 0) {
+        for(quint32 g = 0; g < m_globalInfluenceMaps.size(); g++) {
+            res += adaenums::iMapTypeToQString(m_globalInfluenceMaps[g].getType()) + "[";
+            //print each weight of unit n/N for global map g/G
+            for(qint32 n=0; n < m_unitAmount; n++) {
+                res += m_unitList.at(n) + ": " + QString::number(glbMapWeightForUnit(n, g), 'f', 3) +
+                        (n==m_unitAmount-1 ? "]\n" : ", ");
+            }
+        }
+    } else {
+        res += "None\n";
+    }
+    //local custom unit weights
+    if(m_customMapsPerUnit > 0) {
+        //local custom weights
+        for(qint32 n=0; n < m_unitAmount; n++) {
+            res += "Unit " + m_unitList[n] + ":\n";
+            for(qint32 k=0, l=0; l < m_localMapsPerUnit; l++) {
+                //if for unit n, map l is custom, add all weights
+                if(adaenums::isCustomType(influenceMapOfUnit(l, n).getType())) {
+                    res += ">Custom map " + QString::number(k) + ":\n[";
+                    for(qint32 m=0; m<m_fullUnitAmount; m++) {
+                        res+= m_unitListFull[m] + ": " + QString::number(customInfluenceMapUnitWeight(n, k, m), 'f', 3) +
+                                (m==m_fullUnitAmount-1 ? "]\n" : ", ");
+                    }
+                    k++;
+                }
+            }
+        }
+    } else {
+        res += "No custom maps for units.\n";
+    }
+    //global custom units weights
+    if(m_globalCustomMapsAmount > 0) {
+        for(qint32 g=0, gk=0; g < m_globalMapsAmount; g++) {
+            if(adaenums::isCustomType(m_globalInfluenceMaps[g].getType())) {
+                res += "Weights for custom map " + QString::number(gk) + ":\n[";
+                for(qint32 m=0; m < m_fullUnitAmount; m++) {
+                    res += m_unitListFull[m] + ": " + QString::number(glbCustomMapUnitWeight(gk, m), 'f', 3) +
+                            (m==m_fullUnitAmount-1 ? "]\n" : ", ");
+                }
+                gk++;
+            }
+        }
+    } else {
+        res += "No global custom maps.";
+    }
+    return res;
+}
+
+AdaptaAI *MultiInfluenceNetworkModule::getPAdapta() const
+{
+    return m_pAdapta;
+}
+
+void MultiInfluenceNetworkModule::setPAdapta(AdaptaAI *pAdapta)
+{
+    m_pAdapta = pAdapta;
 }
 
 //private methods///////////////////////////////////////////////////////////////////////////////
@@ -342,7 +541,7 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             break;
         //std damage creates a map where the type of unit given does the most damage
         case adaenums::iMapType::STD_DAMAGE: {
-            Unit* pUnit = &m_unitTypesVector[unitNum];
+            Unit* pUnit = m_unitTypesVector[unitNum];
             //direct
             if(pUnit->getBaseMinRange() > 1) {
                 for(qint32 i=0; i<pEnemies->size(); i++) {
@@ -367,5 +566,42 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             break;
         }
     }
+}
+
+
+QVector3D MultiInfluenceNetworkModule::findNearestHighestDmg(QPoint fromWherePoint, Unit* pUnit) {
+    GameMap* pMap = GameMap::getInstance();
+    //x, y, z. x, y = pos of enemy, z = funds damage
+    QVector3D currBest (-1,-1,-1);
+    //works both for indirect and direct
+    qint32 minRange = pUnit->getBaseMinRange();
+    qint32 maxRange = pUnit->getBaseMaxRange();
+    qint32 minX = qMax(fromWherePoint.x() - maxRange, 0);
+    qint32 maxX = qMin(fromWherePoint.x() + maxRange, pMap->getMapWidth() - 1);
+    qint32 minY = qMax(fromWherePoint.y() - maxRange, 0);
+    qint32 maxY = qMin(fromWherePoint.y() + maxRange, pMap->getMapHeight() - 1);
+
+    //search efficiently for all tiles this indirect unit can attack in range
+    for(qint32 x = minX; x <= maxX; x++) {
+        for(qint32 y = minY; y <= maxY; y++) {
+            qint32 distance = aiutils::pointDistance(x, y, fromWherePoint.x(), fromWherePoint.y());
+            //for each tile this unit can attack
+            if(distance <= maxRange && distance >= minRange) {
+                Unit* pEnemy = pMap->getTerrain(x, y)->getUnit();
+                //if there's a unit, calculate funds damage, and if it's better write new current best
+                if(pEnemy != nullptr) {
+                    std::pair<float, float> fundsDmg = m_damageChart.getFundsDmgBidirectional(pUnit, pEnemy, m_unitListFull.indexOf(pUnit->getUnitID()), m_unitListFull.indexOf(pEnemy->getUnitID()));
+                    //if the damage in funds is at least positive wrt the counterdamage received, and it's the best so far, write current best
+                    if(fundsDmg.first > fundsDmg.second && fundsDmg.first > currBest.z()) {
+                        currBest.setX(x);
+                        currBest.setY(y);
+                        currBest.setZ(fundsDmg.first);
+                    }
+                }
+            }
+        }
+    }
+
+    return currBest;
 }
 

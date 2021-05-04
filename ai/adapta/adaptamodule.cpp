@@ -65,3 +65,13 @@ void AdaptaModule::setModuleWeight(float moduleWeight)
 {
     m_moduleWeight = moduleWeight;
 }
+
+Player *AdaptaModule::getPPlayer() const
+{
+    return m_pPlayer;
+}
+
+void AdaptaModule::setPPlayer(Player *pPlayer)
+{
+    m_pPlayer = pPlayer;
+}

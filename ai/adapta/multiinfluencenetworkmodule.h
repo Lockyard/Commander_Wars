@@ -5,6 +5,7 @@
 #include "ai/adapta/influencemap.h"
 #include "ai/genetic/weightvector.h"
 #include "ai/utils/damagechart.h"
+#include "ai/adaptaai.h"
 #include "game/unitpathfindingsystem.h"
 #include <QVector>
 
@@ -15,14 +16,22 @@
  */
 class MultiInfluenceNetworkModule : public AdaptaModule
 {
-    Q_OBJECT
 public:
     struct UnitData {
         Unit* m_pUnit;
         spUnitPathFindingSystem m_pPfs;
+        float m_bid; //bid for this unit
     };
 
-    MultiInfluenceNetworkModule();
+    MultiInfluenceNetworkModule() = default;
+
+    MultiInfluenceNetworkModule(Player* pPlayer, AdaptaAI* ai);
+
+    MultiInfluenceNetworkModule(MultiInfluenceNetworkModule &other) = default;
+    MultiInfluenceNetworkModule(MultiInfluenceNetworkModule &&other) = default;
+    MultiInfluenceNetworkModule &operator=(const MultiInfluenceNetworkModule &other);
+
+    virtual ~MultiInfluenceNetworkModule() = default;
 
     virtual void readIni(QString filename) override;
 
@@ -35,9 +44,17 @@ public:
      * @brief processHighestBidUnit process the action for the highest bid unit of this module
      * @param weighted
      */
-    virtual void processHighestBidUnit() override;
-    virtual void processUnit(Unit* pUnit) override;
+    virtual bool processHighestBidUnit() override;
+    virtual bool processUnit(Unit* pUnit) override;
     virtual void notifyUnitUsed(Unit* pUnit) override;
+
+    virtual float getBidFor(Unit* pUnit) override;
+    /**
+     * @brief getHighestBid get the value of the highest bid done by this module. By default the bid is weighted by
+     * this module's weight (see [set]moduleWeight())
+     */
+    virtual float getHighestBid(bool weighted = true) override;
+    virtual Unit* getHighestBidUnit() override;
 
     /**
      * @brief assignWeightVector assign a WV. The length must be ok (use getREquiredWeightVectorLength() to check)
@@ -65,12 +82,17 @@ public:
      */
     virtual bool assignWeightVector(WeightVector assignedWV) override;
 
+
     qint32 getRequiredWeightVectorLength();
 
+    virtual QString toQString() override;
+
+
+    AdaptaAI *getPAdapta() const;
+    void setPAdapta(AdaptaAI *pAdapta);
 
 private:
-    //the influence maps on the base layer of the simple network
-    std::vector<InfluenceMap> m_baseInfMapLayer;
+    AdaptaAI* m_pAdapta;
 
     //units supported by this module. The first are the ones it can use, the second are all the units which will be supported
     //if a unit will be in battle and will be not supported, there'll be a std behaviour (ignore it or give it a default value
@@ -80,7 +102,7 @@ private:
 
     //this is long N (like m_unitList) and contains at each position in parallel an instantiation of a unit with that ID
     //this unit is not in game but is used to retrieve the unit type's properties
-    std::vector<Unit> m_unitTypesVector;
+    std::vector<Unit*> m_unitTypesVector;
     //just to have the pathfinding systems for the types
     std::vector<UnitData> m_unitTypesDataVector;
 
@@ -98,7 +120,9 @@ private:
     std::vector<UnitData> m_enemyUnitData;
 
     //weightvector and stuff to sort better the weights loaded from it
-    /*[n0_k0_m0,.., n0_k0_mM, n0_k1_m0,.., n0_kK_mM, n1_k0_m0,.., nN_kK_mM,
+    /**
+     * WeightVector stores all the weights, and also is used for its first part to retrieve all custom local weights
+     * [n0_k0_m0,.., n0_k0_mM, n0_k1_m0,.., n0_kK_mM, n1_k0_m0,.., nN_kK_mM,
      *  gk0_m0,.., gk0_mM, gk1_m0,.., gk1_mM,.., gkGK_mM,
      *  n0_s0,..n0_sS, n0_k0,.., n0_kK, n0_g0,.., n0_gG, n1_s0,..nN_gG]
      */
@@ -110,7 +134,7 @@ private:
     qint32 m_fullUnitAmount; //M
     qint32 m_stdMapsPerUnit; //S
     qint32 m_customMapsPerUnit; //K
-    qint32 m_totalMapsPerUnit; //L = S + K (stands for local maps, compared to global)
+    qint32 m_localMapsPerUnit; //L = S + K (stands for local maps, compared to global)
     qint32 m_globalMapsAmount; //G
     qint32 m_globalCustomMapsAmount; //GK
     qint32 m_customWeightsPerUnitAmount; //M*K, calculated to ease a tiny bit performance
@@ -131,6 +155,10 @@ private:
     float m_weightPerStar{10};
     float m_friendlyBuildingMultiplier{1.5f};
     float m_friendlyFactoryMultiplier{0.1f};
+    /** How much will be the final tile on which each indirect unit is be multiplied on (wrt influence map),
+     * if the indirect unit can attack some units. This is useful to incentivize the unit to attack instead of going against
+     * other targets*/
+    float m_indirectsTileStillMultiplier{1.5f};
 
 
     //private methods
@@ -143,6 +171,13 @@ private:
      * @brief compute the local influence map &influenceMap of unit #unitNum (n), and if isCustom, the #customNum (k)
      */
     void computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum, bool isCustom=false, quint32 customNum=0);
+
+    /**
+     * @brief find the point where a unit, considering its ammos, deals more damage, in std fund damage
+     * x, y = enemy x and y, z = damage in funds
+     * if z < 0 then there are no attackable units (or the attackable ones cause more damage to the unit than to the enemy in funds)
+     */
+    QVector3D findNearestHighestDmg(QPoint fromWherePoint, Unit* pUnit);
 
 
     /**
