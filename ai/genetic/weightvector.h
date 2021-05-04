@@ -60,6 +60,10 @@ public:
         return m_weights.at(index);
     }
 
+    inline void setAt(float value, qint32 index) {
+        m_weights[index] = value;
+    }
+
     void setFitness(float fitness);
 
     inline float getFitness() const {
