@@ -102,9 +102,10 @@ private:
 
     //this is long N (like m_unitList) and contains at each position in parallel an instantiation of a unit with that ID
     //this unit is not in game but is used to retrieve the unit type's properties
-    std::vector<Unit*> m_unitTypesVector;
+    std::vector<spUnit> m_unitTypesVector;
     //just to have the pathfinding systems for the types
     std::vector<UnitData> m_unitTypesDataVector;
+    bool m_arePlayerPtrStuffInitialized{false};
 
     std::vector<qint32> m_unitCount;
 
@@ -164,6 +165,11 @@ private:
     //private methods
     void defaultInitializeUnitList(QStringList &unitList);
 
+    /**
+     * Initialize stuff which require player pointer set
+     */
+    void initializeWithPlayerPtr();
+
     void initUnitData(std::vector<UnitData> &unitDataVector, QmlVectorUnit* pUnits);
 
     void computeGlobalInfluenceMap(InfluenceMap &influenceMap, bool isCustom=false, quint32 customNum=0);
@@ -180,11 +186,12 @@ private:
     QVector3D findNearestHighestDmg(QPoint fromWherePoint, Unit* pUnit);
 
 
+    //
     /**
      * @brief Get the weight that the unit #unitNumber (n) has wrt the global map #globalMapNumber
      */
     inline float glbMapWeightForUnit(qint32 unitNumber, qint32 globalMapNumber) {
-        return m_allGlobalInfluenceMapWeightsForUnit2D[globalMapNumber * m_unitAmount + unitNumber];
+        return m_allGlobalInfluenceMapWeightsForUnit2D[unitNumber * m_globalMapsAmount + globalMapNumber];
     }
 
     /**
@@ -204,14 +211,13 @@ private:
         return m_weightVector[usedUnitNumber * m_customWeightsPerUnitAmount + customMapNumber * m_fullUnitAmount + targetUnitNumber];
     }
 
-    // n*K + k
+    // n*L + l
     /**
      * @brief get the local map #localMapNumber associated to unit number #unitNumber
      */
-    inline InfluenceMap& influenceMapOfUnit(qint32 localMapNumber, qint32 unitNumber) {
-        return m_unitInfluenceMaps[unitNumber*m_customMapsPerUnit + localMapNumber];
+    inline InfluenceMap& influenceMapOfUnit(qint32 unitNumber, qint32 localMapNumber) {
+        return m_unitInfluenceMaps[unitNumber*m_localMapsPerUnit + localMapNumber];
     }
-
 
 
 };

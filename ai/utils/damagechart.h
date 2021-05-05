@@ -65,6 +65,7 @@ public:
      */
     std::pair<float, float> getFundsDmgBidirectional(Unit* pAttacker, Unit* pDefender, qint32 mAttacker, qint32 mDefender);
 
+    QString toQString();
 
 private:
     std::vector<QString> m_unitIDs;
@@ -73,6 +74,7 @@ private:
     qint32 m_totalUnits; //number of total units. It's the size of the unit IDs vector
 
     void initializeCharts();
+    void initDummyUnit(Unit &dummyUnit);
 
     float inline dmgChart1At(qint32 mAtt, qint32 mDef) {
         return m_dmgChart1[mAtt*m_totalUnits + mDef];

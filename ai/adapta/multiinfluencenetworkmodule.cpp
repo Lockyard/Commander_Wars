@@ -14,127 +14,114 @@ MultiInfluenceNetworkModule::MultiInfluenceNetworkModule(Player* pPlayer, Adapta
 
 
 void MultiInfluenceNetworkModule::readIni(QString filename) {
-    QSettings settings(filename, QSettings::IniFormat);
+    if(QFile::exists(filename)) {
+        QSettings settings(filename, QSettings::IniFormat);
 
-    bool ok = false;
+        bool ok = false;
 
-    settings.beginGroup("General");
-    //get the list of units this module can use and what this module can have against (N)
-    m_unitList = settings.value("UnitList").toStringList();
-    if(m_unitList.size() == 0)
-        defaultInitializeUnitList(m_unitList);
+        settings.beginGroup("General");
+        //get the list of units this module can use and what this module can have against (N)
+        m_unitList = settings.value("UnitList").toStringList();
+        if(m_unitList.size() == 0)
+            defaultInitializeUnitList(m_unitList);
 
-    m_unitAmount = m_unitList.size();//N
-    m_unitOutputMaps.resize(m_unitAmount);
+        settings.setValue("UnitList2", m_unitList);
 
-    m_unitCount.resize(m_unitList.size());
+        m_unitAmount = m_unitList.size();//N
+        m_unitOutputMaps.resize(m_unitAmount);
 
-    m_unitTypesVector.reserve(m_unitAmount);
-    m_unitTypesDataVector.reserve(m_unitAmount);
-    for(qint32 i=0; i < m_unitAmount; i++) {
-        m_unitTypesVector.push_back(new Unit(m_unitList[i], m_pPlayer, false));
-        UnitData data;
-        data.m_pUnit = m_unitTypesVector[i];
-        data.m_pPfs = new UnitPathFindingSystem(data.m_pUnit);
-        m_unitTypesDataVector.push_back(data);
-    }
+        m_unitCount.resize(m_unitList.size());
 
-    m_unitListFull = settings.value("UnitListFull").toStringList();
-    if(m_unitList.size() == 0)
-        defaultInitializeUnitList(m_unitListFull);
+        m_unitListFull = settings.value("UnitListFull").toStringList();
+        if(m_unitList.size() == 0)
+            defaultInitializeUnitList(m_unitListFull);
 
-    //to be safe, add if not present any unit listed in unitList into unitListFull, and
-    //initialize n to M indexes map
-    m_nToMIndexes.resize(m_unitAmount, -1);
-    for(qint32 i=0; i < m_unitAmount; i++) {
-        if(!m_unitListFull.contains(m_unitList[i]))
-            m_unitListFull.append(m_unitList[i]);
-        m_nToMIndexes[i] = m_unitListFull.indexOf(m_unitList[i]);
-    }
+        //to be safe, add if not present any unit listed in unitList into unitListFull, and
+        //initialize n to M indexes map
+        m_nToMIndexes.resize(m_unitAmount, -1);
+        for(qint32 i=0; i < m_unitAmount; i++) {
+            if(!m_unitListFull.contains(m_unitList[i]))
+                m_unitListFull.append(m_unitList[i]);
+            m_nToMIndexes[i] = m_unitListFull.indexOf(m_unitList[i]);
+        }
 
-    m_damageChart.initialize(m_unitListFull);
+        m_fullUnitAmount = m_unitListFull.size(); //M
 
-    m_fullUnitAmount = m_unitListFull.size(); //M
+        QStringList unitInfMaps = settings.value("UnitInfluenceMaps", "NONE").toStringList();
 
-    QStringList unitInfMaps = settings.value("UnitInfluenceMaps", "NONE").toStringList();
+        m_customMapsPerUnit = 0; //K, incremented now if any
+        m_stdMapsPerUnit = 0; //S, incremented now if any
+        m_localMapsPerUnit = 0;
 
-    m_customMapsPerUnit = 0; //K, incremented now if any
-    m_stdMapsPerUnit = 0; //S, incremented now if any
-    m_localMapsPerUnit = 0;
+        //initialize all maps for each unit
+        if(!unitInfMaps.contains("NONE") && unitInfMaps.size() > 0) {
+            for(qint32 i = 0; i < unitInfMaps.size(); i++) {
+                if(unitInfMaps[i].startsWith("CUSTOM"))
+                    m_customMapsPerUnit++;
+                else
+                    m_stdMapsPerUnit++;
+            } //here K and S are correct
+            m_localMapsPerUnit = unitInfMaps.size(); //L = S + K
 
-    //initialize all maps for each unit
-    if(!unitInfMaps.contains("NONE") && unitInfMaps.size() > 0) {
-        for(qint32 i = 0; i < unitInfMaps.size(); i++) {
-            if(unitInfMaps[i].startsWith("CUSTOM"))
-                m_customMapsPerUnit++;
-            else
-                m_stdMapsPerUnit++;
-        } //here K and S are correct
-        m_localMapsPerUnit = unitInfMaps.size(); //L = S + K
-
-        m_unitInfluenceMaps.reserve(m_unitAmount * m_localMapsPerUnit); //N * (K + S)
-        for(qint32 n=0; n < m_unitAmount; n++) {
-            for(qint32 l=0; l < m_localMapsPerUnit; l++) {
-                //create an influence map of the specified type
-                m_unitInfluenceMaps.push_back(InfluenceMap(adaenums::getInfluenceMapTypeFromString(unitInfMaps.at(l))));
+            m_unitInfluenceMaps.reserve(m_unitAmount * m_localMapsPerUnit); //N * (K + S)
+            for(qint32 n=0; n < m_unitAmount; n++) {
+                for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+                    //create an influence map of the specified type
+                    m_unitInfluenceMaps.push_back(InfluenceMap(adaenums::getInfluenceMapTypeFromString(unitInfMaps.at(l))));
+                }
             }
         }
-    }
 
-    //initializate global inf map vector
-    QStringList globalInfMaps = settings.value("GlobalInfluenceMaps").toStringList();
-    m_globalMapsAmount = 0; //G
-    m_globalCustomMapsAmount = 0; //GK
-    if(!globalInfMaps.contains("NONE") && globalInfMaps.size() > 0) {
-        m_globalMapsAmount = globalInfMaps.size();
-        m_globalInfluenceMaps.reserve(m_globalMapsAmount);
-        for(qint32 infMapCount=0; infMapCount < unitInfMaps.size(); infMapCount++) {
-            //create an influence map of the specified type
-            m_globalInfluenceMaps.push_back(InfluenceMap(adaenums::getInfluenceMapTypeFromString(globalInfMaps.at(infMapCount), adaenums::iMapType::STD_VALUE)));
-            //if is a custom map, increment the amount of global custom maps
-            if(globalInfMaps.at(infMapCount).startsWith("CUSTOM"))
-                m_globalCustomMapsAmount++;
+        m_customWeightsPerUnitAmount = m_fullUnitAmount * m_customMapsPerUnit; //M*K
+
+        //initializate global inf map vector
+        QStringList globalInfMaps = settings.value("GlobalInfluenceMaps").toStringList();
+        m_globalMapsAmount = 0; //G
+        m_globalCustomMapsAmount = 0; //GK
+        if(!globalInfMaps.contains("NONE") && globalInfMaps.size() > 0) {
+            m_globalMapsAmount = globalInfMaps.size();
+            m_globalInfluenceMaps.reserve(m_globalMapsAmount);
+            for(qint32 infMapCount=0; infMapCount < globalInfMaps.size(); infMapCount++) {
+                //create an influence map of the specified type
+                m_globalInfluenceMaps.push_back(InfluenceMap(adaenums::getInfluenceMapTypeFromString(globalInfMaps.at(infMapCount), adaenums::iMapType::STD_VALUE)));
+                //if is a custom map, increment the amount of global custom maps
+                if(globalInfMaps.at(infMapCount).startsWith("CUSTOM"))
+                    m_globalCustomMapsAmount++;
+            }
+            m_globalCustomInfluenceMapsUnitWeights2D.resize(m_globalCustomMapsAmount * m_fullUnitAmount); //GK * M
+            m_allGlobalInfluenceMapWeightsForUnit2D.resize(globalInfMaps.size() * m_unitAmount); //G * N
         }
-        m_globalCustomInfluenceMapsUnitWeights2D.resize(m_globalCustomMapsAmount * m_fullUnitAmount); //GK * M
-        m_allGlobalInfluenceMapWeightsForUnit2D.resize(globalInfMaps.size() * m_unitAmount); //G * N
+
+        //calculate how long the weightVector should be
+        qint32 weightsPerUnit = 0;
+        //S + K*(M+1) + G
+        weightsPerUnit = m_stdMapsPerUnit + m_customMapsPerUnit * (m_fullUnitAmount + 1) + m_globalMapsAmount;
+        //N*(S + K*(M+1) + G) + GK*M
+        m_requiredVectorLength = m_unitAmount * weightsPerUnit + m_globalCustomMapsAmount*m_fullUnitAmount;
+
+        m_weightPerStar = settings.value("WeightPerStar", 10).toDouble(&ok);
+        if(!ok)
+            m_weightPerStar = 10;
+        m_friendlyBuildingMultiplier = settings.value("FriendlyBuildingMultiplier", 1.5f).toDouble(&ok);
+        if(!ok)
+            m_friendlyBuildingMultiplier = 1.5f;
+        m_friendlyFactoryMultiplier = settings.value("FriendlyFactoryMultiplier", 0.1f).toDouble(&ok);
+        if(!ok)
+            m_friendlyFactoryMultiplier = 0.1f;
+
+        settings.endGroup();
     }
-
-
-
-    //calculate how long the weightVector should be
-    qint32 weightsPerUnit = 0;
-    if(!unitInfMaps.contains("NONE") && unitInfMaps.size() > 0) {
-        for(qint32 i=0; i < unitInfMaps.size(); i++) {
-            //standard inf maps require only 1 weight per unit, since they are computed in a standard way
-            if(unitInfMaps[i].startsWith("STD"))
-                weightsPerUnit++;
-            //custom maps require a weight for each unit in game, plus 1 since they are weighted as well
-            else
-                weightsPerUnit += m_fullUnitAmount + 1; //M + 1
-        }
+    else {
+        Console::print("MIN module couldn't load file '" + filename + "'!", Console::eWARNING);
     }
-    //add 1 weight to each unit for each global influence map
-    weightsPerUnit += m_globalInfluenceMaps.size(); //G
-
-    m_requiredVectorLength = m_unitList.size()*weightsPerUnit; //N*(S + K*(M+1) + G)
-
-    m_weightPerStar = settings.value("WeightPerStar", 10).toDouble(&ok);
-    if(!ok)
-        m_weightPerStar = 10;
-    m_friendlyBuildingMultiplier = settings.value("FriendlyBuildingMultiplier", 1.5f).toDouble(&ok);
-    if(!ok)
-        m_friendlyBuildingMultiplier = 1.5f;
-    m_friendlyFactoryMultiplier = settings.value("FriendlyFactoryMultiplier", 0.1f).toDouble(&ok);
-    if(!ok)
-        m_friendlyFactoryMultiplier = 0.1f;
-
-    settings.endGroup();
 }
 
 /**
  * @brief processStartOfTurn calculate bids for this turn and process stuff for the start of turn
  */
 void MultiInfluenceNetworkModule::processStartOfTurn() {
+    //if not initialized, initialize the types vectors
+    initializeWithPlayerPtr();
     //do unit count at start of turn
     for(qint32 i=0; i < m_unitList.size(); i++) {
         m_unitCount[i] = m_pPlayer->getUnitCount(m_unitList[i]);
@@ -165,7 +152,7 @@ void MultiInfluenceNetworkModule::processStartOfTurn() {
             m_unitOutputMaps[n].reset(); //reset output map to 0
             //compute each local map and add it to the output, weighted
             for(qint32 l=0; l < m_localMapsPerUnit; l++) {
-                InfluenceMap &infMap = influenceMapOfUnit(l, n);
+                InfluenceMap &infMap = influenceMapOfUnit(n, l);
                 if(adaenums::isCustomType(infMap.getType())) {
                     computeLocalInfluenceMap(infMap, n, true, k);
                     k++;
@@ -393,13 +380,18 @@ QString MultiInfluenceNetworkModule::toQString() {
     }
     //units in unit list full (M)
     for(qint32 m=0; m < m_unitListFull.size(); m++) {
-        res += m_unitListFull[m] + (m == m_unitListFull.size() - 1 ? "\nLocal Maps:\n" : ", ");
+        res += m_unitListFull[m] + (m == m_unitListFull.size() - 1 ? "\nLocal Maps, for each unit:\n" : ", ");
     }
-    //local maps and their single mapweights (L)
-    for(qint32 l=0; l< m_localMapsPerUnit; l++) {
-        res += adaenums::iMapTypeToQString(m_unitInfluenceMaps[l].getType()) + " [" + QString::number(m_unitInfluenceMaps[l].getWeight(), 'f', 3) +
-                (l==m_localMapsPerUnit-1 ? "]\nGlobal Maps with weight for each unit:\n" : "], ");
+    //local maps of each unitand their single mapweights (L)
+    for(qint32 n=0; n < m_unitAmount; n++) {
+        res += "> Unit " + m_unitList.at(n) + ":\n";
+        for(qint32 l=0; l< m_localMapsPerUnit; l++) {
+            res += adaenums::iMapTypeToQString(influenceMapOfUnit(n, l).getType()) + " [" + QString::number(influenceMapOfUnit(n, l).getWeight(), 'f', 3) +
+                    (l==m_localMapsPerUnit-1 ? "]\n" : "], ");
+        }
     }
+
+    res += "Global Maps with weight for each unit:\n";
     //global maps (G)
     if(m_globalInfluenceMaps.size() > 0) {
         for(quint32 g = 0; g < m_globalInfluenceMaps.size(); g++) {
@@ -420,7 +412,7 @@ QString MultiInfluenceNetworkModule::toQString() {
             res += "Unit " + m_unitList[n] + ":\n";
             for(qint32 k=0, l=0; l < m_localMapsPerUnit; l++) {
                 //if for unit n, map l is custom, add all weights
-                if(adaenums::isCustomType(influenceMapOfUnit(l, n).getType())) {
+                if(adaenums::isCustomType(influenceMapOfUnit(n, l).getType())) {
                     res += ">Custom map " + QString::number(k) + ":\n[";
                     for(qint32 m=0; m<m_fullUnitAmount; m++) {
                         res+= m_unitListFull[m] + ": " + QString::number(customInfluenceMapUnitWeight(n, k, m), 'f', 3) +
@@ -437,7 +429,7 @@ QString MultiInfluenceNetworkModule::toQString() {
     if(m_globalCustomMapsAmount > 0) {
         for(qint32 g=0, gk=0; g < m_globalMapsAmount; g++) {
             if(adaenums::isCustomType(m_globalInfluenceMaps[g].getType())) {
-                res += "Weights for custom map " + QString::number(gk) + ":\n[";
+                res += "Weights for global custom map " + QString::number(gk) + ":\n[";
                 for(qint32 m=0; m < m_fullUnitAmount; m++) {
                     res += m_unitListFull[m] + ": " + QString::number(glbCustomMapUnitWeight(gk, m), 'f', 3) +
                             (m==m_fullUnitAmount-1 ? "]\n" : ", ");
@@ -482,6 +474,29 @@ void MultiInfluenceNetworkModule::defaultInitializeUnitList(QStringList &unitLis
     ret = pInterpreter->doFunction("AIRPORT", function1, args1);
     buildList = ret.toVariant().toStringList();
     unitList.append(buildList);
+}
+
+
+void MultiInfluenceNetworkModule::initializeWithPlayerPtr() {
+    if(m_arePlayerPtrStuffInitialized || !(m_pAdapta->getPlayer()))
+        return;
+    m_pPlayer = m_pAdapta->getPlayer();
+    //initialize types vectors
+    m_unitTypesVector.reserve(m_unitAmount);
+    m_unitTypesDataVector.reserve(m_unitAmount);
+    for(qint32 i=0; i < m_unitAmount; i++) {
+        m_unitTypesVector.push_back(new Unit(m_unitList[i], m_pPlayer, false));
+        UnitData data;
+        data.m_pUnit = m_unitTypesVector[i].get();
+        data.m_pPfs = new UnitPathFindingSystem(data.m_pUnit);
+        m_unitTypesDataVector.push_back(data);
+    }
+
+    //initialize damage chart
+    m_damageChart.initialize(m_unitListFull);
+    Console::print(m_damageChart.toQString(), Console::eDEBUG);
+
+    m_arePlayerPtrStuffInitialized = true;
 }
 
 
@@ -541,7 +556,7 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             break;
         //std damage creates a map where the type of unit given does the most damage
         case adaenums::iMapType::STD_DAMAGE: {
-            Unit* pUnit = m_unitTypesVector[unitNum];
+            Unit* pUnit = m_unitTypesVector[unitNum].get();
             //direct
             if(pUnit->getBaseMinRange() > 1) {
                 for(qint32 i=0; i<pEnemies->size(); i++) {
@@ -558,7 +573,7 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             break;
         //mapdefense adds on each tile the defense gained by this unit's map (if the unit can go over that tile)
         case adaenums::iMapType::STD_MAPDEFENSE: {
-            Unit unit(m_unitList[unitNum], nullptr, false);
+            Unit unit(m_unitList[unitNum], m_pPlayer, false);
             influenceMap.addMapDefenseInfluence(m_pPlayer, &unit, m_weightPerStar, m_friendlyBuildingMultiplier, m_friendlyFactoryMultiplier);
         }
             break;

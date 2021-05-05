@@ -13,13 +13,15 @@ class AdaptaAI : public CoreAI
     Q_OBJECT
 public:
     AdaptaAI();
-    AdaptaAI(AdaptaAI &other) = default;
+    //AdaptaAI(AdaptaAI &other) = default;
 
     virtual void readIni(QString name) override;
 
     virtual void process() override;
 
     void addSelectedFieldData(spGameAction pGameAction, qint32 pointX, qint32 pointY);
+
+    inline Player* getPlayer() {return m_pPlayer;};
 
 protected:
     virtual void finishTurn() override;

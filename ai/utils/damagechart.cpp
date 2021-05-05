@@ -1,6 +1,7 @@
 #include "damagechart.h"
 #include "resource_management/weaponmanager.h"
 #include "game/gamemap.h"
+#include "coreengine/console.h"
 #include <QtMath>
 
 DamageChart::DamageChart() : m_totalUnits(0) {
@@ -121,18 +122,68 @@ std::pair<float, float> DamageChart::getFundsDmgBidirectional(Unit* pAttacker, U
     return std::pair<float, float>(dmgFundsDone, dmgFundsReceived);
 }
 
+QString DamageChart::toQString() {
+    QString res = "Damage Chart: Unit List IDs:\n[";
+
+    for(quint32 i=0; i<m_unitIDs.size(); i++) {
+        res+= "(" + QString::number(i) + ")" + m_unitIDs[i] +
+                (i==m_unitIDs.size()-1 ? "]\n" : ", ");
+    }
+    qint32 M = m_totalUnits;
+
+    res += "Full chart 1:\n";
+    for(qint32 mAtt = 0; mAtt < M; mAtt++) {
+        res += "|";
+        for(qint32 mDef=0; mDef < M; mDef++) {
+            QString numString = QString::number(dmgChart1At(mAtt, mDef));
+            while(numString.length() < 3) {
+                numString.prepend(" ");
+            }
+            res += numString + "|";
+        }
+        res += "\n";
+    }
+    res += "Full chart 2:\n";
+    for(qint32 mAtt = 0; mAtt < M; mAtt++) {
+        res += "|";
+        for(qint32 mDef=0; mDef < M; mDef++) {
+            QString numString = QString::number(dmgChart2At(mAtt, mDef));
+            while(numString.length() < 3) {
+                numString.prepend(" ");
+            }
+            res += numString + "|";
+        }
+        res += "\n";
+    }
+
+    return res;
+}
 
 
+//private methods
 void DamageChart::initializeCharts() {
     WeaponManager* weaponManager = WeaponManager::getInstance();
     qint32 M = m_totalUnits;
     m_dmgChart1.resize(M*M, 0.0f);
     m_dmgChart2.resize(M*M, 0.0f);
 
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QString function = "init";
+    QJSValueList args;
     for(qint32 mAtt = 0; mAtt < M; mAtt++) {
-        Unit attacker(m_unitIDs[mAtt], nullptr, false);
+        Unit attacker;
+        args.clear();
+        QJSValue objAtt = pInterpreter->newQObject(&attacker);
+        args << objAtt;
+        QJSValue ret = pInterpreter->doFunction(m_unitIDs[mAtt], function, args);
+
+        //Unit attacker2(m_unitIDs[mAtt], pPlayer, false);
         for(qint32 mDef = 0; mDef < M; mDef++) {
-            Unit defender(m_unitIDs[mDef], nullptr, false);
+            Unit defender;
+            args.clear();
+            QJSValue objDef = pInterpreter->newQObject(&defender);
+            args << objDef;
+            QJSValue ret = pInterpreter->doFunction(m_unitIDs[mDef], function, args);
             m_dmgChart1[mAtt*M + mDef] = qMin(0.0f, weaponManager->getBaseDamage(attacker.getWeapon1ID(), &defender));
             m_dmgChart2[mAtt*M + mDef] = qMin(0.0f, weaponManager->getBaseDamage(attacker.getWeapon2ID(), &defender));
         }

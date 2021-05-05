@@ -2,23 +2,27 @@
 #include "adapta/convolutionalnnmodule.h"
 #include "adapta/multiinfluencenetworkmodule.h"
 #include "coreengine/console.h"
+#include "ai/utils/test.h"
 
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
-
+    readIni("mockup");
+    wtests::testVecCopy();
+    Console::print("method ended", Console::eDEBUG);
 }
 
 void AdaptaAI::readIni(QString name) {
     //todo remove this test and actually read an ini
-    MultiInfluenceNetworkModule min = MultiInfluenceNetworkModule(m_pPlayer, this);
-    min.readIni("resources/aidata/adapta/MINextermination.ini");
-    WeightVector wv = WeightVector::generateRandomWeightVector(min.getRequiredWeightVectorLength(), 0, 1);
+    MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
+    pMin->readIni("resources/aidata/adapta/MINextermination.ini");
+    WeightVector wv = WeightVector::generateRandomWeightVector(pMin->getRequiredWeightVectorLength(), 0, 1);
+    Console::print("wv is of size " + QString::number(wv.size()), Console::eDEBUG);
     for(qint32 i=0; i<wv.size(); i++) {
         wv.setAt(i, i);
     }
-    min.assignWeightVector(wv);
-    Console::print("MIN mockup module loaded. Result:\n" + min.toQString(), Console::eDEBUG);
-    m_modules.append(&min);
+    pMin->assignWeightVector(wv);
+    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eDEBUG);
+    m_modules.append(pMin);
 }
 
 void AdaptaAI::process() {
@@ -31,7 +35,7 @@ void AdaptaAI::process() {
         m_IslandMaps.clear();
 
         //compute all modules' bids, based on current state of game
-        for(AdaptaModule *module : m_modules) {
+        for(auto *module : m_modules) {
             module->processStartOfTurn();
         }
     }

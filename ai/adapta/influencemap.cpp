@@ -56,6 +56,7 @@ InfluenceMap::InfluenceMap(const InfluenceMap &other) {
         m_influenceMap2D.push_back(other.m_influenceMap2D.at(i));
     }
 
+    m_type = other.m_type;
     m_weight = other.m_weight;
 }
 
@@ -75,6 +76,7 @@ InfluenceMap::InfluenceMap(InfluenceMap &&other) {
 
     other.m_influenceMap2D.clear();
 
+    m_type = other.m_type;
     m_weight = other.m_weight;
 }
 
