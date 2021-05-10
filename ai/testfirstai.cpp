@@ -19,6 +19,43 @@
 ////////////////////////////////////////////////////////////////
 #include <chrono> // for std::chrono functions
 
+class A {
+public:
+    A(int a) : a_int(a) {};
+    int getA() {return a_int;};
+    virtual int getB() = 0;
+private:
+    int a_int;
+};
+
+class B1 : public A {
+public:
+    B1(int a, int b) : A(a), b_int(b){};
+    virtual int getB() override {return b_int;};
+private:
+    int b_int;
+};
+
+class B2 : public A {
+public:
+    B2(int a, int b) : A(a), b_int(b){};
+    virtual int getB() override {return b_int*2;};
+private:
+    int b_int;
+};
+
+void testClasses() {
+    std::vector<A*> avec;
+    B1 b1(1, 2);
+    B2 b2(3, 4);
+    avec.push_back(&b1);
+    avec.push_back(&b2);
+    Console::print("b1's getB: " + QString::number(b1.getB()), Console::eDEBUG);
+    Console::print("b1's getB from avec: " + QString::number(avec[0]->getB()), Console::eDEBUG);
+    Console::print("b2's getB: " + QString::number(b2.getB()), Console::eDEBUG);
+    Console::print("b2's getB from avec: " + QString::number(avec[1]->getB()), Console::eDEBUG);
+};
+
 class MyTimer
 {
 private:
@@ -43,7 +80,73 @@ public:
     }
 };
 
-inline void fai(qint32 num) {num++;};
+quint32 indexOfWithStdVector(std::vector<QString> &stringVec, QString searchedString) {
+    for(quint32 j=0; j < stringVec.size(); j++){
+        if(stringVec[j] == searchedString)
+            return j;
+    }
+    return 0;
+}
+
+//result is that QStringList is the fastest, around 2/3 of time required to std::map
+void testMapSpeed() {
+    std::map<QString, quint32> unitIDToMIndexMap;
+    std::vector<QString> unitListVector = {"INFANTRY", "MECH", "RECON", "ARTILLERY", "LIGHT_TANK", "FLAK", "HEAVY_TANK", "NEOTANK", "ROCKETTHROWER", "MEGATANK", //10
+                                    "SUPERMACHINE1", "ROBO1", "ROBO2", "ROBO3", "ROBO4", "ROBO5", "ROBO6", "ROBO7", "ROBO8", "ROBO85", //10
+                                    "ROBO9", "ROBO10", "ROBO11", "ROBO12", "ROBO13", "ROBO14", "ROBO15", "ROBO16", "ROBO17", "ROBO18", //10
+                                    "ROBO19", "ROBO20", "ROBO21", "ROBOASD", "ROBORJEGKR", "ROBO_MECH", "ROBO_INFANTRY", "ROBO_ART", "ROBO_TANK", "ROBO_NEO"}; //10
+    QStringList unitList;
+
+    unitList.reserve(unitListVector.size());
+    for(quint32 i=0; i < unitListVector.size(); i++) {
+        unitIDToMIndexMap[unitListVector[i]] = i;
+        unitList.append(unitListVector[i]);
+    }
+
+    qint32 a = 0;
+    qint32 listIndex = 0;
+    qint32 size = unitListVector.size(); //40
+    qint32 bigN = 10'000'000;
+    double elapsed;
+
+
+    //map
+    MyTimer t1;
+    for(qint32 i=0; i<bigN; i++) {
+        a += unitIDToMIndexMap.at(unitListVector[listIndex]);
+        listIndex++;
+        if(listIndex == size)
+            listIndex = 0;
+    }
+    elapsed = t1.elapsed();
+    Console::print("Time elapsed using std::map for " + QString::number(bigN) + " reads is: " + QString::number(elapsed) + "\n(a = " + QString::number(a) + ")", Console::eDEBUG);
+
+    a = 0;
+    listIndex = 0;
+    //QSList
+    MyTimer t2;
+    for(qint32 i=0; i<bigN; i++) {
+        a += unitList.indexOf(unitListVector[listIndex]);
+        listIndex++;
+        if(listIndex == size)
+            listIndex = 0;
+    }
+    elapsed = t2.elapsed();
+    Console::print("Time elapsed using QStringList.indexOf for " + QString::number(bigN) + " reads is: " + QString::number(elapsed) + "\n(a = " + QString::number(a) + ")", Console::eDEBUG);
+
+    a = 0;
+    listIndex = 0;
+    //map
+    MyTimer t3;
+    for(qint32 i=0; i<bigN; i++) {
+        a += indexOfWithStdVector(unitListVector, unitListVector[listIndex]);
+        listIndex++;
+        if(listIndex == size)
+            listIndex = 0;
+    }
+    elapsed = t3.elapsed();
+    Console::print("Time elapsed using cycling over a vector (of size " + QString::number(size) +  ") for " + QString::number(bigN) + " read is: " + QString::number(elapsed) + "\n(a = " + QString::number(a) + ")", Console::eDEBUG);
+}
 
 /**
  * @brief testSpeedOfVectors
@@ -117,13 +220,12 @@ void testSpeedOfVectors() {
 }
 /////////////////////////////////////////////////
 
-TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta),
+TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta), m_adaAI(), m_MINmodule(m_pPlayer, &m_adaAI),
     m_influenceMap(), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;
-
     TrainingManager::instance().setupForMatch();
-    TrainingManager::instance().assignWeightVector();
+    TrainingManager::instance().getAssignedWeightVector();
 }
 
 
@@ -150,7 +252,6 @@ void TestFirstAI::process() {
     // create island maps at the start of turn
     if (rebuildIslandMaps)
     {
-        testSpeedOfVectors();
         rebuildIslandMaps = false;
         // remove island maps of the last turn
         m_IslandMaps.clear();
@@ -158,21 +259,30 @@ void TestFirstAI::process() {
         // create influence map at the start of the turn
         m_influenceMap.reset();
 
+        /*
         for (qint32 i= 0; i < pUnits->size(); i++)
         {
             Unit* pUnit = pUnits->at(i);
-            m_influenceMap.addUnitInfluence(pUnit, pEnemyUnits, pUnit->getCosts()*.001f);
-        }
+            m_influenceMap.addUnitInfluence(pUnit, pEnemyUnits, pUnit->getCosts()*.001f, adaenums::ATTACK1);
+        }//*/
 
         for (qint32 i= 0; i < pEnemyUnits->size(); i++)
         {
             Unit* pUnit = pEnemyUnits->at(i);
 
-            //negative weight since are enemies, and this ai's units as enemies of the considered unit
-            m_influenceMap.addUnitInfluence(pUnit, pUnits, pUnit->getCosts()*-.001f);
+            if(pUnit->getUnitID() == "ARTILLERY" && pUnits->size() > 0) {
+                //negative weight since are enemies, and this ai's units as enemies of the considered unit
+                //m_influenceMap.addUnitAtkInfluence(pUnit, 100, .5f, 2);
+                //m_influenceMap.addUnitInfluence(pUnit, pUnits, pUnit->getCosts()*-.001f, adaenums::ATTACK1);
+                //m_influenceMap.addMapDefenseInfluence(m_pPlayer, pUnit, 1, 1.5, 0.1);
+                //m_influenceMap.addUnitIndirectDmgValueInfluenceFaster(pUnit, pUnit->getPosition(), 80);
+                //m_influenceMap.addUnitIndirectDmgValueInfluenceFast(pUnit, pUnit->getPosition(), 80);
+                //m_influenceMap.addUnitIndirectDmgValueInfluence(pUnit, pUnit->getPosition(), 80);
+            }
         }
 
         m_influenceMap.showAllInfo();
+        Console::print("InfluenceMap:\n" + m_influenceMap.toQString(8), Console::eDEBUG);
 
         Console::print("TestAI front lines created", Console::eDEBUG);
     }
@@ -190,12 +300,35 @@ bool TestFirstAI::moveAUnit(spQmlVectorUnit pUnits) {
     //just move any available unit and make it capture stuff, then build other infantries. Just for test
     for(qint32 i = 0; i < pUnits->size(); i++) {
         Unit* pUnit = pUnits->at(i);
-        qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
-        Console::print("movePoints of unit at (" + QString::number(pUnit->getPosition().x()) + ", " +
-                       QString::number(pUnit->getPosition().y()) + ") are " + QString::number(movePoints), Console::eDEBUG);
+        //qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
+
+        if(pUnit->hasAction(ACTION_FIRE) && !pUnit->getHasMoved()) {
+            //just for test, move 2 tiles above and attack the unit 3 tiles above if any
+            QPoint fieldTarget(pUnit->getX(), qMax(0, pUnit->getY() - 2));
+            QPoint attackTarget(pUnit->getX(), qMax(0, pUnit->getY() - 3));
+            GameMap* pMap = GameMap::getInstance();
+            if(pMap->getTerrain(attackTarget.x(), attackTarget.y())->getUnit() != nullptr) {
+                spGameAction pAction = new GameAction(ACTION_FIRE);
+                pAction->setTarget(QPoint(pUnit->getX(),pUnit->getY()));
+                UnitPathFindingSystem upfs(pUnit);
+                upfs.explore();
+                QVector<QPoint> targets = upfs.getAllNodePoints();
+
+                QVector<QPoint> path = upfs.getPath(static_cast<qint32>(fieldTarget.x()),
+                                                   static_cast<qint32>(fieldTarget.y()));
+                pAction->setMovepath(path, upfs.getCosts(path));
+
+                CoreAI::addSelectedFieldData(pAction, attackTarget);
+
+                if (pAction->isFinalStep() && pAction->canBePerformed())
+                {
+                    emit performAction(pAction);
+                    return true;
+                }
+            }
+        }
 
         if(pUnit->hasAction(ACTION_CAPTURE) && !pUnit->getHasMoved()) {
-
             //if is already capturing continue capture
             if(pUnit->getCapturePoints() > 0) {
                 spGameAction pAction = new GameAction(ACTION_CAPTURE);

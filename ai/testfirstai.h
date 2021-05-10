@@ -5,6 +5,8 @@
 #include "adapta/influencemap.h"
 #include "influencefrontmap.h"
 #include "ai/genetic/evolutionmanager.h"
+#include "ai/adapta/multiinfluencenetworkmodule.h"
+#include "ai/adaptaai.h"
 
 /**
  * @brief The TestFirstAI class is just a AI playground where I can understand which methods and stuff I have to do in order
@@ -26,6 +28,8 @@ protected:
     virtual void finishTurn() override;
 
 private:
+    AdaptaAI m_adaAI;
+    MultiInfluenceNetworkModule m_MINmodule;
     bool rebuildIslandMaps;
     InfluenceMap m_influenceMap;
     InfluenceFrontMap m_inffMap;
