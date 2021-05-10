@@ -5,6 +5,7 @@
 #include "game/gamemap.h"
 #include "ai/genetic/weightvector.h"
 #include "ai/genetic/evolutionmanager.h"
+#include "ai/adapta/AdaptaEnums.h"
 
 class TrainingManager : public QObject
 {
@@ -25,18 +26,41 @@ public:
      */
     void saveState(QString iniFilename);
 
+    /**
+     * @brief Set up stuff, notifying that it's a start of a new match which has to be followed by this TM
+     */
     void setupForMatch();
-    WeightVector assignWeightVector();
+
+    /**
+     * @brief get the vector to be used by the trainee on this round
+     */
+    WeightVector getAssignedWeightVector();
 
     void stopTraining();
 
+    /**
+      * @brief if set <= 0, use the weight vector length found in ini file as usual (this is the default),
+      * if > 0 use this length instead
+      */
+    void requestWVLength(qint32 requestedWVLength);
+
 public slots:
+    /**
+     * @brief catch when there's a victory to evaluate current trainee's performance
+     */
     void onVictory();
 
 private:
     explicit TrainingManager(QObject *parent = nullptr);
     EvolutionManager m_evolutionManager;
 
+    /**
+     * @brief the index in the game map -> getPlayer(index), which indicates in the automation of the init.js where is the
+     * player which will be evaluated
+     */
+    qint32 m_trainingPlayerIndex;
+    std::vector<float> m_partialFitnesses;
+    adaenums::evalType m_evaluationType{adaenums::evalType::VICTORY_COUNT_ONLY};
     bool m_continueTraining;
 
     QString m_iniFileName;
@@ -65,11 +89,24 @@ private:
 
     bool m_isEvoManagerInitialized;
 
+    /**
+      @brief if this is <= 0, use the weight vector length found in ini file, if > 0 use this length instead.
+      Can be requested through a method
+      */
+    qint32 m_requestedWVLength {-1};
+
     static TrainingManager s_instance;
     static bool s_isInstanceInitialized;
 
     void initializeEvolutionManager();
     void advanceMatchCount();
+    /**
+     * @brief evaluate and add the partial fitness based on trainee performances for this match
+     */
+    void evaluatePartialFitnessOfThisMatch();
+    /**
+     * @brief evaluate the weight vector, once all partial fitnesses are set
+     */
     void evaluateFitnessOfCurrentWV();
 
     void saveIfProgress();

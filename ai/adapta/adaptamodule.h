@@ -5,6 +5,9 @@
 #include "game/player.h"
 #include "ai/genetic/weightvector.h"
 
+class AdaptaModule;
+typedef oxygine::intrusive_ptr<AdaptaModule> spAdaptaModule;
+
 /**
  * @brief The AdaptaModule class represents a module for the adapta ai. A module is any component of the adapta which does
  * its computation and then generates each turn bids for some units currently in game (possibly none, possibly all).
@@ -20,7 +23,7 @@
  * A module can also be weighted by the AI itself. The module should process its stuff without accounting this, since
  * it's an information only used by the ai to try to change strategies.
  */
-class AdaptaModule : public QObject
+class AdaptaModule : public QObject, public oxygine::ref_counter
 {
     Q_OBJECT
 public:
@@ -28,7 +31,7 @@ public:
     AdaptaModule(Player* pPlayer);
     AdaptaModule(const AdaptaModule &other);
     AdaptaModule(AdaptaModule &&other);
-    AdaptaModule &operator=(const AdaptaModule &other);
+    void operator=(const AdaptaModule &other);
     virtual ~AdaptaModule() = default;
 
     //Methods to be overridden. I wanted to make this class abstract, but it breaks QVectors, so this is it

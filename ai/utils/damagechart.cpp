@@ -166,26 +166,23 @@ void DamageChart::initializeCharts() {
     qint32 M = m_totalUnits;
     m_dmgChart1.resize(M*M, 0.0f);
     m_dmgChart2.resize(M*M, 0.0f);
+    Player* pPlayer = GameMap::getInstance()->getCurrentPlayer();
+    Player* pOpponent = GameMap::getInstance()->getPlayer(0) == pPlayer ?
+                GameMap::getInstance()->getPlayer(1) : GameMap::getInstance()->getPlayer(0);
 
-    Interpreter* pInterpreter = Interpreter::getInstance();
-    QString function = "init";
-    QJSValueList args;
     for(qint32 mAtt = 0; mAtt < M; mAtt++) {
-        Unit attacker;
-        args.clear();
-        QJSValue objAtt = pInterpreter->newQObject(&attacker);
-        args << objAtt;
-        QJSValue ret = pInterpreter->doFunction(m_unitIDs[mAtt], function, args);
+        //create a fake unit just to init it and get the weapon IDs
+        spUnit pAttacker = new Unit(m_unitIDs[mAtt], pPlayer, false);
+        QString weapon1ID = pAttacker->getWeapon1ID();
+        QString weapon2ID = pAttacker->getWeapon2ID();
 
         //Unit attacker2(m_unitIDs[mAtt], pPlayer, false);
         for(qint32 mDef = 0; mDef < M; mDef++) {
-            Unit defender;
-            args.clear();
-            QJSValue objDef = pInterpreter->newQObject(&defender);
-            args << objDef;
-            QJSValue ret = pInterpreter->doFunction(m_unitIDs[mDef], function, args);
-            m_dmgChart1[mAtt*M + mDef] = qMin(0.0f, weaponManager->getBaseDamage(attacker.getWeapon1ID(), &defender));
-            m_dmgChart2[mAtt*M + mDef] = qMin(0.0f, weaponManager->getBaseDamage(attacker.getWeapon2ID(), &defender));
+            spUnit pDefender = new Unit(m_unitIDs[mDef], pOpponent, false);
+            if(!pAttacker->getWeapon1ID().isEmpty())
+                m_dmgChart1[mAtt*M + mDef] = qMax(0.0f, weaponManager->getBaseDamage(pAttacker->getWeapon1ID(), pDefender.get()));
+            if(!pAttacker->getWeapon2ID().isEmpty())
+                m_dmgChart2[mAtt*M + mDef] = qMax(0.0f, weaponManager->getBaseDamage(pAttacker->getWeapon2ID(), pDefender.get()));
         }
     }
 }

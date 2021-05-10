@@ -8,7 +8,8 @@
 
 TrainingManager::TrainingManager(QObject *parent) : QObject(parent), m_continueTraining(true), m_currGenNumberCount(0),
     m_totalGenCount(0), m_isEvoManagerInitialized(false)
-    {}
+    {
+}
 
 bool TrainingManager::s_isInstanceInitialized = false;
 
@@ -24,13 +25,23 @@ void TrainingManager::loadIni(QString filename) {
         //load stuff for the training manager
         settings.beginGroup("TrainingInfo");
         bool ok = false;
+        bool loadPopulation = false;
         m_matchNumberTarget = settings.value("MatchNumberTarget", 10).toInt(&ok);
         if(!ok)
             m_matchNumberTarget = 10;
+        loadPopulation = settings.value("LoadPopulation", false).toBool();
+        m_partialFitnesses.reserve(m_matchNumberTarget);
         m_populationFileName = settings.value("PopulationFileName", "resources/aidata/adapta/population.json").toString();
         m_maxGenerationCount = settings.value("MaxGenerationCount", 1000).toInt(&ok);
         if(!ok)
             m_maxGenerationCount = 1000;
+        m_evaluationType = adaenums::getEvalTypeFromString(settings.value("EvaluationType", "VICTORY_COUNT_ONLY").toString());
+        m_trainingPlayerIndex = settings.value("TrainingPlayer", 0).toInt(&ok);
+        if(!ok) {
+            Console::print("Training Manager didn't found an index to follow a player in INI file! Defaulted to 0!", Console::eWARNING);
+            m_trainingPlayerIndex = 0;
+        }
+
         settings.endGroup();
 
         settings.beginGroup("SaveInfo");
@@ -58,14 +69,19 @@ void TrainingManager::loadIni(QString filename) {
 
         //load stuff for the evolution manager
         settings.beginGroup("EvolutionManager");
-        qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation, crossoverType;
+        qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation, crossoverType, mutationType;
         float minWeight, maxWeight;
         populationSize = settings.value("PopulationSize", 10).toInt(&ok);
         if(!ok)
             populationSize = 10;
-        weightVectorLength = settings.value("WeightVectorLength", 10).toInt(&ok);
-        if(!ok)
-            weightVectorLength = 10;
+        //set WV length only if not requested differently
+        if(m_requestedWVLength <= 0) {
+            weightVectorLength = settings.value("WeightVectorLength", 10).toInt(&ok);
+            if(!ok)
+                weightVectorLength = 10;
+        } else {
+            weightVectorLength = m_requestedWVLength;
+        }
         elitismDegree = settings.value("ElitismDegree", 2).toInt(&ok);
         if(!ok)
             elitismDegree = 2;
@@ -82,15 +98,32 @@ void TrainingManager::loadIni(QString filename) {
         if(!ok)
             maxWeight = 10.0f;
         settings.endGroup();
-        crossoverType = settings.value("CrossoverFunction", 2).toInt(&ok);
+        crossoverType = settings.value("CrossoverFunctionType", 2).toInt(&ok);
         if(!ok)
             crossoverType = 2;
+        mutationType = settings.value("MutationFunctionType", 0).toInt(&ok);
+        if(!ok)
+            mutationType = 0;
+
 
         m_evolutionManager.initialize(populationSize, weightVectorLength, minWeight, maxWeight, elitismDegree,
                                       randomismDegree, evoenums::CrossoverType(crossoverType));
+        m_evolutionManager.setMutationFunction(evofunc::getMutationFunctionFromType(evoenums::MutationType(mutationType)));
         m_evolutionManager.setGeneration(generation);
 
         m_evolutionManager.setEliteRecordsNumber(m_bestRecordsToSave);
+
+        bool loadOk = false;
+        //load population if requested
+        if(loadPopulation) {
+            loadOk = m_evolutionManager.loadPopulationFromJsonFile(m_populationFileName);
+        }
+        //create random if requested or if load failed
+        if(!loadPopulation || !loadOk) {
+            Console::print("Creating random population", Console::eDEBUG);
+            m_evolutionManager.createRandomPopulation();
+        }
+        m_evolutionManager.setMutationFunction(evofunc::individualRandomMutation);
 
     } else {
         Console::print("Training manager couldn't load ini file (" + filename + ")! Default values applied", Console::eWARNING);
@@ -101,6 +134,11 @@ void TrainingManager::loadIni(QString filename) {
 
         m_evolutionManager.initialize(10, 10, -10.0f, 10.0f, 2, 1, evoenums::CrossoverType::mixRandom);
         m_evolutionManager.setGeneration(0);
+        m_evolutionManager.setMutationFunction(evofunc::individualRandomMutation);
+
+        Console::print("Creating random population", Console::eDEBUG);
+        m_evolutionManager.createRandomPopulation();
+
     }
 }
 
@@ -164,17 +202,18 @@ void TrainingManager::setupForMatch() {
     if(!m_isEvoManagerInitialized)
         initializeEvolutionManager();
 
-    spGameMap pMap = GameMap::getInstance();
-    connect(pMap->getGameRules(), &GameRules::signalVictory, this, &TrainingManager::onVictory, Qt::QueuedConnection);
+    //don't connect the event but let the init.js file call the method onVictory instead
+    //GameMap* pMap = GameMap::getInstance();
+    //connect(pMap->getGameRules(), &GameRules::signalVictory, this, &TrainingManager::onVictory, Qt::QueuedConnection);
 
 }
 
-WeightVector TrainingManager::assignWeightVector() {
+WeightVector TrainingManager::getAssignedWeightVector() {
     Console::print("assigning vector " + m_evolutionManager.getPopulation()[m_currWVIndex].toQString(), Console::eDEBUG);
     return m_evolutionManager.getPopulation()[m_currWVIndex];
 }
 
-//relies on the automation of the init.js file (in templates, in install is in the base folder)
+//relies on the automation of the init.js file (in templates folder in the repo folder, in base folder where the game is built)
 void TrainingManager::stopTraining() {
     m_continueTraining = false;
     Interpreter* pInterpreter = Interpreter::getInstance();
@@ -190,8 +229,14 @@ void TrainingManager::stopTraining() {
 }
 
 
+void TrainingManager::requestWVLength(qint32 requestedWVLength) {
+    m_requestedWVLength = requestedWVLength;
+}
+
+
 //slots
 void TrainingManager::onVictory() {
+    evaluatePartialFitnessOfThisMatch();
     Console::print("Training: Finished match " + QString::number(m_currWVMatchNumber+1) + "/" +
                    QString::number(m_matchNumberTarget) + " of Weight vector " + QString::number(m_currWVIndex+1) + "/" +
                    QString::number(m_evolutionManager.getPopulationSize()), Console::eDEBUG);
@@ -206,16 +251,20 @@ void TrainingManager::initializeEvolutionManager() {
     Interpreter::setCppOwnerShip(this);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
-
-    //load ini also set some stuff for the evolution manager
+    //load ini also set some stuff for the evolution manager and loads or create its population
     loadIni("resources/aidata/adapta/training.ini");
-    //load population
-    bool loadOk = m_evolutionManager.loadPopulationFromJsonFile(m_populationFileName);
-    if(!loadOk) {
-        Console::print("Creating random population", Console::eDEBUG);
-        m_evolutionManager.createRandomPopulation();
+
+    //now set to the init.js the training manager
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QString object = "Init";
+    QString func = "setupTrainingManager";
+    if (pInterpreter->exists(object, func))
+    {
+        QJSValueList args;
+        QJSValue value = pInterpreter->newQObject(this);
+        args << value;
+        pInterpreter->doFunction(object, func, args);
     }
-    m_evolutionManager.setMutationFunction(evofunc::individualRandomMutation);
 
     m_isEvoManagerInitialized = true;
 }
@@ -253,15 +302,21 @@ void TrainingManager::advanceMatchCount() {
 }
 
 
+void TrainingManager::evaluatePartialFitnessOfThisMatch() {
+    float partialFitness = adaenums::calculatePartialFitnessFromType(m_evaluationType, m_trainingPlayerIndex);
+    m_partialFitnesses.push_back(partialFitness);
+    Console::print("Current trainee got a partial fitness of " + QString::number(partialFitness) +
+                   " for this match", Console::eDEBUG);
+}
+
 void TrainingManager::evaluateFitnessOfCurrentWV() {
-    //TODO put a real fitness calculation and not a dummy one
-    std::vector<float> wVec = m_evolutionManager.getPopulation()[m_currWVIndex].getVector();
-    float dummyFitness = std::accumulate(wVec.begin(), wVec.end(), 0.0f) * .1f * wVec.size();
-    m_evolutionManager.getPopulation()[m_currWVIndex].setFitness(dummyFitness);
+    float fitness = adaenums::calculateFinalFitnessFromType(m_evaluationType, m_partialFitnesses);
+    m_evolutionManager.getPopulation()[m_currWVIndex].setFitness(fitness);
     Console::print("Vector " + QString::number(m_currWVIndex+1) + "/" +
                    QString::number(m_evolutionManager.getPopulationSize()) +
-                   " got fitness of " + QString::number(dummyFitness) + "\n" +
+                   " got fitness of " + QString::number(fitness, 'f', 8) + "\n" +
                    m_evolutionManager.getPopulation()[m_currWVIndex].toQString(), Console::eDEBUG);
+    m_partialFitnesses.clear();
 }
 
 

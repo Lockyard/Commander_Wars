@@ -1,4 +1,6 @@
 #include "AdaptaEnums.h"
+#include "coreengine/console.h"
+#include "game/gamemap.h"
 
 namespace adaenums {
 
@@ -15,12 +17,12 @@ iMapType getInfluenceMapTypeFromString(QString name, iMapType defaultType) {
         return iMapType::STD_MAPDEFENSE;
     if(name == "CUSTOM_1")
         return iMapType::CUSTOM_1;
+    if(name == "CUSTOM_ALLIES")
+        return iMapType::CUSTOM_ALLIES;
+    if(name == "CUSTOM_ENEMIES")
+        return iMapType::CUSTOM_ENEMIES;
 
     return defaultType;
-}
-
-bool isCustomType(iMapType type) {
-    return type >= CUSTOM_1;
 }
 
 float getUnitWeightFromIMapType(Unit* pReferenceUnit, iMapType type, Unit* pTargetUnit) {
@@ -46,9 +48,130 @@ QString iMapTypeToQString(iMapType type) {
         return "STD_MAPDEFENSE";
     case CUSTOM_1:
         return "CUSTOM_1";
+    case CUSTOM_ALLIES:
+        return "CUSTOM_ALLIES";
+    case CUSTOM_ENEMIES:
+        return "CUSTOM_ENEMIES";
     default:
-        return "UNK_MAP_TYPE";
+        return "UNKNOWN_MAP_TYPE";
     }
+}
+
+evalType getEvalTypeFromString(QString eTypeString, evalType defaultType) {
+    if(eTypeString == "VICTORY_COUNT_ONLY")
+        return evalType::VICTORY_COUNT_ONLY;
+    if(eTypeString == "PLAYER_VALUE_PREDEPLOYED")
+        return evalType::PLAYER_VALUE_PREDEPLOYED;
+    return defaultType;
+}
+
+
+float calculatePartialFitnessFromType(evalType eType, qint32 playerIndex) {
+    switch(eType) {
+    case VICTORY_COUNT_ONLY:
+        return calculateFitnessVictoryCountOnlyPartial(playerIndex);
+    case PLAYER_VALUE_PREDEPLOYED:
+        return calculateFitnessPlayerValuePredeployedPartial(playerIndex);
+    default:
+        return calculateFitnessVictoryCountOnlyPartial(playerIndex);
+    }
+}
+
+
+/**
+ * @brief return the final fitness of player index based on the type of evaluation
+ */
+float calculateFinalFitnessFromType(evalType eType, std::vector<float> partialFitnesses) {
+    switch(eType) {
+    case VICTORY_COUNT_ONLY:
+    case PLAYER_VALUE_PREDEPLOYED:
+        return calculateFinalFitnessAccumulate(partialFitnesses);
+    default:
+        return calculateFinalFitnessAccumulate(partialFitnesses);
+    }
+}
+
+/**
+ * @brief -1 if lost, +1 if won
+ */
+float calculateFitnessVictoryCountOnlyPartial(qint32 playerIndex) {
+    GameMap* pMap = GameMap::getInstance();
+    qint32 winnerTeam = pMap->getWinnerTeam();
+    //evaluate
+    if (winnerTeam >= 0 && playerIndex <= pMap->getPlayerCount()) {
+        if (pMap->getPlayer(playerIndex)->getTeam() == winnerTeam){
+            return 1;
+        } else {
+            return -1;
+        }
+    } else {
+        if(winnerTeam >=0)
+            Console::print("The trained player has an index greater than the number of players! Couldn't evaluate player!", Console::eWARNING);
+        else {
+            Console::print("Winner team is < 0! Can't evaluate trained player!", Console::eWARNING);
+        }
+    }
+    return -1;
+}
+
+
+float calculateFitnessPlayerValuePredeployedPartial(qint32 playerIndex) {
+    GameMap* pMap = GameMap::getInstance();
+    //todo remove this! Is to check how the error happens
+    if(pMap ==nullptr)
+        return 0.0f;
+    qint32 winnerTeam = pMap->getWinnerTeam();
+    //evaluate if winner team and player index are valid
+    if (winnerTeam >= 0 && playerIndex <= pMap->getPlayerCount()) {
+        DayToDayRecord* pDayRecordBegin = pMap->getGameRecorder()->getDayRecord(0);
+        DayToDayRecord* pDayRecordEnd = pMap->getGameRecorder()->getDayRecord(pMap->getCurrentDay()-1);
+        //if there's no record, return a safe value based just on victory
+        if(pDayRecordBegin == nullptr || pDayRecordEnd == nullptr) {
+            Console::print("Evaluation of AI for pre-deployed player value failed, no DayToDayRecord found to evaluate! Returning a value based just on victory", Console::eWARNING);
+            return calculateFitnessVictoryCountOnlyPartial(playerIndex)*.2f; //return +/- 0.2 to be safe
+        }
+
+        //if the trainee won
+        if(pMap->getPlayer(playerIndex)->getTeam() == winnerTeam) {
+            float playerStrengthStart = pDayRecordBegin->getPlayerRecord(playerIndex)->getPlayerStrength();
+            float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(playerIndex)->getPlayerStrength();
+            if(playerStrengthStart == 0) {
+                Console::print("Trainee has a strength of 0 at start of game! Can't evaluate properly! Evaluating with safe value!", Console::eWARNING);
+                return calculateFitnessVictoryCountOnlyPartial(playerIndex)*.2f; //return +/- 0.2 to be safe
+            } else {
+                return playerStrengthFinal/playerStrengthStart;
+            }
+        }
+        //if an opponent won
+        else {
+            for (qint32 i = 0; i < pMap->getPlayerCount(); i++)
+            {
+                if(pMap->getPlayer(i)->getTeam() == winnerTeam) {
+                    float playerStrengthStart = pDayRecordBegin->getPlayerRecord(i)->getPlayerStrength();
+                    float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(i)->getPlayerStrength();
+                    if(playerStrengthStart == 0) {
+                        Console::print("Player #" + QString::number(i) + " has a strength of 0 at start of game! Can't evaluate properly! Evaluating with safe value!", Console::eWARNING);
+                        return calculateFitnessVictoryCountOnlyPartial(playerIndex)*.2f; //return +/- 0.2 to be safe
+                    } else {
+                        return -playerStrengthFinal/playerStrengthStart;
+                    }
+                }
+            }
+        }
+    } else {
+        if(winnerTeam >=0)
+            Console::print("The trained player has an index greater than the number of players! Couldn't evaluate player!", Console::eWARNING);
+        else {
+            Console::print("Winner team is < 0! Can't evaluate trained player!", Console::eWARNING);
+        }
+    }
+    return -1;
+}
+
+
+
+float calculateFinalFitnessAccumulate(std::vector<float> partialFitnesses) {
+    return std::accumulate(partialFitnesses.begin(), partialFitnesses.end(), 0.0f);
 }
 
 }

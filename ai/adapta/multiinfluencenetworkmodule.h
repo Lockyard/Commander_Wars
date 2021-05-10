@@ -9,6 +9,9 @@
 #include "game/unitpathfindingsystem.h"
 #include <QVector>
 
+class MultiInfluenceNetworkModule;
+typedef oxygine::intrusive_ptr<MultiInfluenceNetworkModule> spMultiInfluenceNetworkModule;
+
 /**
  * @brief The MultiInfluenceNetworkModule class is a module based on the one explained in the adapta paper.
  * It uses multiple influence maps and a vector of weight for each unit and map to get a final different map for each
@@ -103,8 +106,6 @@ private:
     //this is long N (like m_unitList) and contains at each position in parallel an instantiation of a unit with that ID
     //this unit is not in game but is used to retrieve the unit type's properties
     std::vector<spUnit> m_unitTypesVector;
-    //just to have the pathfinding systems for the types
-    std::vector<UnitData> m_unitTypesDataVector;
     bool m_arePlayerPtrStuffInitialized{false};
 
     std::vector<qint32> m_unitCount;

@@ -3,26 +3,29 @@
 #include "adapta/multiinfluencenetworkmodule.h"
 #include "coreengine/console.h"
 #include "ai/utils/test.h"
+#include "ai/adapta/trainingmanager.h"
 
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
     readIni("mockup");
-    wtests::testVecCopy();
-    Console::print("method ended", Console::eDEBUG);
+
+
+    MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
+    pMin->readIni("resources/aidata/adapta/MINextermination.ini");
+    TrainingManager::instance().requestWVLength(pMin->getRequiredWeightVectorLength());
+    TrainingManager::instance().setupForMatch();
+    TrainingManager* pTM = &TrainingManager::instance();
+    WeightVector wv = TrainingManager::instance().getAssignedWeightVector();
+    Console::print("wv is of size " + QString::number(wv.size()) + " (requested: " +
+                   QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
+    pMin->assignWeightVector(wv);
+    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eDEBUG);
+    m_modules.append(pMin);
+
 }
 
 void AdaptaAI::readIni(QString name) {
     //todo remove this test and actually read an ini
-    MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
-    pMin->readIni("resources/aidata/adapta/MINextermination.ini");
-    WeightVector wv = WeightVector::generateRandomWeightVector(pMin->getRequiredWeightVectorLength(), 0, 1);
-    Console::print("wv is of size " + QString::number(wv.size()), Console::eDEBUG);
-    for(qint32 i=0; i<wv.size(); i++) {
-        wv.setAt(i, i);
-    }
-    pMin->assignWeightVector(wv);
-    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eDEBUG);
-    m_modules.append(pMin);
 }
 
 void AdaptaAI::process() {
@@ -35,8 +38,8 @@ void AdaptaAI::process() {
         m_IslandMaps.clear();
 
         //compute all modules' bids, based on current state of game
-        for(auto *module : m_modules) {
-            module->processStartOfTurn();
+        for(auto spModule : m_modules) {
+            spModule->processStartOfTurn();
         }
     }
 

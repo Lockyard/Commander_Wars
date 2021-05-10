@@ -62,6 +62,15 @@ namespace evofunc {
         return res;
     }
 
+    mutationFuncPtr getMutationFunctionFromType(evoenums::MutationType type, mutationFuncPtr defaultMutationFuncPtr) {
+        switch(type) {
+        case evoenums::MutationType::individualRandom:
+            return individualRandomMutation;
+        default:
+            return defaultMutationFuncPtr;
+        }
+    }
+
 
     //default mutation
     void individualRandomMutation(WeightVector& weightVector, float minWeight, float maxWeight, float probability) {

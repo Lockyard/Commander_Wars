@@ -100,10 +100,11 @@ void InfluenceMap::reset() {
 }
 
 
-void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect) {
+void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect) {
     qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
     if(stepsForIndirect == -3)
         stepsForIndirect = steps;
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pUnit, GameMap::getInstance()->getCurrentPlayer());
     //if is an indirect unit
     if(pUnit->getBaseMaxRange() > 1) {
 
@@ -112,17 +113,17 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs,
         //values >= 0 indicate in how many steps the unit REACHES that tile, (-1, so 0 are the tiles reachable in 1 step, etc)
         std::vector<qint32> stepTilesMap2D(m_mapHeight*m_mapWidth, PathFindingSystem::infinite);
 
-        pPfs->setIgnoreEnemies(false);
+        spPfs->setIgnoreEnemies(false);
         //double the move points of the unit. used to calculate the influence on 2 steps
-        pPfs->setMovepoints(movePoints*stepsForIndirect);
-        pPfs->explore();
+        spPfs->setMovepoints(movePoints*stepsForIndirect);
+        spPfs->explore();
 
-        auto points = pPfs->getAllNodePoints();
+        auto points = spPfs->getAllNodePoints();
         //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
         for (const auto & point : points) {
             //in how many turns (steps) the unit reaches a tile (here 1 for tiles reachable in 1 step, 2 for 2 etc. 0 is for the tile where the unit is)
-            if(pPfs->isReachable(point.x(), point.y())) {
-                qint32 cost = pPfs->getTargetCosts(point.x(), point.y());
+            if(spPfs->isReachable(point.x(), point.y())) {
+                qint32 cost = spPfs->getTargetCosts(point.x(), point.y());
                 if(cost == 0) {
                     stepTilesMap2D[point.y()*m_mapWidth + point.x()] = 0; //0 where the indirect unit is
                 } else
@@ -158,17 +159,17 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs,
         //values >= 0 indicat in how many steps the unit CAN ATTACK that tile (-1 again)
         std::vector<qint32> atkTilesMap2D(m_mapHeight*m_mapWidth, -1);
 
-        pPfs->setIgnoreEnemies(false);
+        spPfs->setIgnoreEnemies(false);
         //double the move points of the unit. used to calculate the influence on 2 steps
-        pPfs->setMovepoints(movePoints*steps);
-        pPfs->explore();
+        spPfs->setMovepoints(movePoints*steps);
+        spPfs->explore();
 
-        auto points = pPfs->getAllNodePoints();
+        auto points = spPfs->getAllNodePoints();
         //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
         for (const auto & point : points) {
             //in how many turns (steps) the unit reaches a tile (-1, so 0 is the immediate reachable ones, so on)
-            if(pPfs->isReachable(point.x(), point.y())) {
-                stepTilesMap2D[point.y()*m_mapWidth + point.x()] = qMax(0, (pPfs->getTargetCosts(point.x(), point.y()) - 1) / movePoints);
+            if(spPfs->isReachable(point.x(), point.y())) {
+                stepTilesMap2D[point.y()*m_mapWidth + point.x()] = qMax(0, (spPfs->getTargetCosts(point.x(), point.y()) - 1) / movePoints);
             }
         }
 
@@ -216,16 +217,18 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs,
     }
 }
 
-void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPfs, QPoint startPoint, bool ignoreEnemies, float unitWeight) {
+void InfluenceMap::addUnitValueInfluence(Unit *pUnit, QPoint startPoint, bool ignoreEnemies, float unitWeight) {
     //tmch
     pUnit->getAmmo1();
 
-    pPfs->setIgnoreEnemies(ignoreEnemies);
-    pPfs->setMovepoints(-2);
-    pPfs->setStartPoint(startPoint.x(), startPoint.y());
-    pPfs->explore();
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pUnit, GameMap::getInstance()->getCurrentPlayer());
 
-    auto points = pPfs->getAllNodePoints();
+    spPfs->setIgnoreEnemies(ignoreEnemies);
+    spPfs->setMovepoints(-2);
+    spPfs->setStartPoint(startPoint.x(), startPoint.y());
+    spPfs->explore();
+
+    auto points = spPfs->getAllNodePoints();
     //for each reachable point by this unit
     for (const auto & point : points) {
         float multiplier = 1.0f;
@@ -239,14 +242,14 @@ void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPf
                 (point.x() == startPoint.x() - 1 && point.y() == startPoint.y()) ||
                 (point.x() == startPoint.x() && point.y() == startPoint.y() - 1) ||
                 (point.x() == startPoint.x() && point.y() == startPoint.y() + 1)) {
-            if(pPfs->getTargetCosts(point.x(), point.y()) == PathFindingSystem::infinite)
+            if(spPfs->getTargetCosts(point.x(), point.y()) == PathFindingSystem::infinite)
                 multiplier = 0.0f;
             else
                 multiplier = 1.0f;
         }
         //if is another reachable point, give weight asintotically from 1 to 0 based on distance
         else {
-            qint32 fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+            qint32 fieldCost = spPfs->getTargetCosts(point.x(), point.y());
             multiplier = qExp(-fieldCost);
         }
 
@@ -255,16 +258,18 @@ void InfluenceMap::addUnitValueInfluence(Unit *pUnit, UnitPathFindingSystem* pPf
     }
 }
 
-void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue) {
+void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
     //tmch
     pAttackerTypeUnit->getAmmo1();
 
-    pPfs->setIgnoreEnemies(true);
-    pPfs->setMovepoints(-2);
-    pPfs->setStartPoint(enemyTargetPoint.x(), enemyTargetPoint.y());
-    pPfs->explore();
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pAttackerTypeUnit, GameMap::getInstance()->getCurrentPlayer());
 
-    auto points = pPfs->getAllNodePoints();
+    spPfs->setIgnoreEnemies(true);
+    spPfs->setMovepoints(-2);
+    spPfs->setStartPoint(enemyTargetPoint.x(), enemyTargetPoint.y());
+    spPfs->explore();
+
+    auto points = spPfs->getAllNodePoints();
     //for each reachable point by this unit
     for (const auto & point : points) {
         float multiplier = 1.0f;
@@ -278,7 +283,7 @@ void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitP
                 (point.x() == enemyTargetPoint.x() - 1 && point.y() == enemyTargetPoint.y()) ||
                 (point.x() == enemyTargetPoint.x() && point.y() == enemyTargetPoint.y() - 1) ||
                 (point.x() == enemyTargetPoint.x() && point.y() == enemyTargetPoint.y() + 1)) {
-            qint32 fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+            qint32 fieldCost = spPfs->getTargetCosts(point.x(), point.y());
             if(fieldCost < 0) //not reachable
                 multiplier = 0.0f;
             else
@@ -286,7 +291,7 @@ void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitP
         }
         //if is another reachable point, give weight asintotically from 1 to 0 based on distance
         else {
-            qint32 fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+            qint32 fieldCost = spPfs->getTargetCosts(point.x(), point.y());
             multiplier = qPow(fieldCost, -1);
         }
 
@@ -299,7 +304,7 @@ void InfluenceMap::addUnitDirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitP
 }
 
 
-void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue) {
+void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue) {
     qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
     qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
     qint32 targetX = enemyTargetPoint.x();
@@ -309,8 +314,9 @@ void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, Uni
 
     markAttackAreaIfCanMoveOver(pAttackerTypeUnit, minRange, maxRange, targetX, targetY, markedTiles2D, 0);
 
-    pPfs->setMovepoints(-2);
-    pPfs->setIgnoreEnemies(true);
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pAttackerTypeUnit, GameMap::getInstance()->getCurrentPlayer());
+    spPfs->setMovepoints(-2);
+    spPfs->setIgnoreEnemies(true);
 
     qint32 fieldCost;
 
@@ -318,13 +324,13 @@ void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, Uni
         for(qint32 x=0; x < m_mapWidth; x++) {
             //if is a tile attackable in 1 turn, explore from there
             if(markedTiles2D[y*m_mapWidth + x] == 0) {
-                pPfs->setStartPoint(x, y);
-                pPfs->explore();
+                spPfs->setStartPoint(x, y);
+                spPfs->explore();
 
-                auto points = pPfs->getAllNodePoints();
+                auto points = spPfs->getAllNodePoints();
                 for(const auto &point : points) {
                     //if on the marked tile there's a higher cost, overwrite it
-                    fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+                    fieldCost = spPfs->getTargetCosts(point.x(), point.y());
                     if(fieldCost < 0)
                         fieldCost = PathFindingSystem::infinite;
                     if(markedTiles2D[point.y()*m_mapWidth + point.x()] > fieldCost) {
@@ -349,7 +355,7 @@ void InfluenceMap::addUnitIndirectDmgValueInfluence(Unit* pAttackerTypeUnit, Uni
 
 }
 
-void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, UnitPathFindingSystem* pPfs, QPoint enemyTargetPoint, float dmgValue, float negExp) {
+void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit, QPoint enemyTargetPoint, float dmgValue, float negExp) {
     qint32 minRange = pAttackerTypeUnit->getBaseMinRange();
     qint32 maxRange = pAttackerTypeUnit->getBaseMaxRange();
     qint32 targetX = enemyTargetPoint.x();
@@ -371,18 +377,20 @@ void InfluenceMap::addUnitIndirectDmgValueInfluenceFast(Unit* pAttackerTypeUnit,
         }
     }
 
-    pPfs->setMovepoints(-2);
-    pPfs->setIgnoreEnemies(true);
-    pPfs->setStartPoint(targetX, targetY);
-    pPfs->explore();
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pAttackerTypeUnit, GameMap::getInstance()->getCurrentPlayer());
+
+    spPfs->setMovepoints(-2);
+    spPfs->setIgnoreEnemies(true);
+    spPfs->setStartPoint(targetX, targetY);
+    spPfs->explore();
 
     qint32 fieldCost;
 
-    auto points = pPfs->getAllNodePoints();
+    auto points = spPfs->getAllNodePoints();
     for(const auto &point : points) {
         //exclude the marked tiles, which are the one too near to the unit, already marked or excluded
         if(markedTiles2D[point.y()*m_mapWidth + point.x()] != 0) {
-            fieldCost = pPfs->getTargetCosts(point.x(), point.y());
+            fieldCost = spPfs->getTargetCosts(point.x(), point.y());
             setValueIfGreaterAt(dmgValue * qPow(fieldCost, negExp), point.x(), point.y());
         }
     }
@@ -550,15 +558,33 @@ void InfluenceMap::hide() {
 
 
 QString InfluenceMap::toQString(qint32 precision) {
+    float minVal = 0;
+    float maxVal = 0;
+    for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
+        if(m_influenceMap2D[i] > maxVal)
+            maxVal = m_influenceMap2D[i];
+        else if(m_influenceMap2D[i] < minVal)
+            minVal = m_influenceMap2D[i];
+    }
+    qint32 padSize = qMax(QString::number(minVal, 'f', precision).length(), QString::number(maxVal, 'f', precision).length());
+
     QString res = "";
     for(qint32 y = 0; y < m_mapHeight; y++) {
         res += "|";
         for(qint32 x = 0; x < m_mapWidth; x++) {
-            res += QString::number(getInfluenceValueAt(x, y), 'f', precision)+"|";
+            QString numS = QString::number(getInfluenceValueAt(x, y), 'f', precision);
+            while(numS.length() < padSize) {
+                numS.prepend(" ");
+            }
+            res += numS + "|";
         }
         res += "\n";
     }
     return res;
+}
+
+QString InfluenceMap::toQStringFull(qint32 precision) {
+    return adaenums::iMapTypeToQString(m_type) + ", [w: " + QString::number(m_weight) + "]:\n" + toQString(precision);
 }
 
 //static

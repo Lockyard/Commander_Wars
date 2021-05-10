@@ -9,6 +9,10 @@ namespace evoenums {
         mixRandom,
         custom,
     };
+
+    enum MutationType {
+        individualRandom,
+    };
 }
 
 #endif // EVOENUMS_H

@@ -17,7 +17,7 @@ AdaptaModule::AdaptaModule(AdaptaModule &&other) {
     other.m_moduleWeight = 0.0;
 }
 
-AdaptaModule &AdaptaModule::operator=(const AdaptaModule &other) {
+void AdaptaModule::operator=(const AdaptaModule &other) {
     m_moduleWeight = other.m_moduleWeight;
 }
 

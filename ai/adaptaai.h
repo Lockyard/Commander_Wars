@@ -13,6 +13,7 @@ class AdaptaAI : public CoreAI
     Q_OBJECT
 public:
     AdaptaAI();
+    ~AdaptaAI() = default;
     //AdaptaAI(AdaptaAI &other) = default;
 
     virtual void readIni(QString name) override;
@@ -30,7 +31,7 @@ protected:
 
 private:
     //all loaded modules of the adapta
-    QVector<AdaptaModule*> m_modules;
+    QVector<spAdaptaModule> m_modules;
     QVector<BuildingModule*> m_buildingModules;
 
     QVector<float> m_unitBidVector;
