@@ -115,7 +115,7 @@ BaseGameInputIF* BaseGameInputIF::createAi(GameEnums::AiTypes type)
         }
         case GameEnums::AiTypes_Adapta:
         {
-            ret = new TestFirstAI();
+            ret = new AdaptaAI();
             break;
         }
         case GameEnums::AiTypes_Open:
