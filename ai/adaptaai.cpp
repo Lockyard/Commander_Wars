@@ -2,7 +2,6 @@
 #include "adapta/convolutionalnnmodule.h"
 #include "adapta/multiinfluencenetworkmodule.h"
 #include "coreengine/console.h"
-#include "ai/utils/test.h"
 #include "ai/adapta/trainingmanager.h"
 
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
