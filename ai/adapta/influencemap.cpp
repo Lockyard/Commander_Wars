@@ -113,23 +113,32 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         //values >= 0 indicate in how many steps the unit REACHES that tile, (-1, so 0 are the tiles reachable in 1 step, etc)
         std::vector<qint32> stepTilesMap2D(m_mapHeight*m_mapWidth, PathFindingSystem::infinite);
 
-        spPfs->setIgnoreEnemies(false);
-        //double the move points of the unit. used to calculate the influence on 2 steps
-        spPfs->setMovepoints(movePoints*stepsForIndirect);
-        spPfs->explore();
+        if(movePoints != 0) {
+            spPfs->setIgnoreEnemies(false);
+            //double the move points of the unit. used to calculate the influence on 2 steps
+            spPfs->setMovepoints(movePoints*stepsForIndirect);
+            spPfs->explore();
 
-        auto points = spPfs->getAllNodePoints();
-        //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
-        for (const auto & point : points) {
-            //in how many turns (steps) the unit reaches a tile (here 1 for tiles reachable in 1 step, 2 for 2 etc. 0 is for the tile where the unit is)
-            if(spPfs->isReachable(point.x(), point.y())) {
-                qint32 cost = spPfs->getTargetCosts(point.x(), point.y());
-                if(cost == 0) {
-                    stepTilesMap2D[point.y()*m_mapWidth + point.x()] = 0; //0 where the indirect unit is
-                } else
-                    stepTilesMap2D[point.y()*m_mapWidth + point.x()] = ((cost - 1) / movePoints) + 1; //1 one each tile it takes the unit to reach that point. So on for 2, 3 turns
+            auto points = spPfs->getAllNodePoints();
+            //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
+            for (const auto & point : points) {
+                //in how many turns (steps) the unit reaches a tile (here 1 for tiles reachable in 1 step, 2 for 2 etc. 0 is for the tile where the unit is)
+                if(spPfs->isReachable(point.x(), point.y())) {
+                    qint32 cost = spPfs->getTargetCosts(point.x(), point.y());
+                    if(cost == 0) {
+                        stepTilesMap2D[point.y()*m_mapWidth + point.x()] = 0; //0 where the indirect unit is
+                    } else {
+                        stepTilesMap2D[point.y()*m_mapWidth + point.x()] = ((cost - 1) / movePoints) + 1; //1 one each tile it takes the unit to reach that point. So on for 2, 3 turns
+                    }
+
+                }
             }
         }
+        //if movePoints == 0, the unit cannot move, just mark its tile as 0, and leave the others to infinite
+        else {
+            stepTilesMap2D[pUnit->getY()*m_mapWidth + pUnit->getX()] = 0;
+        }
+
         //mark the attack map based on how many turn it takes to being able to attack a cell
         for(qint32 y=0; y < m_mapHeight; y++) {
             for(qint32 x=0; x < m_mapWidth; x++) {
@@ -159,18 +168,24 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         //values >= 0 indicat in how many steps the unit CAN ATTACK that tile (-1 again)
         std::vector<qint32> atkTilesMap2D(m_mapHeight*m_mapWidth, -1);
 
-        spPfs->setIgnoreEnemies(false);
-        //double the move points of the unit. used to calculate the influence on 2 steps
-        spPfs->setMovepoints(movePoints*steps);
-        spPfs->explore();
+        if(movePoints != 0) {
+            spPfs->setIgnoreEnemies(false);
+            //double the move points of the unit. used to calculate the influence on 2 steps
+            spPfs->setMovepoints(movePoints*steps);
+            spPfs->explore();
 
-        auto points = spPfs->getAllNodePoints();
-        //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
-        for (const auto & point : points) {
-            //in how many turns (steps) the unit reaches a tile (-1, so 0 is the immediate reachable ones, so on)
-            if(spPfs->isReachable(point.x(), point.y())) {
-                stepTilesMap2D[point.y()*m_mapWidth + point.x()] = qMax(0, (spPfs->getTargetCosts(point.x(), point.y()) - 1) / movePoints);
+            auto points = spPfs->getAllNodePoints();
+            //write the map of stepTiles to know on each tile how many turns this unit require to reach it, if it can (with max the given steps)
+            for (const auto & point : points) {
+                //in how many turns (steps) the unit reaches a tile (-1, so 0 is the immediate reachable ones, so on)
+                if(spPfs->isReachable(point.x(), point.y())) {
+                    stepTilesMap2D[point.y()*m_mapWidth + point.x()] = qMax(0, (spPfs->getTargetCosts(point.x(), point.y()) - 1) / movePoints);
+                }
             }
+        }
+        //if movePoints == 0, the unit cannot move, just mark its tile as 0, and leave the others to infinite
+        else {
+            stepTilesMap2D[pUnit->getY()*m_mapWidth + pUnit->getX()] = 0;
         }
 
         qint32 currStepVal, currNearStepVal;
