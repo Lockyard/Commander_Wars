@@ -14,23 +14,22 @@ namespace oxygine
             TF_R8G8B8A8,//default
         };
         ImageData();
-        ImageData(int W, int H, int Pitch, TextureFormat Format, void* Data = nullptr);
-        ImageData(const ImageData& b, void* Data);
+        ImageData(qint32 W, qint32 H, qint32 Pitch, TextureFormat Format, unsigned char* Data = nullptr);
+        ImageData(const ImageData& b, unsigned char* Data);
         ~ImageData();
 
         ImageData getRect(const Rect& r) const;
-        ImageData getRect(int x, int y, int w, int h) const;
-        ImageData getRect(int x, int y) const;
-        unsigned char* getPixelPtr(int x, int y) const;
-
-        static int getBytesPerPixel(TextureFormat tf);
+        ImageData getRect(qint32 x, qint32 y, qint32 w, qint32 h) const;
+        ImageData getRect(qint32 x, qint32 y) const;
+        unsigned char* getPixelPtr(qint32 x, qint32 y) const;
+        static qint32 getBytesPerPixel(TextureFormat tf);
     public:
-        int w;
-        int h;
-        int bytespp;
-        int pitch;
+        qint32 m_w;
+        qint32 m_h;
+        qint32 m_bytespp;
+        qint32 m_pitch;
 
-        unsigned char* data;
-        TextureFormat format;
+        unsigned char* m_data;
+        TextureFormat m_format;
     };
 }

@@ -12,13 +12,40 @@
 #include "coreengine/settings.h"
 #include "coreengine/LUPDATE_MACROS.h"
 
-class AudioThread;
 class WorkerThread;
+using spWorkerThread = oxygine::intrusive_ptr<WorkerThread>;
+class AudioThread;
+using spAudioThread = oxygine::intrusive_ptr<AudioThread>;
 
 class Mainapp : public oxygine::GameWindow
 {
     Q_OBJECT
 public:
+    static const char* const GAME_CONTEXT;
+    static constexpr qint32 stepProgress = 4;
+    enum StartupPhase
+    {
+        Start,
+        General = Start,
+        Building,
+        COSprites,
+        GameAnimations,
+        GameManager,
+        GameRuleManager,
+        ObjectManager,
+        TerrainManager,
+        UnitSpriteManager,
+        BattleAnimationManager,
+        COPerkManager,
+        WikiDatabase,
+        Userdata,
+        Achievementmanager,
+        ShopLoader,
+        LoadingScripts,
+        Finalizing,
+    };
+    Q_ENUM(StartupPhase)
+    static constexpr qint16 SCRIPT_PROCESS = ShopLoader * stepProgress;
     /**
      * @brief The ZOrder enum for z-order of actors directly attached to the game map or the menu
      */
@@ -42,7 +69,7 @@ public:
         Tooltip,
         Loadingscreen,
         Achievement,
-        Console
+        Console,
     };
 
     explicit Mainapp();
@@ -56,7 +83,7 @@ public:
     inline AudioThread* getAudioThread()
     {
         return m_Audiothread;
-    }    
+    }
 
     inline static QThread* getWorkerthread()
     {
@@ -91,6 +118,19 @@ public:
      * @return
      */
     static QThread* getGameServerThread();
+    /**
+     * @brief qsTr
+     * @param text
+     * @return
+     */
+    static QString qsTr(const char* const text);
+    /**
+     * @brief qsTr
+     * @param text
+     * @return
+     */
+    static QString qsTr(QString text);
+
     bool getNoUi() const;
 
 public slots:
@@ -125,6 +165,7 @@ public slots:
      * @brief doScreenshot
      */
     void doScreenshot();
+    void nextStartUpStep(Mainapp::StartupPhase step);
 signals:
     void sigKeyDown(oxygine::KeyEvent event);
     void sigKeyUp(oxygine::KeyEvent event);
@@ -149,19 +190,21 @@ signals:
      * @param filter
      */
     void sigApplyFilter(quint32 filter);
+
+    void sigNextStartUpStep(Mainapp::StartupPhase step);
 protected:
     virtual void keyPressEvent(QKeyEvent *event) override;
     virtual void keyReleaseEvent(QKeyEvent *event) override;
 private:
     static Mainapp* m_pMainapp;
-    static QMutex crashMutex;
+    static QMutex m_crashMutex;
     static QThread m_Workerthread;
     static QThread m_AudioWorker;
     static QThread m_Networkthread;
     static QThread m_GameServerThread;
-    QThread* pMainThread{nullptr};
-    AudioThread* m_Audiothread;
-    WorkerThread* m_Worker;
+    static WorkerThread* m_Worker;
+    static AudioThread* m_Audiothread;
+    QThread* m_pMainThread{nullptr};
     static bool m_slave;
     bool m_noUi{false};
 };

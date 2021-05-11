@@ -7,7 +7,7 @@
 #include "game/building.h"
 #include "game/player.h"
 #include "game/co.h"
-#include "game/gameanimationfactory.h"
+#include "game/gameanimation/gameanimationfactory.h"
 
 #include "resource_management/gamemanager.h"
 #include "resource_management/fontmanager.h"
@@ -22,6 +22,7 @@
 HumanPlayerInput::HumanPlayerInput()
     : BaseGameInputIF(GameEnums::AiTypes_Human)
 {    
+    setObjectName("HumanPlayerInput");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -139,7 +140,7 @@ void HumanPlayerInput::rightClickDown(qint32 x, qint32 y)
 
 void HumanPlayerInput::cancelActionInput()
 {
-
+    Console::print("HumanPlayerInput::cancelActionInput", Console::eDEBUG);
     Unit* pUnit = nullptr;
     if (m_pGameAction.get() != nullptr)
     {
@@ -208,7 +209,7 @@ void HumanPlayerInput::showAttackableFields(qint32 x, qint32 y)
         {
             spQmlVectorPoint pPoints = pBuilding->getActionTargetFields();
             QPoint targetOffset = pBuilding->getActionTargetOffset();
-            QPoint buildingPos(pBuilding->getX(), pBuilding->getY());
+            QPoint buildingPos(pBuilding->Building::getX(), pBuilding->Building::getY());
             if (pPoints.get() != nullptr && pPoints->size() > 0)
             {
                 Mainapp::getInstance()->getAudioThread()->playSound("selectunit.wav");
@@ -338,8 +339,11 @@ void HumanPlayerInput::leftClick(qint32 x, qint32 y)
             else if (m_pGameAction.get() == nullptr)
             {
                 // prepare action
-                m_pGameAction = new GameAction();
-                m_pGameAction->setPlayer(m_pPlayer->getPlayerID());
+                m_pGameAction = spGameAction::create();
+                if (m_pPlayer != nullptr)
+                {
+                    m_pGameAction->setPlayer(m_pPlayer->getPlayerID());
+                }
                 m_pGameAction->setTarget(QPoint(x, y));
                 spGameMap pMap = GameMap::getInstance();
                 Unit* pUnit = pMap->getTerrain(x, y)->getUnit();
@@ -468,7 +472,7 @@ void HumanPlayerInput::leftClick(qint32 x, qint32 y)
         else if (isViewPlayer)
         {
             // prepare action
-            m_pGameAction = new GameAction();
+            m_pGameAction = spGameAction::create();
             m_pGameAction->setTarget(QPoint(x, y));
             QStringList actions = getViewplayerActionList();
             QStringList possibleActions;
@@ -513,6 +517,7 @@ void HumanPlayerInput::markedFieldSelected(QPoint point)
 
 void HumanPlayerInput::menuItemSelected(QString itemID, qint32 cost)
 {
+    Console::print("HumanPlayerInput::menuItemSelected", Console::eDEBUG);
     if (m_pGameAction.get() != nullptr)
     {
         // we're currently selecting the action for this action
@@ -546,6 +551,7 @@ void HumanPlayerInput::menuItemSelected(QString itemID, qint32 cost)
 
 void HumanPlayerInput::getNextStepData()
 {
+    Console::print("HumanPlayerInput::getNextStepData", Console::eDEBUG);
     clearMenu();
     clearMarkedFields();
     spGameMenue pMenu = GameMenue::getInstance();
@@ -560,13 +566,13 @@ void HumanPlayerInput::getNextStepData()
             spMenuData pData = m_pGameAction->getMenuStepData();
             if (pData->validData())
             {
-                m_CurrentMenu = new HumanPlayerInputMenu(pData->getTexts(), pData->getActionIDs(), pData->getIconList(), pData->getCostList(), pData->getEnabledList());
+                m_CurrentMenu = spHumanPlayerInputMenu::create(pData->getTexts(), pData->getActionIDs(), pData->getIconList(), pData->getCostList(), pData->getEnabledList());
                 attachActionMenu(m_pGameAction->getActionTarget().x(), m_pGameAction->getActionTarget().y());
             }
         }
         else if (stepType.toUpper() == "FIELD")
         {
-            MarkedFieldData* pData = m_pGameAction->getMarkedFieldStepData();
+            spMarkedFieldData pData = m_pGameAction->getMarkedFieldStepData();
             QVector<QPoint>* pFields = pData->getPoints();
             for (qint32 i = 0; i < pFields->size(); i++)
             {
@@ -590,6 +596,7 @@ void HumanPlayerInput::getNextStepData()
 
 void HumanPlayerInput::finishAction()
 {
+    Console::print("HumanPlayerInput::finishAction", Console::eDEBUG);
     if (m_pGameAction.get() != nullptr)
     {
         Unit* pUnit = m_pGameAction->getTargetUnit();
@@ -640,6 +647,7 @@ void HumanPlayerInput::finishAction()
 
 void HumanPlayerInput::createActionMenu(QStringList actionIDs, qint32 x, qint32 y)
 {
+    Console::print("HumanPlayerInput::createActionMenu", Console::eDEBUG);
     clearMarkedFields();
     MenuData data;
 
@@ -647,7 +655,7 @@ void HumanPlayerInput::createActionMenu(QStringList actionIDs, qint32 x, qint32 
     {
         data.addData(GameAction::getActionText(actionIDs[i]), actionIDs[i], GameAction::getActionIcon(actionIDs[i]));
     }
-    m_CurrentMenu = new HumanPlayerInputMenu(data.getTexts(), actionIDs, data.getIconList());
+    m_CurrentMenu = spHumanPlayerInputMenu::create(data.getTexts(), actionIDs, data.getIconList());
     attachActionMenu(x, y);
 }
 
@@ -690,7 +698,7 @@ void HumanPlayerInput::selectUnit(qint32 x, qint32 y)
     Mainapp::getInstance()->getAudioThread()->playSound("selectunit.wav");
     spGameMap pMap = GameMap::getInstance();
     Unit* pUnit = pMap->getTerrain(x, y)->getUnit();
-    m_pUnitPathFindingSystem = new UnitPathFindingSystem(pUnit, m_pPlayer);
+    m_pUnitPathFindingSystem = spUnitPathFindingSystem::create(pUnit, m_pPlayer);
     if ((pUnit->getOwner() == m_pPlayer) &&
         pUnit->getActionList().contains(CoreAI::ACTION_WAIT))
     {
@@ -744,7 +752,7 @@ oxygine::spSprite HumanPlayerInput::createMarkedFieldActor(QPoint point, QColor 
 {
     spGameMap pMap = GameMap::getInstance();
     GameManager* pGameManager = GameManager::getInstance();
-    oxygine::spSprite pSprite = new oxygine::Sprite();
+    oxygine::spSprite pSprite = oxygine::spSprite::create();
     oxygine::ResAnim* pAnim = pGameManager->getResAnim("marked+field");
     if (pAnim->getTotalFrames() > 1 && !Settings::getStaticMarkedFields())
     {
@@ -830,9 +838,9 @@ void HumanPlayerInput::cursorMoved(qint32 x, qint32 y)
                         m_ZInformationLabel->detach();
                         m_ZInformationLabel = nullptr;
                     }
-                    m_ZInformationLabel = new oxygine::Actor();
+                    m_ZInformationLabel = oxygine::spActor::create();
                     GameManager* pGameManager = GameManager::getInstance();
-                    oxygine::spSprite pSprite = new oxygine::Sprite();
+                    oxygine::spSprite pSprite = oxygine::spSprite::create();
                     oxygine::ResAnim* pAnim = pGameManager->getResAnim("z_information_label");
                     if (pAnim->getTotalFrames() > 1)
                     {
@@ -843,7 +851,7 @@ void HumanPlayerInput::cursorMoved(qint32 x, qint32 y)
                     {
                         pSprite->setResAnim(pAnim);
                     }
-                    oxygine::spSprite pSprite2 = new oxygine::Sprite();
+                    oxygine::spSprite pSprite2 = oxygine::spSprite::create();
                     oxygine::ResAnim* pAnim2 = pGameManager->getResAnim("z_information_label+mask");
                     if (pAnim2->getTotalFrames() > 1)
                     {
@@ -861,11 +869,11 @@ void HumanPlayerInput::cursorMoved(qint32 x, qint32 y)
                     m_ZInformationLabel->addChild(pSprite2);
                     m_ZInformationLabel->addChild(pSprite);
                     // add text to the label
-                    oxygine::spClipRectActor clipRec = new oxygine::ClipRectActor();
+                    oxygine::spClipRectActor clipRec = oxygine::spClipRectActor::create();
                     clipRec->setX(2);
                     clipRec->setY(0);
                     clipRec->setSize(28 * 2, 20);
-                    oxygine::spTextField textField = new oxygine::TextField();
+                    oxygine::spTextField textField = oxygine::spTextField::create();
                     oxygine::TextStyle style = oxygine::TextStyle(FontManager::getMainFont72()).
                                                withColor(FontManager::getFontColor()).
                                                alignLeft().
@@ -876,7 +884,7 @@ void HumanPlayerInput::cursorMoved(qint32 x, qint32 y)
                     textField->attachTo(clipRec);
                     clipRec->attachTo(m_ZInformationLabel);
 
-                    oxygine::spTextField textField2 = new oxygine::TextField();
+                    oxygine::spTextField textField2 = oxygine::spTextField::create();
                     textField2->setStyle(style);
                     textField2->setY(22);
                     textField2->setX(5);
@@ -936,6 +944,7 @@ void HumanPlayerInput::cursorMoved(qint32 x, qint32 y)
 
 void HumanPlayerInput::createCursorPath(qint32 x, qint32 y)
 {
+    Console::print("HumanPlayerInput::createCursorPath", Console::eDEBUG);
     QVector<QPoint> points = m_ArrowPoints;
     QPoint lastPoint = QPoint(-1, -1);
     if (points.size() > 0)
@@ -1003,6 +1012,7 @@ void HumanPlayerInput::createCursorPath(qint32 x, qint32 y)
 
 QStringList HumanPlayerInput::getEmptyActionList()
 {
+    Console::print("HumanPlayerInput::getEmptyActionList", Console::eDEBUG);
     Interpreter* pInterpreter = Interpreter::getInstance();
     QJSValue value = pInterpreter->doFunction("ACTION", "getEmptyFieldActions");
     if (value.isString())
@@ -1017,6 +1027,7 @@ QStringList HumanPlayerInput::getEmptyActionList()
 
 QStringList HumanPlayerInput::getViewplayerActionList()
 {
+    Console::print("HumanPlayerInput::getViewplayerActionList", Console::eDEBUG);
     Interpreter* pInterpreter = Interpreter::getInstance();
     QJSValue value = pInterpreter->doFunction("ACTION", "getViewplayerActionList");
     if (value.isString())
@@ -1035,7 +1046,7 @@ void HumanPlayerInput::createArrow(QVector<QPoint>& points)
     GameManager* pGameManager = GameManager::getInstance();
     for (qint32 i = 0; i < points.size() - 1; i++)
     {
-        oxygine::spSprite pSprite = new oxygine::Sprite();
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
         oxygine::ResAnim* pAnim = pGameManager->getResAnim("arrow+unit");
         pSprite->setResAnim(pAnim);
         pSprite->setPriority(static_cast<qint16>(points[i].y() + 3));
@@ -1162,7 +1173,7 @@ void HumanPlayerInput::keyDown(oxygine::KeyEvent event)
 
 void HumanPlayerInput::showSelectedUnitAttackableFields(bool all)
 {
-    
+    Console::print("HumanPlayerInput::showSelectedUnitAttackableFields", Console::eDEBUG);
     if (m_pUnitPathFindingSystem.get() != nullptr &&
         m_pGameAction.get() != nullptr &&
         m_CurrentMenu.get() == nullptr)
@@ -1622,6 +1633,7 @@ void HumanPlayerInput::autoEndTurn()
 {
     if (m_pPlayer)
     {
+        Console::print("HumanPlayerInput::autoEndTurn", Console::eDEBUG);
         CO* pCO0 = m_pPlayer->getCO(0);
         CO* pCO1 = m_pPlayer->getCO(1);
         if (Settings::getAutoEndTurn() &&
@@ -1659,7 +1671,7 @@ void HumanPlayerInput::autoEndTurn()
                 }
             }
             Console::print("Auto triggering next player cause current player can't input any actions.", Console::eDEBUG);
-            spGameAction pAction = new GameAction(CoreAI::ACTION_NEXT_PLAYER);
+            spGameAction pAction = spGameAction::create(CoreAI::ACTION_NEXT_PLAYER);
             emit performAction(pAction);
         }
     }

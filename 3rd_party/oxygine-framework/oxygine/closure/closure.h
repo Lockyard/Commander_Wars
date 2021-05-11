@@ -7,6 +7,12 @@
 namespace oxygine
 {
     /**
+     * @brief Empty interface to avoid void pointers all over the place
+     */
+    class IClosureOwner
+    {
+    };
+    /**
      * class for closuring Class Functions and lambdas and std::function into a unique interface.
      * And providing a way of checking if the closures are equal.
      */
@@ -20,7 +26,6 @@ namespace oxygine
 
         template<class TClass>
         explicit Closure(TClass* pOwner, TRet(TClass::*callback)(TArgs...))
-            : m_pThis(pOwner)
         {
             auto lambda = [pOwner, callback](TArgs... args)
             {
@@ -33,62 +38,64 @@ namespace oxygine
                     return (pOwner->*callback)(args...);
                 }
             };
-            m_callback = std::make_shared<std::function<TRet(TArgs...)>>(lambda);
+            m_callback = std::function<TRet(TArgs...)>(lambda);
         }
-        explicit Closure(void* owner, const std::function<TRet(TArgs...)> & callback)
-            : m_pThis(owner),
-              m_callback(std::make_shared<std::function<TRet(TArgs...)>>(callback))
-        {
-        }
+
         template<class TLambda>
         Closure(TLambda lambda)
         {
-            m_callback = std::make_shared<std::function<TRet(TArgs...)>>(lambda);
-            m_pThis = m_callback.get();
+            m_callback = std::function<TRet(TArgs...)>(lambda);
         }
         TRet operator()(TArgs... args)
         {
-
             if constexpr(std::is_void<TRet>::value)
             {
-                if (created())
-                {
-                    (*m_callback)(args...);
-                }
+                (m_callback)(args...);
             }
             else
             {
-                if (created())
-                {
-                    return (*m_callback)(args...);
-                }
-                else
-                {
-                    return TRet();
-                }
+                return (m_callback)(args...);
             }
-        }
-        bool operator == (const Closure &c) const
-        {
-            return (this->m_pThis == c.m_pThis) &&
-                    (this->m_callback == c.m_callback);
-        }
-        bool isSet()
-        {
-            return (m_pThis != nullptr);
-        }
-        bool isOwner(void* pOwner) const
-        {
-            return (m_pThis == pOwner);
-        }
-        bool created() const
-        {
-            return m_callback.get();
         }
 
     private:
-        void* m_pThis{nullptr};
-        std::shared_ptr<std::function<TRet(TArgs...)>> m_callback;
+        std::function<TRet(TArgs...)> m_callback;
+    };
+
+    template<typename TRet, typename ...TArgs>
+    class OwnedClosure : public Closure<TRet, TArgs...>
+    {
+    public:
+        explicit OwnedClosure()
+        {
+        }
+
+        template<class TClass>
+        explicit OwnedClosure(TClass* pOwner, TRet(TClass::*callback)(TArgs...))
+            : Closure<TRet, TArgs...>(pOwner, callback),
+              m_pOwner(pOwner)
+        {
+            m_isSet = true;
+        }
+
+        template<class TLambda>
+        OwnedClosure(TLambda lambda)
+            : Closure<TRet, TArgs...>(lambda)
+        {
+            m_isSet = true;
+        }
+        bool isSet()
+        {
+            return m_isSet;
+        }
+        bool isOwner(IClosureOwner* pOwner) const
+        {
+            return (m_pOwner == pOwner);
+        }
+
+    private:
+        IClosureOwner* m_pOwner{nullptr};
+        bool m_isSet{false};
     };
 
 }

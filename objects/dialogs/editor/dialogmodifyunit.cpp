@@ -26,10 +26,11 @@ DialogModifyUnit::DialogModifyUnit(Unit* pUnit)
     : QObject(),
       m_pUnit(pUnit)
 {
+    setObjectName("DialogModifyUnit");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("codialog");
     pSpriteBox->setResAnim(pAnim);
     pSpriteBox->setSize(Settings::getWidth(), Settings::getHeight());
@@ -46,12 +47,12 @@ DialogModifyUnit::DialogModifyUnit(Unit* pUnit)
     pSpriteBox->addChild(m_OkButton);
     m_OkButton->addEventListener(oxygine::TouchEvent::CLICK, [ = ](oxygine::Event*)
     {
-        detach();
         emit sigFinished();
+        detach();
     });
 
 
-    m_pPanel = new Panel(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 110),
+    m_pPanel = spPanel::create(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 110),
                                      QSize(Settings::getWidth() - 60, Settings::getHeight() - 110));
     m_pPanel->setPosition(30, 30);
     pSpriteBox->addChild(m_pPanel);
@@ -79,19 +80,19 @@ void DialogModifyUnit::updateData()
     headerStyle.multiline = false;
 
     qint32 sliderOffset = 400;
-    spLabel pLabel = new Label(sliderOffset - 10);    
+    spLabel pLabel = spLabel::create(sliderOffset - 140);    
     pLabel->setStyle(headerStyle);
     pLabel->setHtmlText(tr("Unit: ") + m_pUnit->getName());
     pLabel->setPosition(m_pPanel->getWidth() / 2 - pLabel->getTextRect().getWidth() / 2, 10);
     m_pPanel->addItem(pLabel);
 
     qint32 y = 30 + pLabel->getTextRect().getHeight();
-    pLabel = new Label(sliderOffset - 10);
+    pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText(tr("Unit: "));
     pLabel->setPosition(10, y);
     m_pPanel->addItem(pLabel);
-    spTextbox pTexbox = new Textbox(Settings::getWidth() - 40 - sliderOffset);
+    spTextbox pTexbox = spTextbox::create(Settings::getWidth() - 40 - sliderOffset);
     pTexbox->setPosition(sliderOffset - 160, y);
     pTexbox->setCurrentText(m_pUnit->getName());
     pTexbox->setTooltipText(tr("Selects the custom name of the unit shown instead of the actual unit name. An empty name equals the actual unit name"));
@@ -102,12 +103,12 @@ void DialogModifyUnit::updateData()
     m_pPanel->addItem(pTexbox);
     y += 40;
 
-    pLabel = new Label(sliderOffset - 10);
+    pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText(tr("HP: "));
     pLabel->setPosition(10, y);
     m_pPanel->addItem(pLabel);
-    spSlider pSlider = new Slider(Settings::getWidth() - 40 - sliderOffset, 1, 10, tr("HP"));
+    spSlider pSlider = spSlider::create(Settings::getWidth() - 40 - sliderOffset, 1, 10, tr("HP"));
     pSlider->setTooltipText(tr("Selects the HP of the current unit. This is immediatly applied."));
     pSlider->setPosition(sliderOffset - 160, y);
     pSlider->setCurrentValue(m_pUnit->getHpRounded());
@@ -119,12 +120,12 @@ void DialogModifyUnit::updateData()
     y += 40;
     if (m_pUnit->getMaxFuel() > 0)
     {
-        pLabel = new Label(sliderOffset - 10);
+        pLabel = spLabel::create(sliderOffset - 140);
         pLabel->setStyle(style);
         pLabel->setHtmlText(tr("Fuel: "));
         pLabel->setPosition(10, y);
         m_pPanel->addItem(pLabel);
-        spSlider pSlider = new Slider(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxFuel(), tr("Fuel"));
+        spSlider pSlider = spSlider::create(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxFuel(), tr("Fuel"));
         pSlider->setTooltipText(tr("Selects the Fuel of the current unit. This is immediatly applied."));
         pSlider->setPosition(sliderOffset - 160, y);
         pSlider->setCurrentValue(m_pUnit->getFuel());
@@ -145,12 +146,12 @@ void DialogModifyUnit::updateData()
     }
     if (m_pUnit->getMaxAmmo1() > 0)
     {
-        pLabel = new Label(sliderOffset - 10);
+        pLabel = spLabel::create(sliderOffset - 140);
         pLabel->setStyle(style);
         pLabel->setHtmlText(tr("Ammo 1: "));
         pLabel->setPosition(10, y);
         m_pPanel->addItem(pLabel);
-        spSlider pSlider = new Slider(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxAmmo1(), tr("Ammo"));
+        spSlider pSlider = spSlider::create(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxAmmo1(), tr("Ammo"));
         pSlider->setTooltipText(tr("Selects the Ammo 1 of the current unit. This is immediatly applied."));
         pSlider->setPosition(sliderOffset - 160, y);
         pSlider->setCurrentValue(m_pUnit->getAmmo1());
@@ -171,12 +172,12 @@ void DialogModifyUnit::updateData()
     }
     if (m_pUnit->getMaxAmmo2() > 0)
     {
-        pLabel = new Label(sliderOffset - 10);
+        pLabel = spLabel::create(sliderOffset - 140);
         pLabel->setStyle(style);
         pLabel->setHtmlText(tr("Ammo 2: "));
         pLabel->setPosition(10, y);
         m_pPanel->addItem(pLabel);
-        spSlider pSlider = new Slider(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxAmmo2(), tr("Ammo"));
+        spSlider pSlider = spSlider::create(Settings::getWidth() - 40 - sliderOffset, 0, m_pUnit->getMaxAmmo2(), tr("Ammo"));
         pSlider->setTooltipText(tr("Selects the Ammo 2 of the current unit. This is immediatly applied."));
         pSlider->setPosition(sliderOffset - 160, y);
         pSlider->setCurrentValue(m_pUnit->getAmmo2());
@@ -196,7 +197,7 @@ void DialogModifyUnit::updateData()
         y += 40;
     }
 
-    pLabel = new Label(sliderOffset - 10);
+    pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText(tr("Player: "));
     pLabel->setPosition(10, y);
@@ -207,11 +208,11 @@ void DialogModifyUnit::updateData()
     {
         items.append(tr("Player ") + QString::number(i + 1));
     }
-    spDropDownmenu pDropdownmenu = new DropDownmenu(300, items);
+    spDropDownmenu pDropdownmenu = spDropDownmenu::create(300, items);
     pDropdownmenu->setTooltipText(tr("Selects the Owner of the current unit. This is immediatly applied."));
     pDropdownmenu->setPosition(sliderOffset - 160, y);
     pDropdownmenu->setCurrentItem(m_pUnit->getOwner()->getPlayerID());
-    connect(pDropdownmenu.get(), &DropDownmenu::sigItemChanged, [=](qint32 value)
+    connect(pDropdownmenu.get(), &DropDownmenu::sigItemChanged, this, [=](qint32 value)
     {
         m_pUnit->setOwner(pMap->getPlayer(value));
 
@@ -219,13 +220,13 @@ void DialogModifyUnit::updateData()
     m_pPanel->addItem(pDropdownmenu);
     y += 40;
 
-    pLabel = new Label(sliderOffset - 10);
+    pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText(tr("AI-Mode: "));
     pLabel->setPosition(10, y);
     m_pPanel->addItem(pLabel);
     items = {tr("Normal"), tr("Offensive"), tr("Defensive"), tr("Hold"), "Patrol", "Patrol Loop"};
-    pDropdownmenu = new DropDownmenu(300, items);
+    pDropdownmenu = spDropDownmenu::create(300, items);
     pDropdownmenu->setTooltipText(tr("Selects how the AI uses this unit\n"
                                      "Normal AI uses the unit like always.\n"
                                      "Offensive AI the ai moves the unit to the closest enemy and attacks\n"
@@ -245,7 +246,7 @@ void DialogModifyUnit::updateData()
     y += 40;
     addLoadLoopPoints(y, sliderOffset);
 
-    pLabel = new Label(sliderOffset - 10);
+    pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText(tr("Unit Rank: "));
     pLabel->setPosition(10, y);
@@ -258,7 +259,7 @@ void DialogModifyUnit::updateData()
     }
     items.append(tr("CO 1"));
     items.append(tr("CO 2"));
-    pDropdownmenu = new DropDownmenu(300, items);
+    pDropdownmenu = spDropDownmenu::create(300, items);
     pDropdownmenu->setTooltipText(tr("Selects the Rank of this Unit. CO Ranks may be replaced with highest rang. This is immediatly applied."));
     pDropdownmenu->setPosition(sliderOffset - 160, y);
     pDropdownmenu->setCurrentItem(static_cast<qint32>(m_pUnit->getUnitRank()));
@@ -301,7 +302,7 @@ void DialogModifyUnit::addLoadUnit(qint32 index, qint32 sliderOffset, qint32& y)
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
-    spLabel  pLabel = new Label(sliderOffset - 10);
+    spLabel  pLabel = spLabel::create(sliderOffset - 140);
     pLabel->setStyle(style);
     pLabel->setHtmlText((tr("Loaded Unit ") + QString::number(index + 1) + ": "));
     pLabel->setPosition(10, y);
@@ -315,7 +316,7 @@ void DialogModifyUnit::addLoadUnit(qint32 index, qint32 sliderOffset, qint32& y)
             items.append(units[i]);
         }
     }
-    spDropDownmenu pDropdownmenu = new DropDownmenu(300, items);
+    spDropDownmenu pDropdownmenu = spDropDownmenu::create(300, items);
     pDropdownmenu->setPosition(sliderOffset - 160, y);
     pDropdownmenu->setTooltipText(tr("Selects the unit loaded by the transporter. - for no unit. This is immediatly applied."));
     Unit* pLoadedUnit = m_pUnit->getLoadedUnit(index);
@@ -327,7 +328,7 @@ void DialogModifyUnit::addLoadUnit(qint32 index, qint32 sliderOffset, qint32& y)
     {
         pDropdownmenu->setCurrentItem("-");
     }
-    connect(pDropdownmenu.get(), &DropDownmenu::sigItemChanged, [=](qint32)
+    connect(pDropdownmenu.get(), &DropDownmenu::sigItemChanged, this, [=](qint32)
     {
         emit sigLoadUnit(pDropdownmenu->getCurrentItemText(), index);
     });
@@ -344,8 +345,8 @@ void DialogModifyUnit::loadUnit(QString unitID, qint32 index)
     }
     else
     {
-        Unit* pUnit = new Unit(unitID, m_pUnit->getOwner(), false);
-        m_pUnit->loadUnit(pUnit);
+        spUnit pUnit = spUnit::create(unitID, m_pUnit->getOwner(), false);
+        m_pUnit->loadUnit(pUnit.get());
     }
     emit sigUpdateData();
     
@@ -361,7 +362,7 @@ void DialogModifyUnit::addLoadLoopPoints(qint32& y, qint32 sliderOffset)
     if (m_pUnit->getAiMode() == GameEnums::GameAi_Patrol ||
         m_pUnit->getAiMode() == GameEnums::GameAi_PatrolLoop)
     {
-        spLabel pLabel = new Label(sliderOffset - 10);
+        spLabel pLabel = spLabel::create(sliderOffset - 140);
         pLabel->setStyle(style);
         pLabel->setHtmlText(tr("Move Point: "));
         pLabel->setPosition(10, y);
@@ -370,7 +371,7 @@ void DialogModifyUnit::addLoadLoopPoints(qint32& y, qint32 sliderOffset)
         spGameMap pMap = GameMap::getInstance();
         for (qint32 i = 0; i < points.size(); i++)
         {
-            spSpinBox pSpinbox = new SpinBox(200, 0, pMap->getMapWidth() - 1);
+            spSpinBox pSpinbox = spSpinBox::create(200, 0, pMap->getMapWidth() - 1);
             pSpinbox->setCurrentValue(points[i].x());
             pSpinbox->setTooltipText("X-Coordinate for the move path.");
             pSpinbox->setPosition(sliderOffset - 160, y);
@@ -381,7 +382,7 @@ void DialogModifyUnit::addLoadLoopPoints(qint32& y, qint32 sliderOffset)
                 points[i].setX(value);
                 m_pUnit->setAiMovePathPoint(i, points[i]);
             });
-            pSpinbox = new SpinBox(200, 0, pMap->getMapHeight() - 1);
+            pSpinbox = spSpinBox::create(200, 0, pMap->getMapHeight() - 1);
             pSpinbox->setCurrentValue(points[i].y());
             pSpinbox->setTooltipText("Y-Coordinate for the move path.");
             pSpinbox->setPosition(sliderOffset + 50, y);

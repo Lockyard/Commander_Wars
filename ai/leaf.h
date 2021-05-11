@@ -7,11 +7,14 @@
 #include "ai/decisionnode.h"
 #include "coreengine/fileserializable.h"
 
+class Leaf;
+using spLeaf = oxygine::intrusive_ptr<Leaf>;
+
 class Leaf : public DecisionNode
 {
     Q_OBJECT
 public:
-        Leaf() = default;
+        explicit Leaf();
         Leaf(QVector<QVector<float>>& trainingData);
         virtual ~Leaf() = default;
         virtual void serializeObject(QDataStream& pStream) const override;
@@ -26,7 +29,7 @@ public slots:
 private:
         QVector<qint32> m_AnswersChances;
         QVector<float> m_Answers;
-        qint32 totalChance{0};
+        qint32 m_totalChance{0};
 };
 
 #endif

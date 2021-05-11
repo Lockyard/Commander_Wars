@@ -30,8 +30,6 @@ typedef oxygine::intrusive_ptr<GameMap> spGameMap;
 class GameMap : public QObject, public FileSerializable, public oxygine::Actor
 {
     Q_OBJECT
-
-    Q_PROPERTY(qint32 width READ getWidth WRITE setWidth)
 public:
     static const qint32 frameTime;
     static constexpr qint32 defaultImageSize = 24;
@@ -45,12 +43,12 @@ public:
      * @brief GameMap
      * @param stream
      */
-    explicit GameMap(QDataStream& stream);
+    explicit GameMap(QDataStream& stream, bool savegame);
     /**
      * @brief GameMap
      * @param map path to the map which should be loaded
      */
-    explicit GameMap(QString map, bool onlyLoad, bool fast);
+    explicit GameMap(QString map, bool onlyLoad, bool fast, bool savegame);
     virtual ~GameMap();
     /**
      * @brief deleteMap
@@ -309,7 +307,7 @@ public:
     void removePlayer(qint32 index);
     /**
      * @brief getUniqueIdCounter
-     * @return a new unique id
+     * @return a unique id
      */
     qint32 getUniqueIdCounter();
     /**
@@ -353,6 +351,12 @@ public:
      * @brief playMusic
      */
     void playMusic();
+    /**
+     * @brief getSavegame
+     * @return
+     */
+    bool getSavegame() const;
+
 signals:
     void signalExitGame();
     void signalSaveGame();
@@ -368,6 +372,7 @@ signals:
     void sigShowChangeSound();
     void sigShowWiki();
     void sigShowRules();
+    void sigShowUnitStatistics();
 public slots:
     /**
      * @brief getMapMusic
@@ -481,10 +486,7 @@ public slots:
      * @brief getGameRecorder
      * @return
      */
-    inline GameRecorder* getGameRecorder()
-    {
-        return m_Recorder.get();
-    }
+    GameRecorder* getGameRecorder();
     /**
      * @brief getCurrentDay
      * @return
@@ -535,6 +537,10 @@ public slots:
      */
     void showRules();
     /**
+     * @brief showUnitStatistics
+     */
+    void showUnitStatistics();
+    /**
      * @brief getBuildingCount
      * @param buildingID
      * @return
@@ -575,6 +581,10 @@ public slots:
      * @param yInput around given coordinates -1 whole map
      */
     void updateSprites(qint32 xInput = -1, qint32 yInput = -1, bool editor = false, bool showLoadingScreen = false);
+    /**
+     * @brief syncUnitsAndBuildings
+     */
+    void syncUnitsAndBuildingAnimations();
     /**
      * @brief getField changes the coordinates into the given direction
      * @param x x-coordinates
@@ -641,7 +651,7 @@ public slots:
      * @param y
      * @param useTerrainAsBaseTerrain
      */
-    void replaceTerrainOnly(QString terrainID, qint32 x, qint32 y, bool useTerrainAsBaseTerrain = false);
+    void replaceTerrainOnly(QString terrainID, qint32 x, qint32 y, bool useTerrainAsBaseTerrain = false, bool removeUnit = true);
     /**
      * @brief replaceBuilding
      * @param buildingID
@@ -655,7 +665,7 @@ public slots:
      */
     qint32 getPlayerCount() const
     {
-        return players.size();
+        return m_players.size();
     }
     /**
      * @brief getPlayer
@@ -691,7 +701,7 @@ public slots:
     /**
      * @brief nextTurn next players turn.
      */
-    void nextTurn();
+    void nextTurn(quint32 dayToDayUptimeMs = 2000);
     /**
      * @brief nextTurnPlayerTimeout
      */
@@ -802,31 +812,38 @@ public slots:
      * qbrief killDeadUnits
      */
     void killDeadUnits();
+    /**
+     * @brief addScreenshake
+     */
+    void addScreenshake(qint32 startIntensity, float decay, qint32 durationMs, qint32 delayMs = 0, qint32 shakePauseMs = 30);
+private:
+    void loadMapData();
+
 private:
     static spGameMap m_pInstance;
     QString m_mapName;
     QString m_mapAuthor;
     QString m_mapDescription;
     QString m_mapPath;
-    QVector<QVector<spTerrain>> fields;
-    QVector<spPlayer> players;
+    QVector<QVector<spTerrain>> m_fields;
+    QVector<spPlayer> m_players;
     spPlayer m_CurrentPlayer;
-    qint32 currentDay{0};
+    qint32 m_currentDay{0};
     spGameRules m_Rules;
     spCampaign m_Campaign;
-    spGameRecorder m_Recorder{new GameRecorder()};
-    spGameScript m_GameScript{new GameScript()};
+    spGameRecorder m_Recorder{spGameRecorder::create()};
+    spGameScript m_GameScript{spGameScript::create()};
     static const QString m_JavascriptName;
     static const QString m_GameAnimationFactory;
     float m_zoom{1.0f};
-    bool loaded{false};
+    bool m_loaded{false};
     qint32 m_UniqueIdCounter{0};
     QString m_mapMusic;
     QString m_loadedMapMusic;
     qint32 m_startLoopMs{-1};
     qint32 m_endLoopMs{-1};
+    bool m_savegame{false};
     static qint32 m_imagesize;
-    void loadMapData();
 };
 
 #endif // GAMEMAP_H

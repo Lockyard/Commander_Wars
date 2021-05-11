@@ -42,6 +42,14 @@ var Constructor = function()
                 {
                     var unit = units.at(i);
                     animation = GameAnimationFactory.createAnimation(unit.getX(), unit.getY());
+                    if (globals.randInt(0, 1) === 0)
+                    {
+                        animation.setSound("power10_1.wav");
+                    }
+                    else
+                    {
+                        animation.setSound("power10_2.wav");
+                    }
                     if (animations.length < 5)
                     {
                         animation.addSprite("power14", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5, globals.randInt(0, 400));
@@ -99,6 +107,7 @@ var Constructor = function()
                     if (i >= size / 2 || unit.useTerrainDefense() === false)
                     {
                         animation = GameAnimationFactory.createAnimation(unit.getX(), unit.getY());
+                        animation.setSound("power4.wav");
                         if (animations.length < 5)
                         {
                             animation.addSprite("power4", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5, globals.randInt(0, 400));

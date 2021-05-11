@@ -4,18 +4,22 @@
 
 namespace oxygine
 {
+    class SingleResAnim;
+    using spSingleResAnim = intrusive_ptr<SingleResAnim>;
+
     class SingleResAnim : public QObject, public ResAnim
     {
         Q_OBJECT
     public:
         explicit SingleResAnim();
-        void init(QString file, int columns = 1, int rows = 1, float scaleFactor = 1.0f);
-        void init(Image* original, int columns = 1, int rows = 1, float scaleFactor = 1.0f) override;
+        ~SingleResAnim() = default;
+        void init(QString file, qint32 columns = 1, qint32 rows = 1, float scaleFactor = 1.0f);
+        void init(Image* original, qint32 columns = 1, qint32 rows = 1, float scaleFactor = 1.0f) override;
 
         spNativeTexture getTexture() const;
 
     protected:
-        QVector<unsigned char> _data;
-        spNativeTexture _texture;
+        QVector<unsigned char> m_data;
+        spNativeTexture m_texture;
     };
 }

@@ -1,6 +1,6 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "vertex.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/core/vertex.h"
 
 namespace oxygine
 {
@@ -10,8 +10,8 @@ namespace oxygine
         VertexDeclaration(): bformat(0), numElements(0), size(0) {}
 
         bvertex_format bformat;
-        int numElements;
-        int size;
+        qint32 numElements;
+        qint32 size;
     };
 
     template <class T>
@@ -20,14 +20,17 @@ namespace oxygine
     public:
         const T* get(bvertex_format bformat)
         {
-            for (int i = 0; i < NUM; ++i)
+            for (qint32 i = 0; i < NUM; ++i)
             {
                 T& decl = _declarations[i];
                 if (decl.bformat == 0)
+                {
                     decl.init(bformat);
-
+                }
                 if (decl.bformat == bformat)
+                {
                     return &decl;
+                }
             }
 
             return 0;

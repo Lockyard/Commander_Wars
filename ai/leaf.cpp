@@ -4,9 +4,15 @@
 #include "coreengine/mainapp.h"
 #include "coreengine/globalutils.h"
 
+Leaf::Leaf()
+{
+    setObjectName("Leaf");
+}
+
 Leaf::Leaf(QVector<QVector<float>>& trainingData)
     : m_AnswersChances(DecisionTree::countClassItems(trainingData))
 {
+    setObjectName("Leaf");
     for (qint32 i = 0; i < trainingData.size(); i++)
 	{
         float answer = trainingData[i][trainingData[i].size() - 1];
@@ -17,7 +23,7 @@ Leaf::Leaf(QVector<QVector<float>>& trainingData)
 	}
     for (qint32 i = 0; i < m_AnswersChances.size(); i++)
     {
-        totalChance += m_AnswersChances[i];
+        m_totalChance += m_AnswersChances[i];
     }
 }
 
@@ -25,7 +31,7 @@ float Leaf::getDecision(QVector<float>&)
 {
     if (m_Answers.size() > 1)
     {
-        qint32 chance = GlobalUtils::randIntBase(1, totalChance);
+        qint32 chance = GlobalUtils::randIntBase(1, m_totalChance);
         qint32 lowThreshold = 1;
         for (qint32 i = 0; i < m_AnswersChances.size(); i++)
         {
@@ -74,7 +80,7 @@ void Leaf::serializeObject(QDataStream& pStream) const
     {
         pStream << m_Answers[i];
     }
-    pStream << totalChance;
+    pStream << m_totalChance;
 }
 
 void Leaf::deserializeObject(QDataStream& pStream)
@@ -100,5 +106,5 @@ void Leaf::deserializeObject(QDataStream& pStream)
         m_Answers.append(item);
     }
 
-    pStream >> totalChance;
+    pStream >> m_totalChance;
 }

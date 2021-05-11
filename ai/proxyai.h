@@ -11,6 +11,9 @@
 
 #include "network/NetworkInterface.h"
 
+class ProxyAi;
+using spProxyAi = oxygine::intrusive_ptr<ProxyAi>;
+
 class ProxyAi : public CoreAI
 {
     Q_OBJECT
@@ -54,11 +57,10 @@ public slots:
      * @param name
      */
     virtual void readIni(QString name) override;
-protected:
 
 private:
     QList<spGameAction> m_ActionBuffer;
-    bool actionRunning{false};
+    bool m_actionRunning{false};
     QMutex m_ActionMutex;
 };
 

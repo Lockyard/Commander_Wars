@@ -7,23 +7,23 @@
 namespace oxygine
 {
     struct glyph;
-    inline uint qHash(const oxygine::glyph& k, uint seed = 0) noexcept;
+    inline quint32 qHash(const oxygine::glyph& k, quint32 seed = 0) noexcept;
 
     struct glyph
     {
         RectF src;
 
-        int ch;
-        glyphOptions opt;
+        qint32 ch{0};
+        glyphOptions opt{0};
 
-        short sw;
-        short sh;
+        short sw{0};
+        short sh{0};
 
-        short offset_x;
-        short offset_y;
+        short offset_x{0};
+        short offset_y{0};
 
-        short advance_x;
-        short advance_y;
+        short advance_x{0};
+        short advance_y{0};
 
         spNativeTexture texture;
 
@@ -39,35 +39,34 @@ namespace oxygine
         Font();
         ~Font();
 
-        void init(QString name, int size, int baselineDistance, int lineHeight, bool sdf = false);
+        void init(qint32 size, qint32 baselineDistance, qint32 lineHeight, bool sdf = false);
 
         void addGlyph(const glyph& g);
         void sortGlyphs() {}
 
         void clear();
 
-        void setScale(float scale) { _scale = scale; }
-        void setBaselineDistance(int d) { _baselineDistance = d; }
+        void setScale(float scale) { m_scale = scale; }
+        void setBaselineDistance(qint32 d) { m_baselineDistance = d; }
 
-        const glyph*    getGlyph(int code, const glyphOptions& opt) const;
-        int             getBaselineDistance() const;
-        int             getSize() const;
+        const glyph*    getGlyph(qint32 code, const glyphOptions& opt) const;
+        qint32             getBaselineDistance() const;
+        qint32             getSize() const;
         float           getScale() const;
 
     protected:
-        const glyph* findGlyph(int code, const glyphOptions& opt) const;
-
+        const glyph* findGlyph(qint32 code, const glyphOptions& opt) const;
         virtual bool loadGlyph(int, glyph&, const glyphOptions&) { return false; }
-
         typedef QSet<glyph> glyphs;
 
-        glyphs _glyphs;
-        bool _ignoreOptions;
+    protected:
+        glyphs m_glyphs;
+        bool m_ignoreOptions{false};
 
-        float _scale;
-        bool _sdf;
+        float m_scale{0.0f};
+        bool m_sdf{false};
 
-        int _size;
-        int _baselineDistance;
+        qint32 m_size{0};
+        qint32 m_baselineDistance{0};
     };
 }

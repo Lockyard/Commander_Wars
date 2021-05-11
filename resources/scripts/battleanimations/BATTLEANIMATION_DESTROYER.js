@@ -59,6 +59,9 @@ var Constructor = function()
             offset = Qt.point(80, 104);
             sprite.loadSprite("mg_shot_air",  false, sprite.getMaxUnitCount(), offset,
                               1, 1, 0, 0, false, true);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 0);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 200);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 400);
         }
     };
 
@@ -70,15 +73,7 @@ var Constructor = function()
 
     this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
-        if (weapon === 0)
-        {
-            // the time will be scaled with animation speed inside the engine
-            return 1200;
-        }
-        else
-        {
-            return 1000;
-        }
+        return 2200;
     };
 
     this.hasDyingAnimation = function()
@@ -89,7 +84,8 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_DESTROYER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
+        BATTLEANIMATION_DESTROYER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 2000);
+        sprite.loadSound("ship_dying_move.wav", -2, "resources/sounds/");
     };
 };
 

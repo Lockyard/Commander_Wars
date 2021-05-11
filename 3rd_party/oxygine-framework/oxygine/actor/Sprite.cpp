@@ -9,26 +9,30 @@
 
 namespace oxygine
 {
-    Sprite::Sprite(): _localScale(1.0f, 1.0f)
+    Sprite::Sprite(): m_localScale(1.0f, 1.0f)
     {
 
     }
 
     Sprite::~Sprite()
     {
-        if (_flags & flag_manageResAnim)
+        if (m_flags & flag_manageResAnim)
         {
-            ResAnim* rs = _frame.getResAnim();
+            ResAnim* rs = m_frame.getResAnim();
             if (rs)
+            {
                 rs->getAtlas()->unload();
+            }
         }
     }
 
     void Sprite::setManageResAnim(bool manage)
     {
-        _flags &= ~flag_manageResAnim;
+        m_flags &= ~flag_manageResAnim;
         if (manage)
-            _flags |= flag_manageResAnim;
+        {
+            m_flags |= flag_manageResAnim;
+        }
     }
 
     void Sprite::setAnimFrame(const AnimationFrame& f)
@@ -37,35 +41,38 @@ namespace oxygine
     }
 
 
-    extern int HIT_TEST_DOWNSCALE;
+    extern qint32 HIT_TEST_DOWNSCALE;
 
     bool Sprite::isOn(const Vector2& localPosition, float localScale)
     {
         if (!Actor::isOn(localPosition, localScale))
+        {
             return false;
-
-        if (_extendedIsOn)
+        }
+        if (m_extendedIsOn)
+        {
             return true;
-
-        const HitTestData& ad = _frame.getHitTestData();
+        }
+        const HitTestData& ad = m_frame.getHitTestData();
         if (!ad.data)
+        {
             return true;
-
-        const int BITS = (sizeof(int32_t) * 8);
+        }
+        const qint32 BITS = (sizeof(int32_t) * 8);
 
         const unsigned char* buff = ad.data;
         if (buff != nullptr)
         {
-            Vector2 pos = localPosition * _frame.getResAnim()->getAppliedScale();
-            pos = pos.div(_localScale);
+            Vector2 pos = localPosition * m_frame.getResAnim()->getAppliedScale();
+            pos = pos.div(m_localScale);
             Point lp = pos.cast<Point>() / HIT_TEST_DOWNSCALE;
             Rect r(0, 0, ad.w, ad.h);
             if (r.pointIn(lp))
             {
                 const int32_t* ints = reinterpret_cast<const int32_t*>(buff + lp.y * ad.pitch);
 
-                int n = lp.x / BITS;
-                int b = lp.x % BITS;
+                qint32 n = lp.x / BITS;
+                qint32 b = lp.x % BITS;
 
                 return (ints[n] >> b) & 1;
             }
@@ -77,9 +84,9 @@ namespace oxygine
     {
         if (flippedX != isFlippedX())
         {
-            _frame.flipX();
-            _flags ^= flag_flipX;
-            animFrameChanged(_frame);
+            m_frame.flipX();
+            m_flags ^= flag_flipX;
+            animFrameChanged(m_frame);
         }        
     }
 
@@ -136,9 +143,9 @@ namespace oxygine
     {
         if (flippedY != isFlippedY())
         {
-            _frame.flipY();
-            _flags ^= flag_flipY;
-            animFrameChanged(_frame);
+            m_frame.flipY();
+            m_flags ^= flag_flipY;
+            animFrameChanged(m_frame);
         }
     }
 
@@ -149,34 +156,36 @@ namespace oxygine
 
         if (fx)
         {
-            _frame.flipX();
-            _flags ^= flag_flipX;
+            m_frame.flipX();
+            m_flags ^= flag_flipX;
         }
 
         if (fy)
         {
-            _frame.flipY();
-            _flags ^= flag_flipY;
+            m_frame.flipY();
+            m_flags ^= flag_flipY;
         }
 
         if (fx || fy)
-            animFrameChanged(_frame);
+        {
+            animFrameChanged(m_frame);
+        }
     }
 
-    void Sprite::setColumn(int column)
+    void Sprite::setColumn(qint32 column)
     {
         const ResAnim* rs = getResAnim();
         setAnimFrame(rs, column, getRow());
     }
 
-    void Sprite::setRow(int row)
+    void Sprite::setRow(qint32 row)
     {
         const ResAnim* rs = getResAnim();
         setAnimFrame(rs, getColumn(), row);
 
     }
 
-    void Sprite::setColumnRow(int column, int row)
+    void Sprite::setColumnRow(qint32 column, qint32 row)
     {
         const ResAnim* rs = getResAnim();
         setAnimFrame(rs, column, row);
@@ -184,11 +193,11 @@ namespace oxygine
 
     void Sprite::setLocalScale(const Vector2& s)
     {
-        _localScale = s;
-        _setSize(_frame.getSize().mult(_localScale));
+        m_localScale = s;
+        __setSize(m_frame.getSize().mult(m_localScale));
     }
 
-    void Sprite::setResAnim(const ResAnim* resanim, int col, int row)
+    void Sprite::setResAnim(const ResAnim* resanim, qint32 col, qint32 row)
     {
         setAnimFrame(resanim, col, row);
     }
@@ -199,23 +208,22 @@ namespace oxygine
         if (pAnim.get() != nullptr)
         {
             const auto & frame = pAnim->getFrame(0, 0);
-            if (_mat->_table != frame.getDiffuse().base)
+            if (m_mat->m_table != frame.getDiffuse().base)
             {
-                _mat = _mat->clone();
-                _mat->_table = frame.getDiffuse().base;
-                _mat = MaterialCache::mc().cache(*_mat.get());
+                m_mat = dynamic_pointer_cast<STDMaterial>(m_mat->clone());
+                m_mat->m_table = frame.getDiffuse().base;
+                m_mat = MaterialCache::mc().cache(*m_mat.get());
                 matChanged();
             }
         }
         else
         {
-            _mat->_table = nullptr;
+            m_mat->m_table = nullptr;
         }
     }
 
-    void Sprite::setAnimFrame(const ResAnim* resanim, int col, int row)
+    void Sprite::setAnimFrame(const ResAnim* resanim, qint32 col, qint32 row)
     {
-        //Q_ASSERT(resanim);
         if (!resanim)
         {
             changeAnimFrame(AnimationFrame());
@@ -238,9 +246,9 @@ namespace oxygine
 
     void Sprite::changeAnimFrame(const AnimationFrame& frame)
     {
-        if (_flags & flag_manageResAnim)
+        if (m_flags & flag_manageResAnim)
         {
-            ResAnim* rs = _frame.getResAnim();
+            ResAnim* rs = m_frame.getResAnim();
             if (rs)
             {
                 rs->getAtlas()->unload();
@@ -253,31 +261,31 @@ namespace oxygine
             }
         }
 
-        bool flipX = (_flags & flag_flipX) != 0;
-        bool flipY = (_flags & flag_flipY) != 0;
+        bool flipX = (m_flags & flag_flipX) != 0;
+        bool flipY = (m_flags & flag_flipY) != 0;
         if (flipX || flipY)
         {
-            _frame = frame.getFlipped(flipY, flipX);
+            m_frame = frame.getFlipped(flipY, flipX);
         }
         else
         {
-            _frame = frame;
+            m_frame = frame;
         }
-        _setSize(_frame.getSize().mult(_localScale));
+        __setSize(m_frame.getSize().mult(m_localScale));
 
 
-        const Diffuse& df = _frame.getDiffuse();
-        if (df.base  != _mat->_base ||
-            df.alpha != _mat->_alpha)
+        const Diffuse& df = m_frame.getDiffuse();
+        if (df.base  != m_mat->m_base ||
+            df.alpha != m_mat->m_alpha)
         {
-            spSTDMaterial mat = _mat->clone();
+            spSTDMaterial mat = dynamic_pointer_cast<STDMaterial>(m_mat->clone());
 
-            mat->_base  = df.base;
-            mat->_alpha = df.alpha;
-            mat->_flags = df.flags;           
-            _mat = MaterialCache::mc().cache(*mat.get());
+            mat->m_base  = df.base;
+            mat->m_alpha = df.alpha;
+            mat->m_flags = df.flags;
+            m_mat = MaterialCache::mc().cache(*mat.get());
         }
-        animFrameChanged(_frame);
+        animFrameChanged(m_frame);
     }
 
     void Sprite::animFrameChanged(const AnimationFrame&)
@@ -288,23 +296,23 @@ namespace oxygine
     void Sprite::sizeChanged(const Vector2& size)
     {
         Actor::sizeChanged(size);
-        const Vector2& sz = _frame.getSize();
+        const Vector2& sz = m_frame.getSize();
         if (sz.x != 0)
         {
-            _localScale.x = size.x / sz.x;
+            m_localScale.x = size.x / sz.x;
         }
         else
         {
-            _localScale.x = 1.0f;
+            m_localScale.x = 1.0f;
         }
 
         if (sz.y != 0)
         {
-            _localScale.y = size.y / sz.y;
+            m_localScale.y = size.y / sz.y;
         }
         else
         {
-            _localScale.y = 1.0f;
+            m_localScale.y = 1.0f;
         }
     }
 
@@ -320,24 +328,24 @@ namespace oxygine
 
     bool Sprite::getInvertFlipX() const
     {
-        return invertFlipX;
+        return m_invertFlipX;
     }
 
     void Sprite::setInvertFlipX(bool value)
     {
-        invertFlipX = value;
+        m_invertFlipX = value;
     }
 
     RectF Sprite::getDestRect() const
     {
-        if (!_frame.getDiffuse().base)
+        if (!m_frame.getDiffuse().base)
         {
             return Actor::getDestRect();
         }
 
-        RectF r = _frame.getDestRect();
-        r.pos = r.pos.mult(_localScale);
-        r.size = r.size.mult(_localScale);
+        RectF r = m_frame.getDestRect();
+        r.pos = r.pos.mult(m_localScale);
+        r.size = r.size.mult(m_localScale);
 
         r.pos += m_DestRecModifier.pos;
         r.size += m_DestRecModifier.size;
@@ -348,6 +356,6 @@ namespace oxygine
 
     void Sprite::doRender(const RenderState& rs)
     {
-        _rdelegate->doRender(this, rs);
+        m_rdelegate->doRender(this, rs);
     }
 }

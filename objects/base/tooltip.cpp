@@ -1,6 +1,8 @@
-#include "tooltip.h"
+#include "objects/base/tooltip.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
+
 #include "resource_management/fontmanager.h"
 #include "resource_management/objectmanager.h"
 
@@ -8,19 +10,25 @@
 
 Tooltip::Tooltip()
 {
+    setObjectName("Tooltip");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     m_TooltipTimer.setSingleShot(true);
     addEventListener(oxygine::TouchEvent::MOVE, [ = ](oxygine::Event*)
     {
-        emit sigStartTooltip();
+        if (m_mouseHovered)
+        {
+            emit sigStartTooltip();
+        }
     });
     addEventListener(oxygine::TouchEvent::OVER, [ = ](oxygine::Event*)
     {
+        m_mouseHovered = true;
         emit sigStartTooltip();
     });
     addEventListener(oxygine::TouchEvent::OUTX, [ = ](oxygine::Event*)
     {
+        m_mouseHovered = false;
         emit sigHideTooltip();
     });
     addEventListener(oxygine::TouchEvent::CLICK, [ = ](oxygine::Event*)
@@ -46,15 +54,20 @@ Tooltip::~Tooltip()
 
 void Tooltip::restartTooltiptimer()
 {
-    if (!m_disabled)
+    if (!m_disabled && m_mouseHovered)
     {
         m_TooltipTimer.start(std::chrono::milliseconds(1000));
+    }
+    else
+    {
+        m_TooltipTimer.stop();
     }
     removeTooltip();
 }
 
 void Tooltip::stopTooltiptimer()
 {
+    m_mouseHovered = false;
     m_TooltipTimer.stop();
 }
 
@@ -70,7 +83,7 @@ void Tooltip::setTooltipText(const QString &tooltipText)
 
 void Tooltip::showTooltip()
 {
-    if (!m_disabled)
+    if (!m_disabled && m_mouseHovered)
     {
         Mainapp* pApp = Mainapp::getInstance();
         pApp->pauseRendering();
@@ -79,9 +92,14 @@ void Tooltip::showTooltip()
         {
             if (QGuiApplication::focusWindow() == pApp && !m_tooltipText.isEmpty())
             {
+                Console::print("Showing tooltip", Console::eDEBUG);
                 QPoint curPos = pApp->mapFromGlobal(pApp->cursor().pos());
-
-                m_Tooltip = new oxygine::Actor();
+                if (m_Tooltip.get() != nullptr)
+                {
+                    m_Tooltip->detach();
+                    m_Tooltip = nullptr;
+                }
+                m_Tooltip = oxygine::spActor::create();
                 m_Tooltip->setPriority(static_cast<qint32>(Mainapp::ZOrder::Tooltip));
 
                 oxygine::TextStyle style = FontManager::getMainFont24();
@@ -91,7 +109,7 @@ void Tooltip::showTooltip()
                 style.multiline = true;
 
                 ObjectManager* pObjectManager = ObjectManager::getInstance();
-                oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+                oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
                 oxygine::ResAnim* pAnim = pObjectManager->getResAnim("panel");
                 pSpriteBox->setResAnim(pAnim);
 
@@ -100,9 +118,9 @@ void Tooltip::showTooltip()
                 m_Tooltip->addChild(pSpriteBox);
                 pSpriteBox->setPosition(0, 0);
                 pSpriteBox->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
-                oxygine::spTextField pText = new oxygine::TextField();
+                oxygine::spTextField pText = oxygine::spTextField::create();
                 pText->setHtmlText(m_tooltipText);
-                pText->setWidth(Settings::getWidth() / 4);
+                pText->setWidth(Settings::getWidth() / 3);
                 pText->setStyle(style);
                 pText->setPosition(10, 10);
                 pSpriteBox->addChild(pText);

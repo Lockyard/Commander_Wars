@@ -12,6 +12,8 @@
 #include "coreengine/LUPDATE_MACROS.h"
 
 class GameMap;
+class HeavyAi;
+using spHeavyAi = oxygine::intrusive_ptr<HeavyAi>;
 
 class HeavyAi : public CoreAI
 {
@@ -21,23 +23,33 @@ class HeavyAi : public CoreAI
      */
     enum BuildingEntry
     {
-        BasicAttackRange,
+        DirectUnitRatio,
+        IndirectUnitRatio,
+        InfantryUnitRatio,
+        TotalBuildingRatio,
+        EnemyRatio,
+        ProductionUsage,
+        LocalUnitData,
+        BasicAttackRange = LocalUnitData,
         CaptureUnit,
         CoUnitValue,
         Movementpoints,
+        FondsUsage,
+
+
         MaxSize,
     };
 public:
     ENUM_CLASS ThreadLevel
     {
         Normal,
-                High,
-                Hq
+        High,
+        Hq,
     };
     ENUM_CLASS FunctionType
     {
         JavaScript,
-                CPlusPlus
+        CPlusPlus,
     };
     struct UnitData
     {
@@ -50,11 +62,19 @@ public:
         spGameAction m_action;
         float m_score{0};
     };
+    struct UnitBuildData
+    {
+        QString unitId;
+        qint32 cost{0};
+        QVector<double> unitBuildingDataInput;
+    };
 
     struct BuildingData
     {
         Building* m_pBuilding;
-
+        spGameAction m_action;
+        float m_score{0};
+        QVector<UnitBuildData> buildingDataInput;
     };
 
 
@@ -92,7 +112,7 @@ private:
     void setupTurn(const spQmlVectorBuilding & buildings);
     void endTurn();
     void createIslandMaps();
-    void initUnits(QmlVectorUnit* pUnits, QVector<UnitData> & units, bool enemyUnits);
+    void initUnits(spQmlVectorUnit pUnits, QVector<UnitData> & units, bool enemyUnits);
     void updateUnits();
     void updateUnits(QVector<UnitData> & units, bool enemyUnits);
     void findHqThreads(const spQmlVectorBuilding & buildings);
@@ -188,16 +208,40 @@ private:
      * @param pBuilding
      * @param pUnit
      */
-    void getProductionInputVector(Building* pBuilding, Unit* pUnit);
+    void getProductionInputVector(Building* pBuilding, Unit* pUnit, QVector<double> & data);
     /**
      * @brief buildUnits
      * @return
      */
-    bool buildUnits();
+    bool buildUnits(spQmlVectorBuilding pBuildings, spQmlVectorUnit pUnits,
+                    spQmlVectorUnit pEnemyUnits, spQmlVectorBuilding pEnemyBuildings);
     /**
      * @brief scoreUnitBuilding
      */
-    void scoreUnitBuilding();
+    void scoreUnitBuildings(spQmlVectorBuilding pBuildings, spQmlVectorUnit pUnits,
+                            spQmlVectorUnit pEnemyUnits, spQmlVectorBuilding pEnemyBuildings);
+    /**
+     * @brief getGlobalBuildInfo
+     * @param pBuildings
+     * @param pUnits
+     * @param pEnemyUnits
+     * @param pEnemyBuildings
+     * @return
+     */
+    QVector<double> getGlobalBuildInfo(spQmlVectorBuilding pBuildings, spQmlVectorUnit pUnits,
+                                       spQmlVectorUnit pEnemyUnits, spQmlVectorBuilding pEnemyBuildings);
+    /**
+     * @brief createUnitBuildData
+     * @param building
+     */
+    void createUnitBuildData(BuildingData & building, QVector<double> & data, qint32 funds);
+    /**
+     * @brief UpdateUnitBuildData
+     * @param unitData
+     * @param data
+     * @param funds
+     */
+    void updateUnitBuildData(UnitBuildData & unitData, QVector<double> & data, qint32 funds);
 private:
     // function for scoring a function
     using scoreFunction = std::function<float (spGameAction action, UnitData & unitData)>;
@@ -226,6 +270,7 @@ private:
     float m_actionScoreVariant{0.05f};
     float m_stealthDistanceMultiplier{2.0f};
     float m_alliedDistanceModifier{5.0f};
+    float m_maxMovementpoints{20.0f};
 
     // storable stuff
     QString m_aiName{"HEAVY_AI"};

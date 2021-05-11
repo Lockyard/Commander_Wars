@@ -1,12 +1,13 @@
 #ifndef WIKIMENU_H
 #define WIKIMENU_H
 
-#include <QObject>
-
-
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
+#include "menue/basemenu.h"
 
-class Wikimenu : public QObject, public oxygine::Actor
+class Wikimenu;
+using spWikimenu = oxygine::intrusive_ptr<Wikimenu>;
+
+class Wikimenu : public Basemenu
 {
     Q_OBJECT
 public:

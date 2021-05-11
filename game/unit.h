@@ -16,6 +16,7 @@
 #include "objects/base/tooltip.h"
 
 class GameAction;
+class GameAnimation;
 typedef oxygine::intrusive_ptr<GameAction> spGameAction;
 
 class Player;
@@ -30,6 +31,15 @@ public:
     static const float animationSpeed;
     static constexpr float MAX_UNIT_HP = 10.0f;
     static constexpr float DAMAGE_100 = 100.0f;
+
+    struct IconDuration
+    {
+        QString icon;
+        qint32 x;
+        qint32 y;
+        qint32 duration;
+        qint32 player;
+    };
 
     ENUM_CLASS Priorities
     {
@@ -83,7 +93,7 @@ public:
      */
     inline virtual qint32 getVersion() const override
     {
-        return 16;
+        return 18;
     }
 
 
@@ -125,11 +135,11 @@ public:
 
     void setVirtuellX(qint32 value)
     {
-        virtuellX = value;
+        m_virtuellX = value;
     }
     void setVirtuellY(qint32 value)
     {
-        virtuellY = value;
+        m_virtuellY = value;
     }
     QVector<QPoint> getMultiTurnPath() const;
     void setMultiTurnPath(const QVector<QPoint> &MultiTurnPath);
@@ -138,7 +148,11 @@ public:
      * @return
      */
     bool isValid();
-
+    /**
+     * @brief syncAnimation
+     * @param syncTime
+     */
+    void syncAnimation(oxygine::timeMS syncTime);
 
 signals:
 
@@ -316,13 +330,13 @@ public slots:
      * @param x
      * @param y
      */
-    qint32 getBaseMovementCosts(qint32 x, qint32 y, qint32 curX = -1, qint32 curY = -1);
+    qint32 getBaseMovementCosts(qint32 x, qint32 y, qint32 curX = -1, qint32 curY = -1, bool trapChecking = false);
     /**
      * @brief getMovementCosts
      * @param x
      * @param y
      */
-    qint32 getMovementCosts(qint32 x, qint32 y, qint32 curX = -1, qint32 curY = -1);
+    qint32 getMovementCosts(qint32 x, qint32 y, qint32 curX = -1, qint32 curY = -1, bool trapChecking = false);
 
     float getHp() const;
     void setHp(const float &value);
@@ -383,7 +397,7 @@ public slots:
      * @param pOwner
      * @return
      */
-    bool isStatusStealthedAndInvisible(Player* pPlayer) const;
+    bool isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide) const;
     bool getHidden() const;
     void setHidden(bool Hidden);
     /**
@@ -492,7 +506,7 @@ public slots:
      */
     inline QPoint getMapPosition() const
     {
-        return  QPoint(getX(), getY());
+        return  QPoint(Unit::getX(), Unit::getY());
     }
     /**
      * @brief getPosition the unit position as qpoint
@@ -500,7 +514,7 @@ public slots:
      */
     QPoint getPosition() const
     {
-        return QPoint(getX(), getY());
+        return QPoint(Unit::getX(), Unit::getY());
     }
     /**
      * @brief refill fills up all ammo and fuel to max
@@ -551,7 +565,7 @@ public slots:
     /**
      * @brief killUnit removes the unit from the game and let it explode
      */
-    void killUnit();
+    GameAnimation* killUnit();
     /**
      * @brief increaseCapturePoints increases the capture points of this unit based on units hp and ko owner
      */
@@ -561,8 +575,10 @@ public slots:
      * @param iconID icon we want to load
      * @param x position of the icon
      * @param y position of the icon
+     * @param duration number of days the icon will be shown on the unit
+     * @param player the player on which the duration gets decreased
      */
-    void loadIcon(QString iconID, qint32 x, qint32 y);
+    void loadIcon(QString iconID, qint32 x, qint32 y, qint32 duration = -1, qint32 player = -1);
     /**
      * @brief unloadIcon removes the given icon from this unit
      * @param iconID
@@ -572,6 +588,15 @@ public slots:
      * @brief startOfTurn
      */
     void startOfTurn();
+    /**
+     * @brief updateIconDuration
+     * @param player
+     */
+    void updateIconDuration(qint32 player);
+    /**
+     * @brief updateUnitStatus updates unit buffs
+     */
+    void updateUnitStatus();
     /**
      * @brief getTerrain
      * @return
@@ -933,19 +958,19 @@ private:
      */
     Terrain* m_pTerrain{nullptr};
     // basic data of this unit
-    float hp{Unit::MAX_UNIT_HP};
-    qint32 ammo1{-1};
-    qint32 maxAmmo1{-1};
-    QString weapon1ID;
-    qint32 ammo2{-1};
-    qint32 maxAmmo2{-1};
-    QString weapon2ID;
-    qint32 fuel{-1};
-    qint32 maxFuel{-1};
-    qint32 baseMovementPoints{0};
+    float m_hp{Unit::MAX_UNIT_HP};
+    qint32 m_ammo1{-1};
+    qint32 m_maxAmmo1{-1};
+    QString m_weapon1ID;
+    qint32 m_ammo2{-1};
+    qint32 m_maxAmmo2{-1};
+    QString m_weapon2ID;
+    qint32 m_fuel{-1};
+    qint32 m_maxFuel{-1};
+    qint32 m_baseMovementPoints{0};
     bool m_Moved{false};
     QVector<spUnit> m_TransportUnits;
-    qint32 capturePoints{0};
+    qint32 m_capturePoints{0};
     qint32 m_UnitRank{GameEnums::UnitRank_None};
 
     qint32 m_cloaked{false};
@@ -953,9 +978,9 @@ private:
 
     bool m_IgnoreUnitCollision{false};
 
-    qint32 minRange{1};
-    qint32 maxRange{-1};
-    qint32 vision{1};
+    qint32 m_minRange{1};
+    qint32 m_maxRange{-1};
+    qint32 m_vision{1};
     qint32 m_UniqueID{0};
     GameEnums::GameAi m_AiMode{GameEnums::GameAi::GameAi_Normal};
     QVector<QPoint> m_AiMovePath;
@@ -964,12 +989,12 @@ private:
 
     qint32 m_VisionHigh{-1};
 
-    qint32 virtuellX{-1};
-    qint32 virtuellY{-1};
+    qint32 m_virtuellX{-1};
+    qint32 m_virtuellY{-1};
 
     QVector<QPoint> m_MultiTurnPath;
 
-    oxygine::spTween m_ShineTween;
+    QVector<oxygine::spTween> m_ShineTweens;
     QString m_MovementType;
 
     QVector<QPoint> m_OffensiveBonus;
@@ -977,6 +1002,8 @@ private:
     QVector<QPoint> m_VisionBonus;
     QVector<QPoint> m_MovementBonus;
     QVector<QPoint> m_FirerangeBonus;
+
+    QVector<IconDuration> m_IconDurations;
 };
 
 #endif // UNIT_H

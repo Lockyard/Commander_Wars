@@ -10,10 +10,11 @@ DialogConnecting::DialogConnecting(QString text, qint32 timeoutMs)
     : QObject(),
       m_Message(text)
 {
+    setObjectName("DialogConnecting");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("codialog");
     pSpriteBox->setResAnim(pAnim);
     pSpriteBox->setSize(Settings::getWidth(), Settings::getHeight());
@@ -30,7 +31,7 @@ DialogConnecting::DialogConnecting(QString text, qint32 timeoutMs)
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
 
-    m_Text = new oxygine::TextField();
+    m_Text = oxygine::spTextField::create();
     m_Text->setHtmlText((text + ".  "));
     m_Text->setStyle(style);
     m_Text->setPosition(Settings::getWidth() / 2 - m_Text->getTextRect().getWidth() / 2, Settings::getHeight() / 2 - 40);
@@ -62,8 +63,8 @@ void DialogConnecting::cancel()
 
 void DialogConnecting::connected()
 {
-    detach();
     emit sigConnected();
+    detach();
 }
 
 void DialogConnecting::connectionTimeout()
@@ -74,16 +75,16 @@ void DialogConnecting::connectionTimeout()
 void DialogConnecting::timeout()
 {
     
-    counter++;
-    if (counter % 3 == 0)
+    m_counter++;
+    if (m_counter % 3 == 0)
     {
         m_Text->setHtmlText((m_Message + ".  "));
     }
-    else if (counter % 3 == 1)
+    else if (m_counter % 3 == 1)
     {
         m_Text->setHtmlText((m_Message + " . "));
     }
-    else if (counter % 3 == 2)
+    else if (m_counter % 3 == 2)
     {
         m_Text->setHtmlText((m_Message + "  ."));
     }

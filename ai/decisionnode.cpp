@@ -6,6 +6,12 @@ DecisionNode::DecisionNode(spDecisionQuestion pQuestion, QVector<spDecisionNode>
 	: m_pQuestion(pQuestion),
       m_pNodes(pNodes)
 {
+    setObjectName("DecisionNode");
+}
+
+DecisionNode::DecisionNode()
+{
+    setObjectName("DecisionNode");
 }
 
 DecisionNode::~DecisionNode()
@@ -38,7 +44,7 @@ void DecisionNode::deserializeObject(QDataStream& pStream)
 {
     qint32 version = 0;
     pStream >> version;
-    m_pQuestion = new DecisionQuestion;
+    m_pQuestion = spDecisionQuestion::create();
     m_pQuestion->deserializeObject(pStream);
     qint32 size = 0;
     pStream >> size;
@@ -49,12 +55,12 @@ void DecisionNode::deserializeObject(QDataStream& pStream)
         pStream >> isNode;
         if (isNode)
         {
-            m_pNodes.append(new DecisionNode());
+            m_pNodes.append(spDecisionNode::create());
             m_pNodes[i]->deserializeObject(pStream);
         }
         else
         {
-            m_pNodes.append(new Leaf());
+            m_pNodes.append(spLeaf::create());
             m_pNodes[i]->deserializeObject(pStream);
         }
     }

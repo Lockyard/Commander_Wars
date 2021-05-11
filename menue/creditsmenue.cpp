@@ -12,9 +12,12 @@
 #include "resource_management/objectmanager.h"
 #include "resource_management/fontmanager.h"
 
+#include "ui_reader/uifactory.h"
+
 CreditsMenue::CreditsMenue()
-    : QObject()
+    : Basemenu()
 {
+    setObjectName("CreditsMenue");
     Mainapp* pApp = Mainapp::getInstance();
     pApp->pauseRendering();
     this->moveToThread(pApp->getWorkerthread());
@@ -22,7 +25,7 @@ CreditsMenue::CreditsMenue()
 
     BackgroundManager* pBackgroundManager = BackgroundManager::getInstance();
     // load background
-    oxygine::spSprite sprite = new oxygine::Sprite();
+    oxygine::spSprite sprite = oxygine::spSprite::create();
     addChild(sprite);
     oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("creditsmenu");
     sprite->setResAnim(pBackground);
@@ -51,19 +54,22 @@ CreditsMenue::CreditsMenue()
     while (!stream.atEnd())
     {
         QString line = stream.readLine().trimmed();
+        QString lowerLine = line.toLower();
         if (line.startsWith("//"))
         {
             continue;
         }
-        if (line.toLower().startsWith("headline:"))
+        if (lowerLine.startsWith("headline:"))
         {
             QString headline = line.remove(0, line.indexOf(":") + 1);
             m_Headlines.append(headline);
             m_Authors.append(QVector<QString>());
             while (!stream.atEnd())
             {
-                line = stream.readLine().trimmed();
-                if (line.toLower().startsWith("end"))
+                line = stream.readLine();
+                line = line.trimmed();
+                lowerLine = line.toLower();
+                if (lowerLine.startsWith("end"))
                 {
                     break;
                 }
@@ -78,9 +84,9 @@ CreditsMenue::CreditsMenue()
             }
         }
     }
-    creditsActor = new oxygine::Actor();
-    addChild(creditsActor);
-    creditsActor->setY(Settings::getHeight());
+    m_creditsActor = oxygine::spActor::create();
+    addChild(m_creditsActor);
+    m_creditsActor->setY(Settings::getHeight());
     qint32 y = 0;
     oxygine::TextStyle style = FontManager::getMainFont24();
     style.color = FontManager::getFontColor();
@@ -98,45 +104,46 @@ CreditsMenue::CreditsMenue()
     oxygine::spTextField pTextfield;
     for (qint32 i = 0; i < m_Headlines.size(); i++)
     {
-        pTextfield = new oxygine::TextField();
+        pTextfield = oxygine::spTextField::create();
         pTextfield->setStyle(headstyle);
         pTextfield->setHtmlText(m_Headlines[i]);
         pTextfield->setPosition(x - pTextfield->getTextRect().getWidth() / 2, y);
-        creditsActor->addChild(pTextfield);
+        m_creditsActor->addChild(pTextfield);
         y += pTextfield->getTextRect().getHeight() + 10;
         for (qint32 i2 = 0; i2 < m_Authors[i].size(); i2++)
         {
-            pTextfield = new oxygine::TextField();
+            pTextfield = oxygine::spTextField::create();
             pTextfield->setStyle(style);
             pTextfield->setHtmlText(m_Authors[i][i2]);
             pTextfield->setPosition(x - pTextfield->getTextRect().getWidth() / 2.0f, y);
-            creditsActor->addChild(pTextfield);
+            m_creditsActor->addChild(pTextfield);
             y += pTextfield->getTextRect().getHeight() + 5;
         }
     }
     m_creditsHeigth = y;
-    speedTimer.start();
+    m_speedTimer.start();
+
+    UiFactory::getInstance().createUi("ui/creditsmenu.xml", this);
+
     pApp->continueRendering();
 }
 
 void CreditsMenue::doUpdate(const oxygine::UpdateState&)
 {
-    if (speedTimer.elapsed() > 40)
+    if (m_speedTimer.elapsed() > 40)
     {
-        creditsActor->setY(creditsActor->getY() - 2);
-        speedTimer.start();
+        m_creditsActor->setY(m_creditsActor->getY() - 2);
+        m_speedTimer.start();
     }
-    if (creditsActor->getY() - Settings::getHeight() / 2.0f + m_creditsHeigth < 0)
+    if (m_creditsActor->getY() - Settings::getHeight() / 2.0f + m_creditsHeigth < 0)
     {
         emit sigExitMenue();
     }
 }
 
 void CreditsMenue::exitMenue()
-{
-    
+{    
     Console::print("Leaving Credits Menue", Console::eDEBUG);
-    oxygine::getStage()->addChild(new Mainwindow());
-    oxygine::Actor::detach();
-    
+    oxygine::getStage()->addChild(spMainwindow::create());
+    oxygine::Actor::detach();    
 }

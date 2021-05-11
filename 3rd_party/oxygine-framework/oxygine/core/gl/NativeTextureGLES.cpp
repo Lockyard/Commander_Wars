@@ -12,8 +12,8 @@ namespace oxygine
 {
     struct glPixel
     {
-        int format;
-        int type;
+        qint32 format;
+        qint32 type;
         bool compressed;
     };
 
@@ -21,7 +21,6 @@ namespace oxygine
     {
         glPixel pixel;
         pixel.compressed = false;
-        //ADD_SF - dont remove this comment
         switch (format)
         {
             case ImageData::TF_R8G8B8A8:
@@ -43,30 +42,27 @@ namespace oxygine
         window->glActiveTexture(GL_TEXTURE7);
         window->glBindTexture(GL_TEXTURE_2D, id);
 
-        unsigned int f = GL_LINEAR;
+        quint32 f = GL_LINEAR;
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, f);
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, f);
 
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        NativeTextureGLES::created++;
-
         return id;
     }
 
     NativeTextureGLES::NativeTextureGLES()
-        : _id(0),
-          _fbo(0),
-          _format(ImageData::TF_UNDEFINED),
-          _width(0),
-          _height(0),
-          _lockFlags(0)
+        : m_id(0),
+          m_fbo(0),
+          m_format(ImageData::TF_UNDEFINED),
+          m_width(0),
+          m_height(0),
+          m_lockFlags(0)
     {
 
     }
 
-    void NativeTextureGLES::init(int w, int h, ImageData::TextureFormat tf, bool rt)
+    void NativeTextureGLES::init(qint32 w, qint32 h, ImageData::TextureFormat tf, bool rt)
     {
         release();
 
@@ -79,19 +75,14 @@ namespace oxygine
 
         if (rt)
         {
-            int prevFBO = 0;
+            qint32 prevFBO = 0;
             window->glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
             window->glBindTexture(GL_TEXTURE_2D, 0);
-            unsigned int fbo = 0;
+            quint32 fbo = 0;
             window->glGenFramebuffers(1, &fbo);
             window->glBindFramebuffer(GL_FRAMEBUFFER, fbo);
             window->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (GLuint)id, 0);
-
-            //printf("created fbo: %d\n", fbo);
-
-            unsigned int status = window->glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            //qDebug("fbo status %d\n", status);
-            //GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_OES
+            quint32 status = window->glCheckFramebufferStatus(GL_FRAMEBUFFER);
             if (status != GL_FRAMEBUFFER_COMPLETE)
             {
                 qCritical("status != GL_FRAMEBUFFER_COMPLETE_OES");
@@ -102,54 +93,52 @@ namespace oxygine
             window->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             window->glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
-            //qDebug("fbo bind\n");
-
             window->glBindTexture(GL_TEXTURE_2D, 0);
 
-            _fbo = fbo;
+            m_fbo = fbo;
         }
 
-        _id = id;
-        _width = w;
-        _height = h;
-        _format = tf;
+        m_id = id;
+        m_width = w;
+        m_height = h;
+        m_format = tf;
     }
 
-    void NativeTextureGLES::init(GLuint id, int w, int h, ImageData::TextureFormat tf)
+    void NativeTextureGLES::init(GLuint id, qint32 w, qint32 h, ImageData::TextureFormat tf)
     {
         release();
-        _id = id;
-        _width = w;
-        _height = h;
-        _format = tf;
+        m_id = id;
+        m_width = w;
+        m_height = h;
+        m_format = tf;
     }
 
     void NativeTextureGLES::init(const ImageData& src, bool sysMemCopy)
     {
         GLuint id = createTexture();
 
-        glPixel p = SurfaceFormat2GL(src.format);
+        glPixel p = SurfaceFormat2GL(src.m_format);
         GameWindow* window = oxygine::GameWindow::getWindow();
 
         if (p.compressed)
         {
-            window->glCompressedTexImage2D(GL_TEXTURE_2D, 0, p.format, src.w, src.h, 0, src.h * src.pitch, src.data);
+            window->glCompressedTexImage2D(GL_TEXTURE_2D, 0, p.format, src.m_w, src.m_h, 0, src.m_h * src.m_pitch, src.m_data);
         }
         else
         {
-            window->glTexImage2D(GL_TEXTURE_2D, 0, p.format, src.w, src.h, 0, p.format, p.type, src.data);
+            window->glTexImage2D(GL_TEXTURE_2D, 0, p.format, src.m_w, src.m_h, 0, p.format, p.type, src.m_data);
         }
 
         Q_ASSERT(sysMemCopy == false);
 
-        init(id, src.w, src.h, src.format);
+        init(id, src.m_w, src.m_h, src.m_format);
     }
 
     void NativeTextureGLES::setLinearFilter(quint32 filter)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
         window->glActiveTexture(GL_TEXTURE7);
-        window->glBindTexture(GL_TEXTURE_2D, (GLuint) _id);
+        window->glBindTexture(GL_TEXTURE_2D, (GLuint) m_id);
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
         window->glGenerateMipmap(GL_TEXTURE_2D);
@@ -159,9 +148,9 @@ namespace oxygine
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
         window->glActiveTexture(GL_TEXTURE7);
-        window->glBindTexture(GL_TEXTURE_2D, (GLuint) _id);
+        window->glBindTexture(GL_TEXTURE_2D, (GLuint) m_id);
 
-        unsigned int f = clamp2edge ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+        quint32 f = clamp2edge ? GL_CLAMP_TO_EDGE : GL_REPEAT;
 
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, f);
         window->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, f);
@@ -170,18 +159,15 @@ namespace oxygine
     void NativeTextureGLES::release()
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        if (_id)
+        if (m_id)
         {
-            NativeTextureGLES::created--;
-            window->glDeleteTextures(1, (GLuint*)&_id);
-            _id = 0;
+            window->glDeleteTextures(1, (GLuint*)&m_id);
+            m_id = 0;
         }
-
-
-        if (_fbo)
+        if (m_fbo)
         {
-            window->glDeleteFramebuffers(1, (GLuint*)&_fbo);
-            _fbo = 0;
+            window->glDeleteFramebuffers(1, (GLuint*)&m_fbo);
+            m_fbo = 0;
         }
 
         unreg();
@@ -191,129 +177,122 @@ namespace oxygine
     void NativeTextureGLES::swap(NativeTexture* t)
     {
         NativeTextureGLES* nt = safeCast<NativeTextureGLES*>(t);
-        std::swap(_id, nt->_id);
-        std::swap(_fbo, nt->_fbo);
-        std::swap(_format, nt->_format);
+        std::swap(m_id, nt->m_id);
+        std::swap(m_fbo, nt->m_fbo);
+        std::swap(m_format, nt->m_format);
 
-        std::swap(_width, nt->_width);
-        std::swap(_height, nt->_height);
-        std::swap(_format, nt->_format);
-
+        std::swap(m_width, nt->m_width);
+        std::swap(m_height, nt->m_height);
+        std::swap(m_format, nt->m_format);
     }
 
     NativeTextureGLES::~NativeTextureGLES()
     {
-        release();
+        NativeTextureGLES::release();
     }
 
-    int NativeTextureGLES::getWidth() const
+    qint32 NativeTextureGLES::getWidth() const
     {
-        return _width;
+        return m_width;
     }
 
-    int NativeTextureGLES::getHeight() const
+    qint32 NativeTextureGLES::getHeight() const
     {
-        return _height;
+        return m_height;
     }
 
     ImageData::TextureFormat NativeTextureGLES::getFormat() const
     {
-        return _format;
+        return m_format;
     }
 
     ImageData NativeTextureGLES::lock(lock_flags flags, const Rect* src)
     {
-        assert(_lockFlags == 0);
+        assert(m_lockFlags == 0);
 
 
-        _lockFlags = flags;
-        Rect r(0, 0, _width, _height);
+        m_lockFlags = flags;
+        Rect r(0, 0, m_width, m_height);
 
         if (src)
+        {
             r = *src;
+        }
+        Q_ASSERT(r.getX() + r.getWidth() <= m_width);
+        Q_ASSERT(r.getY() + r.getHeight() <= m_height);
 
-        Q_ASSERT(r.getX() + r.getWidth() <= _width);
-        Q_ASSERT(r.getY() + r.getHeight() <= _height);
+        m_lockRect = r;
 
-        _lockRect = r;
+        assert(m_lockFlags != 0);
 
-        assert(_lockFlags != 0);
-
-        if (_lockRect.isEmpty())
+        if (m_lockRect.isEmpty())
         {
             Q_ASSERT(!"_lockRect.IsEmpty()");
             return ImageData();
         }
 
-        if (_data.empty())
-        {
-            //_data.resize(_width)
-        }
-
-        ImageData im =  ImageData(_width, _height, (int)(_data.size() / _height), _format, &_data.front());
-        return im.getRect(_lockRect);
+        ImageData im =  ImageData(m_width, m_height, (int)(m_data.size() / m_height), m_format, &m_data.front());
+        return im.getRect(m_lockRect);
     }
 
 
     void NativeTextureGLES::unlock()
     {
-        if (!_lockFlags)
+        if (!m_lockFlags)
+        {
             return;
-
-        if (_lockFlags & lock_write)
+        }
+        if (m_lockFlags & lock_write)
         {
             GameWindow* window = oxygine::GameWindow::getWindow();
             window->glActiveTexture(GL_TEXTURE7);
-            window->glBindTexture(GL_TEXTURE_2D, (GLuint) _id);
+            window->glBindTexture(GL_TEXTURE_2D, (GLuint) m_id);
             window->glGetError();
-            ImageData src = ImageData(_width, _height, (int)(_data.size() / _height), _format, &_data.front());
-            ImageData locked = src.getRect(_lockRect);
+            ImageData src = ImageData(m_width, m_height, (int)(m_data.size() / m_height), m_format, &m_data.front());
+            ImageData locked = src.getRect(m_lockRect);
             window->glGetError();
             Image mt;
-            mt.init(_lockRect.getWidth(), _lockRect.getHeight(), _format);
+            mt.init(m_lockRect.getWidth(), m_lockRect.getHeight(), m_format);
             ImageData q = mt.lock();
             operations::copy(locked, q);
             mt.unlock();
 
-            glPixel glp = SurfaceFormat2GL(_format);
+            glPixel glp = SurfaceFormat2GL(m_format);
 
             window->glTexSubImage2D(GL_TEXTURE_2D, 0,
-                                    _lockRect.getX(), _lockRect.getY(), _lockRect.getWidth(), _lockRect.getHeight(),
-                                    glp.format, glp.type, locked.data);
+                                    m_lockRect.getX(), m_lockRect.getY(), m_lockRect.getWidth(), m_lockRect.getHeight(),
+                                    glp.format, glp.type, locked.m_data);
             window->glGetError();
-            _lockFlags = 0;
+            m_lockFlags = 0;
         }
     }
 
 
-    void NativeTextureGLES::updateRegion(int x, int y, const ImageData& data_)
+    void NativeTextureGLES::updateRegion(qint32 x, qint32 y, const ImageData& data_)
     {
-        if (data_.w == 0 || data_.h == 0)
+        if (data_.m_w == 0 || data_.m_h == 0)
             return;
 
         ImageData data = data_;
-        assert(_width >= data.w - x);
-        assert(_height >= data.h - y);
+        assert(m_width >= data.m_w - x);
+        assert(m_height >= data.m_h - y);
         GameWindow* window = oxygine::GameWindow::getWindow();
         window->glActiveTexture(GL_TEXTURE7);
-        window->glBindTexture(GL_TEXTURE_2D, (GLuint) _id);
+        window->glBindTexture(GL_TEXTURE_2D, (GLuint) m_id);
 
-        glPixel glp = SurfaceFormat2GL(_format);
-        //saveImage(data, "test1.png");
-
-
+        glPixel glp = SurfaceFormat2GL(m_format);
         Image mt;
-        if (_format != data.format)
+        if (m_format != data.m_format)
         {
-            mt.init(data.w, data.h, _format);
+            mt.init(data.m_w, data.m_h, m_format);
             mt.fillZero();
             mt.updateRegion(0, 0, data);
             data = mt.lock();
         }
 
         window->glTexSubImage2D(GL_TEXTURE_2D, 0,
-                                x, y, data.w, data.h,
-                                glp.format, glp.type, data.data);
+                                x, y, data.m_w, data.m_h,
+                                glp.format, glp.type, data.m_data);
     }
 
     void NativeTextureGLES::apply(const Rect*)
@@ -323,11 +302,11 @@ namespace oxygine
 
     GLuint NativeTextureGLES::getHandle() const
     {
-        return reinterpret_cast<GLuint>(_id);
+        return reinterpret_cast<GLuint>(m_id);
     }
 
-    unsigned int NativeTextureGLES::getFboID() const
+    quint32 NativeTextureGLES::getFboID() const
     {
-        return (unsigned int) _fbo;
+        return (unsigned int) m_fbo;
     }
 }

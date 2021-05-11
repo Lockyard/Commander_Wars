@@ -35,7 +35,6 @@ namespace oxygine
 
     spNativeTexture VideoDriverNull::createTexture()
     {
-        //return new NativeTextureNull;
         return nullptr;
     }
 
@@ -56,7 +55,7 @@ namespace oxygine
 
     spNativeTexture VideoDriverNull::getRenderTarget() const
     {
-        return _rt;
+        return m_rt;
     }
 
     const VertexDeclaration*    VideoDriverNull::getVertexDeclaration(bvertex_format bf) const
@@ -75,7 +74,7 @@ namespace oxygine
     }
     void VideoDriverNull::setRenderTarget(spNativeTexture rt)
     {
-        _rt = rt;
+        m_rt = rt;
     }
     void VideoDriverNull::setShaderProgram(ShaderProgram*)
     {

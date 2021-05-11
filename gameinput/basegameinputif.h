@@ -29,9 +29,9 @@ public:
 
     static void serializeInterface(QDataStream& pStream, BaseGameInputIF* input);
 
-    static BaseGameInputIF* deserializeInterface(QDataStream& pStream, qint32 version);
+    static spBaseGameInputIF deserializeInterface(QDataStream& pStream, qint32 version);
 
-    static BaseGameInputIF* createAi(GameEnums::AiTypes type);
+    static spBaseGameInputIF createAi(GameEnums::AiTypes type);
 
     virtual void centerCameraOnAction(GameAction* pAction);
 signals:
@@ -80,7 +80,7 @@ public slots:
 protected:
     Player* m_pPlayer{nullptr};
     GameEnums::AiTypes m_AiType{GameEnums::AiTypes_Human};
-    bool enableNeutralTerrainAttack{true};
+    bool m_enableNeutralTerrainAttack{true};
     QVector<std::tuple<QString, float>> m_BuildingChanceModifier;
     /**
      * @brief m_MoveCostMap move cost modifier map for the ai

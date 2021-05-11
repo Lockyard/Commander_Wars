@@ -7,19 +7,19 @@
 namespace oxygine
 {
     Tween::Tween()
-        : _status(status_not_started),
-          _elapsed(0),
-          _duration(0),
-          _delay(0),
-          _loops(1),
-          _loopsDone(0),
-          _ease(ease_linear),
-          _globalEase(ease_linear),
-          _twoSides(false),
-          _disabledStatusDone(false),
-          _percent(0),
-          _detach(false),
-          _client(0)
+        : m_status(status_not_started),
+          m_elapsed(0),
+          m_duration(0),
+          m_delay(0),
+          m_loops(1),
+          m_loopsDone(0),
+          m_ease(ease_linear),
+          m_globalEase(ease_linear),
+          m_twoSides(false),
+          m_disabledStatusDone(false),
+          m_percent(0),
+          m_detach(false),
+          m_client(0)
     {
 
     }
@@ -30,51 +30,56 @@ namespace oxygine
 
     void Tween::reset()
     {
-        _elapsed = timeMS(0);
-        _status = status_not_started;
-        _loopsDone = 0;
+        m_elapsed = timeMS(0);
+        m_status = status_not_started;
+        m_loopsDone = 0;
     }
 
-    void Tween::init(timeMS duration, int loops, bool twoSides, timeMS delay, EASE ease)
+    void Tween::init(timeMS duration, qint32 loops, bool twoSides, timeMS delay, EASE ease)
     {
-        _duration = duration;
-        _ease = ease;
-        _loops = loops;
-        _twoSides = twoSides;
-        _delay = delay;
+        m_duration = duration;
+        m_ease = ease;
+        m_loops = loops;
+        m_twoSides = twoSides;
+        m_delay = delay;
 
-        if (_duration <= timeMS(0))
+        if (m_duration <= timeMS(0))
         {
             Q_ASSERT(!"Tweener duration should be more than ZERO");
-            _duration = timeMS(1);
+            m_duration = timeMS(1);
         }
     }
 
     void Tween::init2(const TweenOptions& opt)
     {
-        _duration = opt._duration;
-        _ease = opt._ease;
-        _loops = opt._loops;
-        _twoSides = opt._twoSides;
-        _delay = opt._delay;
-        _detach = opt._detach;
-        _globalEase = opt._globalEase;
-        _cbDone = opt._callback;
+        m_duration = opt.m_duration;
+        m_ease = opt.m_ease;
+        m_loops = opt.m_loops;
+        m_twoSides = opt.m_twoSides;
+        m_delay = opt.m_delay;
+        m_detach = opt.m_detach;
+        m_globalEase = opt.m_globalEase;
+        m_cbDone = opt.m_callback;
 
-        if (_duration == timeMS(0))
+        if (m_duration == timeMS(0))
         {
-            _duration = timeMS(1);
+            m_duration = timeMS(1);
         }
-        else if (_duration < timeMS(0))
+        else if (m_duration < timeMS(0))
         {
             Q_ASSERT(!"Tweener duration should be more than ZERO");
-            _duration = timeMS(1);
+            m_duration = timeMS(1);
         }
     }
 
     void Tween::setDoneCallback(const EventCallback& cb)
     {
-        _cbDone = cb;
+        m_cbDone = cb;
+    }
+
+    void Tween::setStartCallback(const EventCallback& cb)
+    {
+        m_cbStart = cb;
     }
 
     void Tween::addDoneCallback(const EventCallback& cb)
@@ -82,135 +87,149 @@ namespace oxygine
         addEventListener(TweenEvent::DONE, cb);
     }
 
-
-
     float Tween::_calcEase(float v)
     {
-        if (_twoSides)
+        if (m_twoSides)
         {
             if (v > 0.5f)
+            {
                 v = 1.0f - v;
+            }
             v *= 2.0f;
         }
 
-        v = calcEase(_ease, v);
+        v = calcEase(m_ease, v);
         return v;
     }
 
     void Tween::setElapsed(const timeMS &elapsed)
     {
-        _elapsed = elapsed;
+        m_elapsed = elapsed;
     }
 
-    void Tween::remove()
+    void Tween::removeFromActor()
     {
-        getClient()->removeTween(this);
+        oxygine::spActor pClient = getClient();
+        if (pClient.get() != nullptr)
+        {
+            pClient->removeTween(this);
+        }
     }
 
     void Tween::complete(timeMS deltaTime)
     {
-        if (_loops == -1)
+        if (m_loops == -1)
+        {
             return;
-
+        }
         //if already done
-        if (_status >= status_done)
+        if (m_status >= status_done)
+        {
             return;
-
-        //Q_ASSERT(_client);
-
-        if (!_client)
+        }
+        if (!m_client)
+        {
             return;
-
-        //Q_ASSERT(!"not implemented");
-
+        }
         //not started yet because has delay
-        if (_status == status_delayed)
+        if (m_status == status_delayed)
         {
-            _start(*_client);
-            _status = status_started;
+            _start(*m_client);
+            m_status = status_started;
         }
 
-
-        Q_ASSERT(_status == status_started);
-        //while (_status != status_remove)
-        {
-            UpdateState us;
-            us.dt = deltaTime;
-
-            update(*_client, us);
-        }
-
-        Q_ASSERT(_status == status_done);
-
-        //_client->removeTween(this);
+        Q_ASSERT(m_status == status_started);
+        UpdateState us;
+        us.dt = deltaTime;
+        update(*m_client, us);
+        Q_ASSERT(m_status == status_done);
     }
 
     void Tween::start(Actor& actor)
     {
-        _client = &actor;
-        _status = status_delayed;
-        if (_delay == timeMS(0))
+        m_client = &actor;
+        m_status = status_delayed;
+        if (m_delay == timeMS(0))
         {
-            _status = status_started;
-            _start(actor);
+            const UpdateState us;
+            __start(actor, us);
         }
+    }
+
+    void Tween::__start(Actor& actor, const UpdateState& us)
+    {
+        m_status = status_started;
+        TweenEvent ev(this, &us);
+        ev.target = ev.currentTarget = &actor;
+        ev.m_tween = this;
+        ev.type = TweenEvent::START;
+        if (m_cbStart.isSet())
+        {
+            m_cbStart(&ev);
+        }
+        dispatchEvent(&ev);
+        _start(*m_client);
     }
 
     void Tween::update(Actor& actor, const UpdateState& us)
     {
-        _elapsed += us.dt;
-        switch (_status)
+        m_elapsed += us.dt;
+        switch (m_status)
         {
             case status_delayed:
             {
-                if (_elapsed >= _delay)
+                if (m_elapsed >= m_delay)
                 {
-                    _status = status_started;
-                    _start(*_client);
+                    __start(actor, us);
                 }
-            }
                 break;
+            }
             case status_started:
             {
-                if (_duration > timeMS(0))
+                if (m_duration > timeMS(0))
                 {
-                    timeMS localElapsed = _elapsed - _delay;
+                    timeMS localElapsed = m_elapsed - m_delay;
 
-                    if (_globalEase != ease_linear)
+                    if (m_globalEase != ease_linear)
                     {
-                        float p = localElapsed.count() / float(_duration.count() * _loops);
-                        timeMS nv = timeMS(static_cast<qint64>(calcEase(_globalEase, std::min(p, 1.0f)) * _duration.count() * _loops));
+                        float p = localElapsed.count() / float(m_duration.count() * m_loops);
+                        timeMS nv = timeMS(static_cast<qint64>(calcEase(m_globalEase, std::min(p, 1.0f)) * m_duration.count() * m_loops));
                         localElapsed = nv;
                     }
 
-                    int loopsDone = localElapsed / _duration;
-                    _percent = _calcEase(((float)(localElapsed.count() - loopsDone * _duration.count())) / _duration.count());
+                    qint32 loopsDone = localElapsed / m_duration;
+                    m_percent = _calcEase(((float)(localElapsed.count() - loopsDone * m_duration.count())) / m_duration.count());
 
-                    while(_loopsDone < loopsDone)
+                    while(m_loopsDone < loopsDone)
                     {
                         _loopDone(actor, us);
-                        _loopsDone++;
+                        m_loopsDone++;
                     }
 
-                    if (_loops > 0 && int(loopsDone) >= _loops)
+                    if (m_loops > 0 && static_cast<qint32>(loopsDone) >= m_loops)
                     {
-                        if (_twoSides)
-                            _percent = 0;
+                        if (m_twoSides)
+                        {
+                            m_percent = 0;
+                        }
                         else
-                            _percent = 1;
-
-                        if (!_disabledStatusDone)
-                            _status = status_done;
+                        {
+                            m_percent = 1;
+                        }
+                        if (!m_disabledStatusDone)
+                        {
+                            m_status = status_done;
+                        }
                     }
                 }
-                _update(*_client, us);
-            }
+                _update(*m_client, us);
                 break;
+            }
             case status_done:
             {
-                done(*_client, us);
-            }
+                done(*m_client, us);
                 break;
+            }
             default:
                 break;
         }
@@ -220,30 +239,29 @@ namespace oxygine
     {
         _done(actor, us);
 
-        if (_detach)
+        if (m_detach)
         {
             actor.detach();
         }
 
         TweenEvent ev(this, &us);
         ev.target = ev.currentTarget = &actor;
-        ev.tween = this;
+        ev.m_tween = this;
 
-        if (_cbDone.isSet())
+        if (m_cbDone.isSet())
         {
-            _cbDone(&ev);
+            m_cbDone(&ev);
         }
 
         dispatchEvent(&ev);
 
-        _status = status_remove;
+        m_status = status_remove;
     }
 
     Actor* TweenEvent::getActor() const
     {
         return safeCast<Actor*>(currentTarget.get());
     }
-
 
     static float outBounce(float t)
     {
@@ -264,7 +282,6 @@ namespace oxygine
         t = t - 0.954545454545f;
         return 7.5625f * t * t + 0.984375f;
     }
-
 
     Tween::easeHandler _customEaseHandler = nullptr;
 
@@ -359,7 +376,6 @@ namespace oxygine
                 return t <= 0.5f ? calcEase(ease_inBounce, t * 2) / 2 : 1 - calcEase(ease_inBounce, 2 - t * 2) / 2;
             default:
                 t = _customEaseHandler(ease, t);
-                //Q_ASSERT(!"unsupported ease");
                 break;
         }
         return t;

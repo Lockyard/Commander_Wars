@@ -45,7 +45,7 @@ var Constructor = function()
                 if (terrainId !== "BRIDGE" &&
                     terrainId !== "BEACH")
                 {
-                    if ((Global[unit.getMovementType()].getMovementpoints(terrain, unit, terrain) > 0) &&
+                    if ((Global[unit.getMovementType()].getMovementpoints(terrain, unit, terrain, false) > 0) &&
                         (defUnit === null))
                     {
                         ret.push(targetFields[i]);
@@ -122,7 +122,7 @@ var Constructor = function()
         if (unit !== null)
         {
             // pay for the unit
-            map.getGameRecorder().buildUnit(player.getPlayerID());
+            map.getGameRecorder().buildUnit(player.getPlayerID(), unitID);
             unit.setHasMoved(true);
         }
         player.buildedUnit(unit);

@@ -13,10 +13,11 @@ quint32 AchievementBanner::m_activeBanners = 0;
 AchievementBanner::AchievementBanner(const Userdata::Achievement& achievement)
     : QObject()
 {
+    setObjectName("AchievementBanner");
     qint32 bannerWidth = 350;
     ObjectManager* pObjectManager = ObjectManager::getInstance();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("panel");
-    oxygine::spBox9Sprite pButtonBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pButtonBox = oxygine::spBox9Sprite::create();
     pButtonBox->setVerticalMode(oxygine::Box9Sprite::STRETCHING);
     pButtonBox->setHorizontalMode(oxygine::Box9Sprite::STRETCHING);
     pButtonBox->setResAnim(pAnim);
@@ -33,7 +34,7 @@ AchievementBanner::AchievementBanner(const Userdata::Achievement& achievement)
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
-    spLabel pTextfield = new Label(bannerWidth - 20 - GameMap::defaultImageSize * 2);
+    spLabel pTextfield = spLabel::create(bannerWidth - 20 - GameMap::defaultImageSize * 2);
     pTextfield->setStyle(style);
     pTextfield->setText(achievement.name);
     pTextfield->setPosition(bannerWidth - 5 - pTextfield->getWidth(), 5);
@@ -47,10 +48,10 @@ AchievementBanner::AchievementBanner(const Userdata::Achievement& achievement)
     m_activeBanners++;
     m_showTimer.setSingleShot(true);
     m_showTimer.start(std::chrono::seconds(5));
-    connect(&m_showTimer, &QTimer::timeout, this, &AchievementBanner::remove, Qt::QueuedConnection);
+    connect(&m_showTimer, &QTimer::timeout, this, &AchievementBanner::removeBanner, Qt::QueuedConnection);
 }
 
-void AchievementBanner::remove()
+void AchievementBanner::removeBanner()
 {
     m_activeBanners--;
     detach();

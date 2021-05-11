@@ -4,15 +4,17 @@
 #include "3rd_party/oxygine-framework/oxygine/core/ImageDataOperations.h"
 #include "3rd_party/oxygine-framework/oxygine/core/VideoDriver.h"
 #include "3rd_party/oxygine-framework/oxygine/utils/AtlasBuilder.h"
+
+#include "spritingsupport/spritecreator.h"
+
 #include <qvariant.h>
 #include <qfile.h>
 
 namespace oxygine
 {
 
-    int defaultAtlasWidth = 2048;
-    int defaultAtlasHeight = 2048;
-
+    constexpr qint32 defaultAtlasWidth = 2048;
+    constexpr qint32 defaultAtlasHeight = 2048;
 
     struct atlas_data
     {
@@ -21,28 +23,29 @@ namespace oxygine
         AtlasBuilder atlas;
     };
 
-
-
-    int roundUp(int numToRound, int multiple)
+    qint32 roundUp(qint32 numToRound, qint32 multiple)
     {
         if (multiple == 0)
+        {
             return numToRound;
-
-        int remainder = numToRound % multiple;
+        }
+        qint32 remainder = numToRound % multiple;
         if (remainder == 0)
+        {
             return numToRound;
+        }
         return numToRound + multiple - remainder;
     }
 
 
-    int HIT_TEST_DOWNSCALE = 4;
-    const int ALIGN = sizeof(int32_t);
-    const int BITS = ALIGN * 8;
+    qint32 HIT_TEST_DOWNSCALE = 4;
+    const qint32 ALIGN = sizeof(int32_t);
+    const qint32 BITS = ALIGN * 8;
 
     void makeAlpha(const ImageData& srcImage, Rect& bounds, QVector<unsigned char>& alpha, HitTestData& adata, bool hittest)
     {
-        int w = srcImage.w;
-        int h = srcImage.h;
+        qint32 w = srcImage.m_w;
+        qint32 h = srcImage.m_h;
 
         size_t pos = alpha.size();
         adata.data = reinterpret_cast<unsigned char*>(pos);
@@ -50,18 +53,18 @@ namespace oxygine
         adata.h = roundUp(h, HIT_TEST_DOWNSCALE) / HIT_TEST_DOWNSCALE;
 
 
-        int lineInts = roundUp(adata.w, BITS) / BITS;
+        qint32 lineInts = roundUp(adata.w, BITS) / BITS;
 
-        int destPitch = lineInts * ALIGN;
+        qint32 destPitch = lineInts * ALIGN;
 
-        int size = adata.h * destPitch;
+        qint32 size = adata.h * destPitch;
 
         alpha.resize(pos + size + 10);
 
 
-        const unsigned char* srcData = srcImage.data;
-        int srcStep = srcImage.bytespp;
-        int srcPitch = srcImage.pitch;
+        const unsigned char* srcData = srcImage.m_data;
+        qint32 srcStep = srcImage.m_bytespp;
+        qint32 srcPitch = srcImage.m_pitch;
 
         unsigned char* destData = &alpha[pos];
 
@@ -71,14 +74,14 @@ namespace oxygine
         unsigned char* destRow = destData;
 
 
-        int minX = w;
-        int minY = h;
-        int maxX = 0;
-        int maxY = 0;
+        qint32 minX = w;
+        qint32 minY = h;
+        qint32 maxX = 0;
+        qint32 maxY = 0;
 
         bool hasAlpha = false;
 
-        for (int y = 0; y != h; y += 1)
+        for (qint32 y = 0; y != h; y += 1)
         {
             const unsigned char* srcLine = srcRow;
             int32_t* destLine = reinterpret_cast<int32_t*>(destRow);
@@ -86,28 +89,30 @@ namespace oxygine
             bool lineWithAlpha = false;
 
 
-            for (int x = 0; x != w; x += 1)
+            for (qint32 x = 0; x != w; x += 1)
             {
                 PixelR8G8B8A8 pd;
                 Pixel p;
                 pd.getPixel(srcLine, p);
-
-
                 if (p.a > 5)
                 {
                     hasAlpha = true;
 
-                    int dx = x / HIT_TEST_DOWNSCALE;
-                    int n = dx / BITS;
-                    int b = dx % BITS;
+                    qint32 dx = x / HIT_TEST_DOWNSCALE;
+                    qint32 n = dx / BITS;
+                    qint32 b = dx % BITS;
 
                     destLine[n] |= 1 << b;
 
                     lineWithAlpha = true;
                     if (x > maxX)
+                    {
                         maxX = x;
+                    }
                     else if (x < minX)
+                    {
                         minX = x;
+                    }
                 }
                 srcLine += srcStep;
             }
@@ -150,26 +155,18 @@ namespace oxygine
         }
     }
 
-
-
-
     void ResAtlasGeneric::applyAtlas(atlas_data& ad, quint32 filter, bool clamp2edge)
     {
         if (!ad.texture)
+        {
             return;
-
-        spImage mt = new Image;
+        }
+        spImage mt = spImage::create();
         Rect bounds = ad.atlas.getBounds();
+        qint32 w = bounds.getRight();
+        qint32 h = bounds.getBottom();
 
-        //int w = nextPOT(bounds.getRight());
-        //int h = nextPOT(bounds.getBottom());
-
-
-
-        int w = bounds.getRight();
-        int h = bounds.getBottom();
-
-        int aw = w % 4;
+        qint32 aw = w % 4;
         aw = aw ? w + 4 - aw : w;
 
         ImageData reg = ad.mt.lock().getRect(Rect(0, 0, aw, h));
@@ -183,18 +180,16 @@ namespace oxygine
         LoadResourcesContext::get()->createTexture(task);
     }
 
-    void ResAtlasGeneric::nextAtlas(int w, int h, ImageData::TextureFormat tf, atlas_data& ad, QString name)
+    void ResAtlasGeneric::nextAtlas(qint32 w, qint32 h, ImageData::TextureFormat tf, atlas_data& ad)
     {
         ad.mt.init(w, h, tf);
         ad.mt.fillZero();
 
         ad.atlas.clean();
         ad.atlas.init(w, h);
-
-
-        if ((int)_atlasses.size() > _current)
+        if (m_atlasses.size() > m_current)
         {
-            ad.texture = _atlasses[_current].base;
+            ad.texture = m_atlasses[m_current].base;
         }
         else
         {
@@ -202,13 +197,10 @@ namespace oxygine
 
             atlas atl;
             atl.base = ad.texture;
-            _atlasses.push_back(atl);
+            m_atlasses.push_back(atl);
         }
-        ad.texture->setName(name);
-
-        _current++;
+        m_current++;
     }
-
 
     void ResAtlasGeneric::_unload()
     {
@@ -216,33 +208,28 @@ namespace oxygine
 
     void ResAtlasGeneric::_load(LoadResourcesContext*)
     {
-        //CreateResourceContext copy2 = _copy;
-        //loadAtlas2(copy2);
     }
 
     void ResAtlasGeneric::loadAtlas(CreateResourceContext& context)
     {
-        //_xmlFolder = context.walker.getXmlFolder();
-        //_copy = context;
-        //_copy.walker.setXmlFolder(&_xmlFolder);
         loadAtlas2(context);
     }
 
     void ResAtlasGeneric::loadAtlas2(CreateResourceContext& context)
     {
-        _current = 0;
-        QDomElement node = context.walker.getNode();
+        m_current = 0;
+        QDomElement node = context.m_walker.getNode();
 
         bool ok = false;
-        int w = node.attribute("width").toInt(&ok);
+        qint32 w = node.attribute("width").toInt(&ok);
         if (!ok)
         {
-           w = defaultAtlasWidth;
+            w = defaultAtlasWidth;
         }
-        int h = node.attribute("height").toInt(&ok);
+        qint32 h = node.attribute("height").toInt(&ok);
         if (!ok)
         {
-           h = defaultAtlasHeight;
+            h = defaultAtlasHeight;
         }
 
         loadBase(node);
@@ -250,10 +237,10 @@ namespace oxygine
         atlas_data ad;
 
         ImageData::TextureFormat tf = ImageData::TF_R8G8B8A8;
-        QVector<ResAnim*> anims;
+        QVector<spResAnim> anims;
         while (true)
         {
-            XmlWalker walker = context.walker.next();
+            XmlWalker walker = context.m_walker.next();
             if (walker.empty())
             {
                 break;
@@ -267,7 +254,6 @@ namespace oxygine
                 continue;
             }
 
-            QString id = child_node.attribute("id");
             QString file = child_node.attribute("file");
 
             if (file.isEmpty())
@@ -316,173 +302,171 @@ namespace oxygine
             Image mt;
             ImageData im;
 
-            int columns = 0;
-            int rows = 0;
-            int frame_width = 0;
-            int frame_height = 0;
+            qint32 columns = 0;
+            qint32 rows = 0;
+            qint32 frame_width = 0;
+            qint32 frame_height = 0;
 
             QImage img(walker.getPath("file"));
             if (img.width() == 0 || img.height() == 0)
             {
                 qWarning("Image. Not found %s", walker.getPath("file").toStdString().c_str());
+                continue;
             }
+            rows = child_node.attribute("rows").toInt();
+            frame_width = child_node.attribute("frame_width").toInt();
+            columns = child_node.attribute("cols").toInt();
+            frame_height = child_node.attribute("frame_height").toInt();
+
+            if (rows <= 0)
+            {
+                rows = 1;
+            }
+            if (columns <= 0)
+            {
+                columns = 1;
+            }
+            SpriteCreator::addTransparentBorder(img, columns, rows);
+            if (frame_width > 0)
+            {
+                columns = img.width() / frame_width;
+            }
+            else
+            {
+                frame_width = img.width() / columns;
+            }
+            if (frame_height > 0)
+            {
+                rows = img.height() / frame_height;
+            }
+            else
+            {
+                frame_height = img.height() / rows;
+            }
+            animationFrames frames;
+            qint32 frames_count = rows * columns;
+            frames.reserve(frames_count);
+            qint32 width = frame_width;
+            qint32 height = frame_height;
+            if (rows > 1 || columns > 1)
+            {
+                frame_width -= 1;
+                frame_height -= 1;
+            }
+
             mt.init(img, true);
             im = mt.lock();
-            if (im.w)
+
+            spResAnim ra = spResAnim::create(this);
+            ra->setResPath(walker.getPath("file"));
+
+            anims.push_back(ra);
+
+            for (qint32 y = 0; y < rows; ++y)
             {
-                rows = child_node.attribute("rows").toInt();
-                frame_width = child_node.attribute("frame_width").toInt();
-                columns = child_node.attribute("cols").toInt();
-                frame_height = child_node.attribute("frame_height").toInt();
-
-                if (!rows)
-                    rows = 1;
-
-                if (!columns)
-                    columns = 1;
-
-                if (frame_width)
-                    columns = im.w / frame_width;
-                else
-                    frame_width = im.w / columns;
-
-
-                if (frame_height)
-                    rows = im.h / frame_height;
-                else
-                    frame_height = im.h / rows;
-            }
-
-
-            if (columns)
-            {
-                animationFrames frames;
-                int frames_count = rows * columns;
-                frames.reserve(frames_count);
-
-                ResAnim* ra = new ResAnim(this);
-                ra->setResPath(walker.getPath("file"));
-
-                anims.push_back(ra);
-
-                for (int y = 0; y < rows; ++y)
+                for (qint32 x = 0; x < columns; ++x)
                 {
-                    for (int x = 0; x < columns; ++x)
+                    Rect frameRect;
+                    frameRect.pos = Point(x * width, y * height);
+                    frameRect.size = Point(frame_width, frame_height);
+
+                    ImageData srcImage_ = im.getRect(frameRect);
+
+
+                    HitTestData adata;
+                    ImageData src;
+                    Rect bounds(0, 0, srcImage_.m_w, srcImage_.m_h);
+                    if (trim)
                     {
-                        Rect frameRect;
-                        frameRect.pos = Point(x * frame_width, y * frame_height);
-                        frameRect.size = Point(frame_width, frame_height);
-
-                        ImageData srcImage_ = im.getRect(frameRect);
-
-
-                        HitTestData adata;
-                        ImageData src;
-                        Rect bounds(0, 0, srcImage_.w, srcImage_.h);
-                        if (trim)
-                        {
-                            makeAlpha(srcImage_, bounds, _hitTestBuffer, adata, walker.getAlphaHitTest());
-                        }
-                        src = srcImage_.getRect(bounds);
-
-                        Rect dest(0, 0, 0, 0);
-
-                        if (!ad.texture)
-                        {
-                            QString atlas_id = getName();
-                            nextAtlas(w, h, tf, ad, atlas_id);
-                        }
-
-                        bool s = ad.atlas.add(&ad.mt, src, dest, offset);
-                        if (s == false)
-                        {
-                            applyAtlas(ad, _linearFilter, _clamp2edge);
-
-                            nextAtlas(w, h, tf, ad, walker.getCurrentFolder());
-                            s = ad.atlas.add(&ad.mt, src, dest, offset);
-                            Q_ASSERT(s);
-                        }
-
-                        //extend = false;
-                        if (extend)
-                        {
-                            //duplicate image edges
-                            Image& mt = ad.mt;
-                            ImageData tmp;
-
-                            if (bounds.getY() == 0 && dest.pos.y != 0)
-                            {
-                                tmp = mt.lock(Rect(dest.pos.x, dest.pos.y - 1, src.w, 1));
-                                operations::copy(src.getRect(Rect(0, 0, src.w, 1)), tmp);
-                            }
-
-                            if (bounds.getHeight() == im.h && dest.getBottom() != mt.getHeight())
-                            {
-                                tmp = mt.lock(Rect(dest.pos.x, dest.pos.y + src.h, src.w, 1));
-                                operations::copy(src.getRect(Rect(0, src.h - 1, src.w, 1)), tmp);
-                            }
-
-                            if (bounds.getX() == 0 && dest.pos.x != 0)
-                            {
-                                tmp = mt.lock(Rect(dest.pos.x - 1, dest.pos.y, 1, src.h));
-                                operations::copy(src.getRect(Rect(0, 0, 1, src.h)), tmp);
-                            }
-
-                            if (bounds.getWidth() == im.w && dest.getRight() != mt.getWidth())
-                            {
-                                tmp = mt.lock(Rect(dest.pos.x + src.w, dest.pos.y, 1, src.h));
-                                operations::copy(src.getRect(Rect(src.w - 1, 0, 1, src.h)), tmp);
-                            }
-                        }
-
-
-                        //operations::copy(src.getRect(Rect(0, 0, 1, 1)), mt.lock(&Rect(dest.pos.x - 1, dest.pos.y - 1, 1, 1)));
-                        //operations::copy(src.getRect(Rect(src.w - 1, 0, 1, 1)), mt.lock(&Rect(dest.pos.x + src.w, dest.pos.y - 1, 1, 1)));
-
-                        //operations::copy(src.getRect(Rect(0, src.h - 1, 1, 1)), mt.lock(&Rect(dest.pos.x - 1, dest.pos.y + src.h, 1, 1)));
-                        //operations::copy(src.getRect(Rect(src.w - 1, src.h - 1, 1, 1)), mt.lock(&Rect(dest.pos.x + src.w, dest.pos.y + src.h, 1, 1)));
-
-
-                        float iw = 1.0f;
-                        float ih = 1.0f;
-
-                        RectF srcRect(dest.pos.x * iw, dest.pos.y * ih, dest.size.x * iw, dest.size.y * ih);
-
-                        Vector2 sizeScaled = Vector2((float)dest.size.x, (float)dest.size.y) * walker.getScaleFactor();
-                        RectF destRect(bounds.pos.cast<Vector2>(), sizeScaled);
-
-                        AnimationFrame frame;
-                        Diffuse df;
-                        df.base = ad.texture;
-                        //df.premultiplied = true;//!Renderer::getPremultipliedAlphaRender();
-
-                        Vector2 fsize = Vector2((float)frame_width, (float)frame_height) * walker.getScaleFactor();
-                        frame.init2(ra, x, y, df,
-                                    srcRect, destRect, fsize);
-
-                        frame.setHitTestData(adata);
-
-                        frames.push_back(frame);
+                        makeAlpha(srcImage_, bounds, m_hitTestBuffer, adata, walker.getAlphaHitTest());
                     }
+                    src = srcImage_.getRect(bounds);
+
+                    Rect dest(0, 0, 0, 0);
+
+                    if (!ad.texture)
+                    {
+                        nextAtlas(w, h, tf, ad);
+                    }
+
+                    bool s = ad.atlas.add(&ad.mt, src, dest, offset);
+                    if (s == false)
+                    {
+                        applyAtlas(ad, m_linearFilter, m_clamp2edge);
+
+                        nextAtlas(w, h, tf, ad);
+                        s = ad.atlas.add(&ad.mt, src, dest, offset);
+                        Q_ASSERT(s);
+                    }
+
+                    //extend = false;
+                    if (extend)
+                    {
+                        //duplicate image edges
+                        Image& mt = ad.mt;
+                        ImageData tmp;
+
+                        if (bounds.getY() == 0 && dest.pos.y != 0)
+                        {
+                            tmp = mt.lock(Rect(dest.pos.x, dest.pos.y - 1, src.m_w, 1));
+                            operations::copy(src.getRect(Rect(0, 0, src.m_w, 1)), tmp);
+                        }
+
+                        if (bounds.getHeight() == im.m_h && dest.getBottom() != mt.getHeight())
+                        {
+                            tmp = mt.lock(Rect(dest.pos.x, dest.pos.y + src.m_h, src.m_w, 1));
+                            operations::copy(src.getRect(Rect(0, src.m_h - 1, src.m_w, 1)), tmp);
+                        }
+
+                        if (bounds.getX() == 0 && dest.pos.x != 0)
+                        {
+                            tmp = mt.lock(Rect(dest.pos.x - 1, dest.pos.y, 1, src.m_h));
+                            operations::copy(src.getRect(Rect(0, 0, 1, src.m_h)), tmp);
+                        }
+
+                        if (bounds.getWidth() == im.m_w && dest.getRight() != mt.getWidth())
+                        {
+                            tmp = mt.lock(Rect(dest.pos.x + src.m_w, dest.pos.y, 1, src.m_h));
+                            operations::copy(src.getRect(Rect(src.m_w - 1, 0, 1, src.m_h)), tmp);
+                        }
+                    }
+                    float iw = 1.0f;
+                    float ih = 1.0f;
+
+                    RectF srcRect(dest.pos.x * iw, dest.pos.y * ih, dest.size.x * iw, dest.size.y * ih);
+
+                    Vector2 sizeScaled = Vector2((float)dest.size.x, (float)dest.size.y) * walker.getScaleFactor();
+                    RectF destRect(bounds.pos.cast<Vector2>(), sizeScaled);
+
+                    AnimationFrame frame;
+                    Diffuse df;
+                    df.base = ad.texture;
+
+                    Vector2 fsize = Vector2((float)frame_width, (float)frame_height) * walker.getScaleFactor();
+                    frame.init2(ra.get(), x, y, df,
+                                srcRect, destRect, fsize);
+
+                    frame.setHitTestData(adata);
+
+                    frames.push_back(frame);
                 }
-
-                init_resAnim(ra, file, child_node);
-
-                ra->init(frames, columns, walker.getScaleFactor(), 1.0f / walker.getScaleFactor());
-                ra->setParent(this);
-                context.resources->add(ra, context.options->_shortenIDS);
             }
 
+            init_resAnim(ra, file, child_node);
+
+            ra->init(frames, columns, walker.getScaleFactor(), 1.0f / walker.getScaleFactor());
+            ra->setParent(this);
+            context.m_resources->add(ra, context.m_options->m_shortenIDS);
         }
 
-        applyAtlas(ad, _linearFilter, _clamp2edge);
+        applyAtlas(ad, m_linearFilter, m_clamp2edge);
 
-        for (QVector<ResAnim*>::iterator i = anims.begin(); i != anims.end(); ++i)
+        for (QVector<spResAnim>::iterator i = anims.begin(); i != anims.end(); ++i)
         {
-            ResAnim* rs = *i;
-            int num = rs->getTotalFrames();
+            spResAnim rs = *i;
+            qint32 num = rs->getTotalFrames();
 
-            for (int n = 0; n < num; ++n)
+            for (qint32 n = 0; n < num; ++n)
             {
                 AnimationFrame& frame = const_cast<AnimationFrame&>(rs->getFrame(n));
 
@@ -499,7 +483,7 @@ namespace oxygine
                 HitTestData ad = frame.getHitTestData();
                 if (ad.pitch)
                 {
-                    ad.data = &_hitTestBuffer[reinterpret_cast<size_t>(ad.data)];
+                    ad.data = &m_hitTestBuffer[reinterpret_cast<size_t>(ad.data)];
                     frame.setHitTestData(ad);
                 }
             }

@@ -18,7 +18,7 @@ var Constructor = function()
         var terrain = unit.getTerrain();
         if (terrain !== null)
         {
-            unit.getTerrain().getTerrainID();
+            terrainId = unit.getTerrain().getTerrainID();
         }
         if (terrainId === "RIVER" ||
                 terrainId === "DESERT_TRY_RIVER")
@@ -31,8 +31,8 @@ var Constructor = function()
     this.isMountain = function(terrainId)
     {
         if (terrainId === "MOUNTAIN" ||
-                terrainId === "SNOW_MOUNTAIN" ||
-                terrainId === "DESERT_ROCK")
+            terrainId === "SNOW_MOUNTAIN" ||
+            terrainId === "DESERT_ROCK")
         {
             return true
         }
@@ -43,21 +43,18 @@ var Constructor = function()
     {
         if (weapon === 1 || defender === null)
         {
-            var terrainId = unit.getTerrain().getTerrainID();
-            if (BATTLEANIMATION_MECH.isMountain(terrainId))
+            var count = sprite.getUnitCount(BATTLEANIMATION_MECH.getMaxUnitCount());
+            var armyName = Global.getArmyNameFromPlayerTable(unit.getOwner(), BATTLEANIMATION_MECH.armyData);
+            var riverName = BATTLEANIMATION_MECH.getRiverString(unit);
+            sprite.loadMovingSprite("mech+" + armyName + riverName + "+walk", false, sprite.getMaxUnitCount(), Qt.point(-75, 5),
+                                    Qt.point(65, 0), 600, false,
+                                    1, 1);
+            sprite.loadMovingSpriteV2("mech+" + armyName + riverName + "+walk+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-75, 5),
+                                      Qt.point(65, 0), 600, false,
+                                      1, 1);
+            for (var i = 0; i < count; i++)
             {
-                BATTLEANIMATION_MECH.loadStandingAnimation(sprite, unit, defender, weapon);
-            }
-            else
-            {
-                var armyName = Global.getArmyNameFromPlayerTable(unit.getOwner(), BATTLEANIMATION_MECH.armyData);
-                var riverName = BATTLEANIMATION_MECH.getRiverString(unit);
-                sprite.loadMovingSprite("mech+" + armyName + riverName + "+walk", false, sprite.getMaxUnitCount(), Qt.point(-75, 5),
-                                        Qt.point(65, 0), 600, false,
-                                        1, 1);
-                sprite.loadMovingSpriteV2("mech+" + armyName + riverName + "+walk+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-75, 5),
-                                          Qt.point(65, 0), 600, false,
-                                          1, 1);
+                sprite.loadSound("infantry_move.wav", 5, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
             }
         }
         else
@@ -151,7 +148,7 @@ var Constructor = function()
             }
             for (var i = 0; i < count; i++)
             {
-                sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("baazoka_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
             }
         }
         else
@@ -192,6 +189,7 @@ var Constructor = function()
         {
             sprite.loadSprite("unit_explosion",  false, sprite.getMaxUnitCount(), Qt.point(0, 20),
                               1, 1.0, 0, 300);
+            sprite.addSpriteScreenshake(8, 0.95, 800, 500);
             sprite.loadMovingSprite("bazooka_os", false, sprite.getMaxUnitCount(), Qt.point(127, 24),
                                     Qt.point(-127, 0), 400, true,
                                     1, 1, 0, 0, true);
@@ -228,10 +226,18 @@ var Constructor = function()
         return Qt.point(0, 0);
     };
 
-    this.hasMoveInAnimation = function()
+    this.hasMoveInAnimation = function(sprite, unit, defender, weapon)
     {
-        // return true if the unit has an implementation for loadMoveInAnimation
-        return true;
+        var terrainId = unit.getTerrain().getTerrainID();
+        if (BATTLEANIMATION_MECH.isMountain(terrainId))
+        {
+            return false;
+        }
+        else
+        {
+            // return true if the unit has an implementation for loadMoveInAnimation
+            return true;
+        }
     };
     this.getMoveInDurationMS = function()
     {

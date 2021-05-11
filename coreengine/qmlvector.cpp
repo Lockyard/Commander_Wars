@@ -7,6 +7,7 @@
 QmlVectorPoint::QmlVectorPoint()
     : QObject()
 {
+    setObjectName("QmlVectorPoint");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -15,6 +16,7 @@ QmlVectorPoint::QmlVectorPoint()
 QmlVectorUnit::QmlVectorUnit()
     : QObject()
 {
+    setObjectName("QmlVectorUnit");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -76,12 +78,12 @@ void QmlVectorUnit::sortShortestMovementRange(bool infantriesLast)
         {
             if (m_Vector[i]->getActionList().contains(CoreAI::ACTION_CAPTURE))
             {
-                costs[1].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->getX(), m_Vector[i]->getY())));
+                costs[1].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->Unit::getX(), m_Vector[i]->Unit::getY())));
                 units[1].append(m_Vector[i]);
             }
             else
             {
-                costs[0].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->getX(), m_Vector[i]->getY())));
+                costs[0].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->Unit::getX(), m_Vector[i]->Unit::getY())));
                 units[0].append(m_Vector[i]);
             }
         }
@@ -92,7 +94,7 @@ void QmlVectorUnit::sortShortestMovementRange(bool infantriesLast)
         costs.append(QVector<qint32>());
         for (qint32 i = 0; i < m_Vector.size(); i++)
         {
-            costs[0].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->getX(), m_Vector[i]->getY())));
+            costs[0].append(m_Vector[i]->getMovementpoints(QPoint(m_Vector[i]->Unit::getX(), m_Vector[i]->Unit::getY())));
             units[0].append(m_Vector[i]);
         }
     }
@@ -122,6 +124,7 @@ void QmlVectorUnit::sortShortestMovementRange(bool infantriesLast)
 QmlVectorBuilding::QmlVectorBuilding()
     : QObject()
 {
+    setObjectName("QmlVectorBuilding");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);

@@ -42,7 +42,7 @@ var Constructor = function()
     };
     this.getMiniMapIcon = function()
     {
-        return "minimap_blackholebuilding";
+        return "minimap_volcan";
     };
     this.getActionTargetFields = function(building)
     {
@@ -77,17 +77,23 @@ var Constructor = function()
                 }
             }
             targetFields.remove();
-            ZVOLCAN.volcanFire(building, targets, 1000);
+            ZVOLCAN.volcanFire(building, targets);
         }
     };
 
-    this.volcanFire = function(building, targets, delay)
+    this.volcanFire = function(building, targets)
     {
+        var animationCount = GameAnimationFactory.getAnimationCount();
         var targetOffset = building.getActionTargetOffset();
         var x = building.getX() + targetOffset.x;
         var y = building.getY() + targetOffset.y;
         var animation = GameAnimationFactory.createAnimation(x, y - 4);
-        animation.addSprite("volcan_eruption", 0, 0, 0, 1.5, delay);
+        animation.addSprite("volcan_eruption", 0, 0, 0, 1.5);
+        animation.setSound("volcan_eruption.wav");
+        if (animationCount > 0)
+        {
+            GameAnimationFactory.getAnimation(animationCount - 1).queueAnimation(animation);
+        }
         var animation2 = null;
         var animation3 = null;
         for (var i = 0; i < targets.length; i++)
@@ -98,9 +104,17 @@ var Constructor = function()
                 animation2 = GameAnimationFactory.createAnimation(target.x, target.y - 3);
                 animation2.addSprite("volcan_fireball", 0, -map.getImageSize() * 1, 400, 1.5);
                 animation2.addTweenPosition(Qt.point(target.x * map.getImageSize(), target.y * map.getImageSize()), 400);
-                animation.queueAnimation(animation2);
+                if (animation3 === null)
+                {
+                    animation.queueAnimation(animation2);
+                }
+                else
+                {
+                    animation3.queueAnimation(animation2);
+                }
                 animation3 = GameAnimationFactory.createAnimation(target.x, target.y);
                 animation3.addSprite("volcan_hit", -map.getImageSize() / 2, -map.getImageSize() * 1.5, 0, 1.5);
+                animation3.setSound("volcan_hit.wav");
                 animation2.queueAnimation(animation3);
                 animation3.writeDataInt32(target.x);
                 animation3.writeDataInt32(target.y);

@@ -15,12 +15,13 @@
 DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
     : QObject()
 {
+    setObjectName("DialogUnitInfo");
     spGameMap pMap = GameMap::getInstance();
 
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("codialog");
     pSpriteBox->setResAnim(pAnim);
     pSpriteBox->setSize(Settings::getWidth(), Settings::getHeight());
@@ -38,41 +39,41 @@ DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
     style.multiline = false;
 
     // ok button
-    oxygine::spButton pOkButton = pObjectManager->createButton(QObject::tr("Ok"), 150);
+    oxygine::spButton pOkButton = pObjectManager->createButton(tr("Ok"), 150);
     pOkButton->setPosition(Settings::getWidth() / 2 - pOkButton->getWidth() / 2, Settings::getHeight() - 30 - pOkButton->getHeight());
     pSpriteBox->addChild(pOkButton);
     pOkButton->addEventListener(oxygine::TouchEvent::CLICK, [ = ](oxygine::Event*)
     {
-        detach();
         emit sigFinished();
+        detach();
     });
-    spPanel pPanel = new Panel(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 150),
+    spPanel pPanel = spPanel::create(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 150),
                                QSize(Settings::getWidth() - 60, Settings::getHeight() - 150));
     pPanel->setPosition(30, 70);
     pSpriteBox->addChild(pPanel);
 
     qint32 y = 30;
 
-    spLabel pText = new Label(140);
+    spLabel pText = spLabel::create(140);
     pText->setStyle(style);
     pText->setHtmlText("HP");
     pText->setPosition(160 + pPanel->getX(), y);
     pSpriteBox->addChild(pText);
 
 
-    pText = new Label(140);
+    pText = spLabel::create(140);
     pText->setStyle(style);
     pText->setHtmlText("Fuel");
     pText->setPosition(310 + pPanel->getX(), y);
     pSpriteBox->addChild(pText);
 
-    pText = new Label(140);
+    pText = spLabel::create(140);
     pText->setStyle(style);
     pText->setHtmlText("Ammo 1");
     pText->setPosition(460 + pPanel->getX(), y);
     pSpriteBox->addChild(pText);
 
-    pText = new Label(140);
+    pText = spLabel::create(140);
     pText->setStyle(style);
     pText->setHtmlText("Ammo 2");
     pText->setPosition(610 + pPanel->getX(), y);
@@ -84,37 +85,37 @@ DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
     y = 10;
     for (qint32 i = 0; i < pUnits->size(); i++)
     {
-        pText = new Label(140);
+        pText = spLabel::create(140);
         pText->setStyle(style);
         pText->setHtmlText(QString::number(i + 1));
         pText->setPosition(10, y);
         pPanel->addItem(pText);
         Unit* pUnit = pUnits->at(i);
-        Terrain* pTerrain = pMap->getTerrain(pUnit->getX(), pUnit->getY());
+        Terrain* pTerrain = pMap->getTerrain(pUnit->Unit::getX(), pUnit->Unit::getY());
         spTerrain pActor = Terrain::createTerrain(pTerrain->getTerrainID(), -10, -10, "");
         pActor->loadSprites();
         Building* pBuilding = pTerrain->getBuilding();
         if (pBuilding != nullptr)
         {
-            spBuilding pTerrainBuilding = new Building(pBuilding->getBuildingID());
+            spBuilding pTerrainBuilding = spBuilding::create(pBuilding->getBuildingID());
             pTerrainBuilding->setOwner(pBuilding->getOwner());
             pTerrainBuilding->scaleAndShowOnSingleTile();
             pActor->addChild(pTerrainBuilding);
         }
 
-        Unit* pDummy = new Unit(pUnit->getUnitID(), pUnit->getOwner(), false);
+        spUnit pDummy = spUnit::create(pUnit->getUnitID(), pUnit->getOwner(), false);
         pDummy->setHasMoved(pUnit->getHasMoved());
         pActor->addChild(pDummy);
         pActor->setPosition(100, y + 8);
         pPanel->addItem(pActor);
 
-        pText = new Label(140);
+        pText = spLabel::create(140);
         pText->setStyle(style);
         pText->setHtmlText(QString::number(pUnit->getHpRounded()));
         pText->setPosition(150, y);
         pPanel->addItem(pText);
 
-        pText = new Label(140);
+        pText = spLabel::create(140);
         pText->setStyle(style);
         if (pUnit->getMaxFuel() > 0)
         {
@@ -127,7 +128,7 @@ DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
         pText->setPosition(300, y);
         pPanel->addItem(pText);
 
-        pText = new Label(140);
+        pText = spLabel::create(140);
         pText->setStyle(style);
         if (pUnit->getMaxAmmo1() > 0)
         {
@@ -140,7 +141,7 @@ DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
         pText->setPosition(450, y);
         pPanel->addItem(pText);
 
-        pText = new Label(140);
+        pText = spLabel::create(140);
         pText->setStyle(style);
         if (pUnit->getMaxAmmo2() > 0)
         {
@@ -155,8 +156,8 @@ DialogUnitInfo::DialogUnitInfo(Player* pPlayer)
 
         oxygine::spButton pButton = ObjectManager::createButton(tr("Go to Unit"));
         pButton->setPosition(750, y);
-        qint32 posX = pUnit->getX();
-        qint32 posY = pUnit->getY();
+        qint32 posX = pUnit->Unit::getX();
+        qint32 posY = pUnit->Unit::getY();
         pButton->addClickListener([=](oxygine::Event*)
         {
             emit sigMoveToUnit(posX, posY);
@@ -179,7 +180,6 @@ void DialogUnitInfo::moveToUnit(qint32 posX, qint32 posY)
         pGamemenu->MoveMap(posX, posY);
         pGamemenu->calcNewMousePosition(posX, posY);
     }
-    oxygine::Actor::detach();
     emit sigFinished();
-    
+    oxygine::Actor::detach();
 }

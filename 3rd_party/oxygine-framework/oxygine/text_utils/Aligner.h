@@ -16,10 +16,15 @@ namespace oxygine
     {
         struct Symbol
         {
-            Symbol(): x(0), y(0), code(0) {}
+            Symbol()
+                : x(0),
+                  y(0),
+                  code(0)
+            {
+            }
 
             short x, y;
-            int code;
+            qint32 code;
             glyph gl;
             RectF destRect;
             spSTDMaterial mat;
@@ -32,43 +37,39 @@ namespace oxygine
             ~Aligner();
 
 
-            const TextStyle& getStyle() const {return style;}
+            const TextStyle& getStyle() const {return m_style;}
             float getScale() const;
 
             void begin();
             void end();
-
-            int putSymbol(Symbol& s);
+            qint32 putSymbol(Symbol& s);
             void nextLine();
 
-
-            TextStyle style;
-            Rect bounds;
-            int width;
-            int height;
-            size_t options;
-
-            spSTDMaterial mat;
-
-            const Font* _font;
+        public:
+            TextStyle m_style;
+            Rect m_bounds;
+            qint32 m_width;
+            qint32 m_height;
+            size_t m_options;
+            spSTDMaterial m_mat;
+            const Font* m_font;
 
         private:
-            int getLineWidth()const;
-            int getLineSkip()const;
-
-
             typedef QVector<Symbol*> line;
-
+            qint32 getLineWidth()const;
+            qint32 getLineSkip()const;
             void _alignLine(line& ln);
-            int _alignX(int rx);
-            int _alignY(int ry);
             void _nextLine(line& ln);
+            qint32 _alignX(qint32 rx);
+            qint32 _alignY(qint32 ry);
 
-            float _scale;
-            int _x, _y;
-            line _line;
-            int _lineWidth;
-            int _lineSkip;
+        private:
+            float m_scale;
+            qint32 m_x;
+            qint32 m_y;
+            line m_line;
+            qint32 m_lineWidth;
+            qint32 m_lineSkip;
         };
     }
 }

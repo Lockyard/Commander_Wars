@@ -1,7 +1,6 @@
 #ifndef VICTORYMENUE_H
 #define VICTORYMENUE_H
 
-#include <QObject>
 #include <QVector>
 #include <QTimer>
 #include <QColor>
@@ -11,11 +10,19 @@
 
 #include "objects/base/panel.h"
 #include "objects/base/checkbox.h"
+#include "objects/base/dropdownmenu.h"
+
+#include "objects/unitstatisticview.h"
+
 #include "network/NetworkInterface.h"
 
 #include "coreengine/LUPDATE_MACROS.h"
+#include "menue/basemenu.h"
 
-class VictoryMenue : public QObject, public oxygine::Actor
+class VictoryMenue;
+using spVictoryMenue = oxygine::intrusive_ptr<VictoryMenue>;
+
+class VictoryMenue : public Basemenu
 {
     Q_OBJECT
 public:
@@ -27,7 +34,15 @@ public:
         Units,
         PlayerStrength,
         Max,
+        PlayerStatistics,
         VictoryRanking
+    };
+
+    ENUM_CLASS StatisticModes
+    {
+        Produced,
+        Destroyed,
+        Lost
     };
 
     explicit VictoryMenue(spNetworkInterface pNetworkInterface);
@@ -66,7 +81,16 @@ public slots:
      */
     void onEnter();
 protected slots:
+    /**
+     * @brief onProgressTimerStart
+     */
     void onProgressTimerStart();
+    /**
+     * @brief showPlayerStatistic
+     * @param player
+     * @param mode
+     */
+    void showPlayerStatistic(qint32 player);
 protected:
     /**
      * @brief drawGraphStep
@@ -85,6 +109,10 @@ protected:
      * @brief addShopMoney
      */
     void addShopMoney();
+    /**
+     * @brief createStatisticsView
+     */
+    void createStatisticsView();
 private:
     GraphModes m_CurrentGraphMode{GraphModes::Funds};
     /**
@@ -110,7 +138,7 @@ private:
      */
     QTimer m_ProgressTimer;
 
-    float lineLength{0};
+    float m_lineLength{0};
 
     oxygine::spBox9Sprite m_pGraphBackground;
 
@@ -123,7 +151,12 @@ private:
     QVector<QVector3D> m_VictoryScores;
     QVector<QVector<oxygine::spTextField>> m_VictoryTexts;
     spPanel m_VictoryPanel;
-    qint32 progress = 0;
+
+    oxygine::spBox9Sprite m_statisticsBox;
+    spUnitStatisticView m_statisticsView;
+    spDropDownmenu m_pStatisticPlayer;
+
+    qint32 m_progress = 0;
 
     spNetworkInterface m_pNetworkInterface;
 

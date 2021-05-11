@@ -32,7 +32,9 @@ public slots:
 private:
     QVector<oxygine::spTextField> m_Textfields;
     QVector<spSlider> m_Slider;
-    qint32 currentSliderChange{0};
+    QVector<oxygine::spButton> m_lockButtons;
+    QVector<bool> m_locked;
+    qint32 m_currentSliderChange{0};
 };
 
 #endif // MULTISLIDER_H

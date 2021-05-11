@@ -9,6 +9,7 @@
 ProxyAi::ProxyAi()
     : CoreAI (GameEnums::AiTypes_ProxyAi)
 {
+    setObjectName("ProxyAi");
     Interpreter::setCppOwnerShip(this);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
@@ -48,14 +49,15 @@ void ProxyAi::recieveData(quint64, QByteArray data, NetworkInterface::NetworkSer
         stream >> player;
         if (m_pPlayer->getPlayerID() == player)
         {
+            Console::print("Received action from network for player " + QString::number(player), Console::eDEBUG);
             QMutexLocker locker(&m_ActionMutex);
-            spGameAction pAction = new GameAction();
+            spGameAction pAction = spGameAction::create();
             pAction->deserializeObject(stream);
             m_ActionBuffer.append(pAction);
-            if (actionRunning == false &&
+            if (m_actionRunning == false &&
                 m_pPlayer == GameMap::getInstance()->getCurrentPlayer())
             {
-                actionRunning = true;
+                m_actionRunning = true;
                 spGameAction pAction = m_ActionBuffer.front();
                 m_ActionBuffer.pop_front();
                 emit performAction(pAction);
@@ -67,12 +69,12 @@ void ProxyAi::recieveData(quint64, QByteArray data, NetworkInterface::NetworkSer
 void ProxyAi::nextAction()
 {
     QMutexLocker locker(&m_ActionMutex);
-    actionRunning = false;
+    m_actionRunning = false;
     if (m_pPlayer == GameMap::getInstance()->getCurrentPlayer())
     {
         if (m_ActionBuffer.size() > 0)
         {
-            actionRunning = true;
+            m_actionRunning = true;
             spGameAction pAction = m_ActionBuffer.front();
             m_ActionBuffer.pop_front();
             emit performAction(pAction);

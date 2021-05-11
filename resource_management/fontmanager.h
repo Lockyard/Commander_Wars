@@ -9,6 +9,11 @@ class FontManager : public QObject, public RessourceManagement<FontManager>
 {
     Q_OBJECT
 public:
+    enum SpecialChars
+    {
+        unlockChar = 1,
+        lockChar = 2
+    };
     /**
      * @brief getMainFont16
      * @return
@@ -57,6 +62,7 @@ protected:
     FontManager()
         : RessourceManagement<FontManager>("/fonts/fonts.xml", "")
     {
+        setObjectName("FontManager");
     }
 private:
     virtual ~FontManager() = default;

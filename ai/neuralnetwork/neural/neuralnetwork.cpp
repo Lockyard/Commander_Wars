@@ -27,7 +27,7 @@ void NeuralNetwork::autogenerate(bool randomize)
 void NeuralNetwork::addLayer(QMap<QString, double> parameters)
 {
     m_configuration.append(parameters);
-    m_layers.push_back(new Layer(m_layers.size(), this, parameters));
+    m_layers.push_back(spLayer::create(m_layers.size(), this, parameters));
 }
 
 
@@ -82,7 +82,7 @@ void NeuralNetwork::connectComplete()
 
 void NeuralNetwork::alterWeights(const QVector<QVector<QVector<double> > >& weights)
 {
-    for (int i_layer = 0; i_layer < m_layers.size() - 1; ++i_layer)
+    for (qint32 i_layer = 0; i_layer < m_layers.size() - 1; ++i_layer)
     {
         m_layers[i_layer]->alterWeights(weights[i_layer]);
     }
@@ -90,7 +90,7 @@ void NeuralNetwork::alterWeights(const QVector<QVector<QVector<double> > >& weig
 
 void NeuralNetwork::shiftBackWeights(const QVector<QVector<QVector<double> > >& weights)
 {
-    for (int i_layer = m_layers.size() - 1; i_layer >= 0; --i_layer)
+    for (qint32 i_layer = m_layers.size() - 1; i_layer >= 0; --i_layer)
     {
 		if(weights[i_layer].size() != 0)
         {
@@ -190,7 +190,7 @@ QVector<double> NeuralNetwork::predict(const QVector<double>& in)
 	return output();
 }
 
-double NeuralNetwork::predictAllForScore(const spDataset dataset, Dataset::Datatype d,  int limit)
+double NeuralNetwork::predictAllForScore(const spDataset dataset, Dataset::Datatype d,  qint32 limit)
 {
 	if (limit == 0)
     {
@@ -265,7 +265,7 @@ void NeuralNetwork::deserializeObject(QDataStream& pStream)
     pStream >> size;
     for (qint32 i = 0; i < size; ++i)
     {
-        spLayer layer = new Layer(i, this, m_configuration[i]);
+        spLayer layer = spLayer::create(i, this, m_configuration[i]);
         if (i > 0)
         {
             layer->setPreviousLayer(m_layers[i - 1].get());

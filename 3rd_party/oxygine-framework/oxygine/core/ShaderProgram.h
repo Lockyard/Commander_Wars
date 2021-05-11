@@ -1,6 +1,6 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "Object.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/core/Object.h"
 
 namespace oxygine
 {
@@ -13,6 +13,6 @@ namespace oxygine
     public:
         virtual void bind() = 0;
 
-        virtual unsigned int getID() const = 0;
+        virtual quint32 getID() const = 0;
     };
 }

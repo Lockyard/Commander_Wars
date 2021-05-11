@@ -8,6 +8,7 @@ DropDownmenuSprite::DropDownmenuSprite(qint32 width, QVector<QString>& items, st
       m_ItemTexts(items),
       m_Creator(creator)
 {
+    setObjectName("DropDownmenuSprite");
     Q_ASSERT(items.size() != 0);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
@@ -19,7 +20,7 @@ DropDownmenuSprite::DropDownmenuSprite(qint32 width, QVector<QString>& items, st
     {
         addDropDownText(m_ItemTexts[i], i, dropDownWidth);
     }
-    setCurrentItem(0);
+    DropDownmenuSprite::setCurrentItem(0);
 }
 
 DropDownmenuSprite::DropDownmenuSprite(qint32 width, QStringList& items, std::function<oxygine::spActor(QString item)> creator, qint32 dropDownWidth)
@@ -38,7 +39,7 @@ DropDownmenuSprite::DropDownmenuSprite(qint32 width, QStringList& items, std::fu
         m_ItemTexts.append(items[i]);
         addDropDownText(m_ItemTexts[i], i, dropDownWidth);
     }
-    setCurrentItem(0);
+    DropDownmenuSprite::setCurrentItem(0);
 }
 
 void DropDownmenuSprite::setCurrentItem(qint32 index)
@@ -80,13 +81,14 @@ void DropDownmenuSprite::addDropDownText(QString spriteID, qint32 id, qint32 dro
     auto size = addDropDownItem(pSprite, id);
     if (dropDownWidth > 0)
     {
-        pSprite->setScaleX((dropDownWidth) / pSprite->getWidth());
+        pSprite->setScaleX((dropDownWidth) / pSprite->getScaledWidth());
     }
     else
     {
-        pSprite->setScaleX((size.x - 13) / pSprite->getWidth());
+        pSprite->setScaleX((size.x - 13.0f) / pSprite->getScaledWidth());
     }
-    pSprite->setScaleY((size.y - 12) / pSprite->getHeight());
+    float spriteHeigth = pSprite->getScaledHeight();
+    pSprite->setScaleY((size.y - 12.0f) / spriteHeigth);
 }
 
 void DropDownmenuSprite::itemChanged(qint32 id)

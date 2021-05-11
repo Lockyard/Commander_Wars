@@ -81,8 +81,14 @@ var Constructor = function()
         var animation2 = GameAnimationFactory.createAnimation(0, 0);
         animation2.addSprite2("white_pixel", 0, 0, 3200, map.getMapWidth(), map.getMapHeight());
         animation2.addTweenColor(0, "#00FFFFFF", "#FFFFFFFF", 3000, true);
-        audio.playSound("explosion+land.wav");
+        animation2.addScreenshake(45, 0.98, 3000, 200);
+        animation2.setSound("monolith_explode.wav");
         map.getTerrain(x, y).loadBuilding("ZBLACK_BUILDING_DESTROYED");
+    };
+
+    this.getHealSound = function()
+    {
+        return "monolith_heal.wav";
     };
 
     this.getDescription = function()

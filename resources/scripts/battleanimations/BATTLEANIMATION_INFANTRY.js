@@ -25,7 +25,7 @@ var Constructor = function()
         var terrain = unit.getTerrain();
         if (terrain !== null)
         {
-            unit.getTerrain().getTerrainID();
+            terrainId = unit.getTerrain().getTerrainID();
         }
         if (terrainId === "RIVER" ||
                 terrainId === "DESERT_TRY_RIVER")
@@ -48,21 +48,18 @@ var Constructor = function()
 
     this.loadMoveInAnimation = function(sprite, unit, defender, weapon)
     {
-        var terrainId = unit.getTerrain().getTerrainID();
-        if (BATTLEANIMATION_INFANTRY.isMountain(terrainId))
+        var count = sprite.getUnitCount(BATTLEANIMATION_INFANTRY.getMaxUnitCount());
+        var armyName = Global.getArmyNameFromPlayerTable(unit.getOwner(), BATTLEANIMATION_INFANTRY.armyData);
+        var riverName = BATTLEANIMATION_INFANTRY.getRiverString(unit);
+        sprite.loadMovingSprite("infantry+" + armyName + riverName + "+walk", false, sprite.getMaxUnitCount(), Qt.point(-75, 5),
+                                Qt.point(65, 0), 600, false,
+                                1, 1);
+        sprite.loadMovingSpriteV2("infantry+" + armyName + riverName + "+walk+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-75, 5),
+                                  Qt.point(65, 0), 600, false,
+                                  1, 1);
+        for (var i = 0; i < count; i++)
         {
-            BATTLEANIMATION_INFANTRY.loadStandingAnimation(sprite, unit, defender, weapon);
-        }
-        else
-        {
-            var armyName = Global.getArmyNameFromPlayerTable(unit.getOwner(), BATTLEANIMATION_INFANTRY.armyData);
-            var riverName = BATTLEANIMATION_INFANTRY.getRiverString(unit);
-            sprite.loadMovingSprite("infantry+" + armyName + riverName + "+walk", false, sprite.getMaxUnitCount(), Qt.point(-75, 5),
-                                    Qt.point(65, 0), 600, false,
-                                    1, 1);
-            sprite.loadMovingSpriteV2("infantry+" + armyName + riverName + "+walk+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-75, 5),
-                                      Qt.point(65, 0), 600, false,
-                                      1, 1);
+            sprite.loadSound("infantry_move.wav", 5, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
         }
     };
 
@@ -105,6 +102,7 @@ var Constructor = function()
 
     this.loadFireAnimation = function(sprite, unit, defender, weapon)
     {
+        var count = sprite.getUnitCount(BATTLEANIMATION_INFANTRY.getMaxUnitCount());
         var armyName = BATTLEANIMATION_INFANTRY.getArmyName(unit);
         var offset = Qt.point(0, 0);
         var position = BATTLEANIMATION.getRelativePosition(unit, defender);
@@ -192,6 +190,12 @@ var Constructor = function()
             sprite.loadSprite("mg_shot",  false, sprite.getMaxUnitCount(), offset,
                               1, 1, 0, 0);
         }
+        for (var i = 0; i < count; i++)
+        {
+            sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 400 + i * BATTLEANIMATION.defaultFrameDelay);
+        }
     };
 
     this.loadImpactUnitOverlayAnimation = function(sprite, unit, defender, weapon)
@@ -210,10 +214,18 @@ var Constructor = function()
         }
     };
 
-    this.hasMoveInAnimation = function()
+    this.hasMoveInAnimation = function(sprite, unit, defender, weapon)
     {
-        // return true if the unit has an implementation for loadMoveInAnimation
-        return true;
+        var terrainId = unit.getTerrain().getTerrainID();
+        if (BATTLEANIMATION_INFANTRY.isMountain(terrainId))
+        {
+            return false;
+        }
+        else
+        {
+            // return true if the unit has an implementation for loadMoveInAnimation
+            return true;
+        }
     };
     this.getMoveInDurationMS = function(sprite, unit, defender, weapon)
     {

@@ -6,17 +6,13 @@ namespace oxygine
 
     struct atlas_data;
 
+    class ResAtlasGeneric;
+    using spResAtlasGeneric = intrusive_ptr<ResAtlasGeneric>;
+
     class ResAtlasGeneric : public ResAtlas
     {
     public:
-
-        int _current;
-
-        //CreateResourceContext _copy;
-
-        //std::string _xmlFolder;
-
-        void nextAtlas(int w, int h, ImageData::TextureFormat tf, atlas_data& ad, QString name);
+        void nextAtlas(qint32 w, qint32 h, ImageData::TextureFormat tf, atlas_data& ad);
         void applyAtlas(atlas_data& ad, quint32 filter, bool clamp2edge);
 
         void loadAtlas(CreateResourceContext& context);
@@ -24,5 +20,8 @@ namespace oxygine
 
         void _load(LoadResourcesContext*) override;
         void _unload() override;
+
+    private:
+        qint32 m_current;
     };
 }

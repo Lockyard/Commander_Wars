@@ -21,10 +21,11 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
     : QObject(),
       m_CurrentCOBannList(cobannlist)
 {
+    setObjectName("COBannListDialog");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("codialog");
     pSpriteBox->setResAnim(pAnim);
     pSpriteBox->setSize(Settings::getWidth(), Settings::getHeight());
@@ -60,15 +61,15 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
     pSpriteBox->addChild(m_ToggleAll);
     m_ToggleAll->addEventListener(oxygine::TouchEvent::CLICK, [ = ](oxygine::Event*)
     {
-        toggle = !toggle;
+        m_toggle = !m_toggle;
         for (qint32 i = 0; i < m_Checkboxes.size(); i++)
         {
-            m_Checkboxes[i]->setChecked(toggle);
-            emit m_Checkboxes[i]->checkChanged(toggle);
+            m_Checkboxes[i]->setChecked(m_toggle);
+            emit m_Checkboxes[i]->checkChanged(m_toggle);
         }
     });
     auto items = getNameList();
-    m_PredefinedLists = new DropDownmenu(260, items);
+    m_PredefinedLists = spDropDownmenu::create(260, items);
 
     m_PredefinedLists->setPosition(Settings::getWidth() / 2 + 40 - m_PredefinedLists->getWidth(), Settings::getHeight() - 30 - m_ToggleAll->getHeight());
     pSpriteBox->addChild(m_PredefinedLists);
@@ -91,7 +92,7 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
 
 
     // no the fun begins create checkboxes and stuff and a panel down here
-    spPanel pPanel = new Panel(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 150),
+    spPanel pPanel = spPanel::create(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 150),
                                      QSize(Settings::getWidth() - 60, Settings::getHeight() - 150));
     pPanel->setPosition(30, 30);
     pSpriteBox->addChild(pPanel);
@@ -101,7 +102,7 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
     headerStyle.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     headerStyle.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     headerStyle.multiline = false;
-    spLabel pLabel = new Label(pPanel->getWidth() - 40);
+    spLabel pLabel = spLabel::create(pPanel->getWidth() - 40);
     pLabel->setStyle(headerStyle);
     pLabel->setHtmlText(tr("CO Bann List"));
     pLabel->setPosition(pPanel->getWidth() / 2 - pLabel->getTextRect().getWidth() / 2, 10);
@@ -163,10 +164,10 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
         QString coID = coids[i];
 
         oxygine::ResAnim* pAnim = pCOSpriteManager->getResAnim((coID.toLower() + "+face"));
-        oxygine::spSprite pCo = new oxygine::Sprite();
+        oxygine::spSprite pCo = oxygine::spSprite::create();
         pCo->setResAnim(pAnim, 0, 0);
 
-        pLabel = new Label(250);
+        pLabel = spLabel::create(250);
         pLabel->setStyle(style);
 
         pLabel->setHtmlText(pCOSpriteManager->getName(coID));
@@ -174,7 +175,7 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
         pLabel->setPosition(x + 80, y);
         pCo->setPosition(x + 45, y);
         pCo->setScale(0.75f);
-        spCheckbox pCheckbox = new Checkbox();
+        spCheckbox pCheckbox = spCheckbox::create();
         pCheckbox->setPosition(x, y);
         m_Checkboxes.append(pCheckbox);
 
@@ -186,7 +187,7 @@ COBannListDialog::COBannListDialog(QStringList cobannlist)
         {
             pCheckbox->setChecked(false);
         }
-        connect(pCheckbox.get(), &Checkbox::checkChanged, [=](bool checked)
+        connect(pCheckbox.get(), &Checkbox::checkChanged, this, [=](bool checked)
         {
             if (checked)
             {
@@ -284,7 +285,7 @@ void COBannListDialog::setCOBannlist(qint32 item)
 void COBannListDialog::showSaveBannlist()
 {
     
-    spDialogTextInput pSaveInput = new DialogTextInput(tr("Banlist Name"), true, "");
+    spDialogTextInput pSaveInput = spDialogTextInput::create(tr("Banlist Name"), true, "");
     connect(pSaveInput.get(), &DialogTextInput::sigTextChanged, this, &COBannListDialog::saveBannlist, Qt::QueuedConnection);
     addChild(pSaveInput);
     

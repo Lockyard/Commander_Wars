@@ -24,13 +24,13 @@ var BUILDING =
     },
     // additional offensive bonus for a unit on this field
     getOffensiveFieldBonus : function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender)
     {
         return 0;
     },
     //  additional deffensive bonus for a unit on this field
     getDeffensiveFieldBonus : function(co, attacker, atkPosX, atkPosY,
-                                  defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender)
     {
         return 0;
     },
@@ -115,9 +115,13 @@ var BUILDING =
     },
     startOfTurn : function(building)
     {
-        if (building.getOwner() !== null)
+        var owner = building.getOwner();
+        if (owner !== null)
         {
-            BUILDING.replenishUnit(building);
+            if (!owner.getIsDefeated())
+            {
+                BUILDING.replenishUnit(building);
+            }
         }
     },
 
@@ -176,10 +180,16 @@ var BUILDING =
                 UNIT.repairUnit(unit, repairAmount);
                 if (!unit.isStealthed(map.getCurrentViewPlayer()))
                 {
+                    var animationCount = GameAnimationFactory.getAnimationCount();
                     var animation = GameAnimationFactory.createAnimation(x, y);
                     var width = animation.addText(qsTr("REPAIR"), map.getImageSize() / 2 + 25, 2, 1);
                     animation.addBox("info", map.getImageSize() / 2, 0, width + 32, map.getImageSize(), 400);
                     animation.addSprite("repair", map.getImageSize() / 2 + 8, 1, 400, 1.7);
+                    animation.addSound("repair_2.wav");
+                    if (animationCount > 0)
+                    {
+                        GameAnimationFactory.getAnimation(animationCount - 1).queueAnimation(animation);
+                    }
                 }
             }
         }

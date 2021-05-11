@@ -23,6 +23,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
       m_CostList(costList),
       m_EnabledList(enabledList)
 {
+    setObjectName("HumanPlayerInputMenu");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -33,7 +34,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_DEFAULT;
     style.fontSize = 20;
-    oxygine::spTextField testText = new oxygine::TextField();
+    oxygine::spTextField testText = oxygine::spTextField::create();
     for (qint32 i = 0; i < texts.size(); i++)
     {
 
@@ -46,15 +47,13 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
         }
     }
     width += GameMap::getImageSize() + GameMap::getImageSize() * 3 / 4 ;
-    itemWidth = width;
+    m_itemWidth = width;
     GameManager* pGameManager = GameManager::getInstance();
-    oxygine::ResAnim* pAnim = pGameManager->getResAnim("menu+top");
     qint32 heigth = createTopSprite(0, width);
-
     qint32 y = heigth;
-    startY = y;
-    m_Cursor = new oxygine::Sprite();
-    pAnim = pGameManager->getResAnim("cursor+menu");
+    m_startY = y;
+    m_Cursor = oxygine::spSprite::create();
+    oxygine::ResAnim* pAnim = pGameManager->getResAnim("cursor+menu");
     if (pAnim->getTotalFrames() > 1)
     {
         oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
@@ -79,7 +78,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
             createBottomSprite(x, y, width);
             x += width;
             maxY = y;
-            y = startY;
+            y = m_startY;
             createTopSprite(x, width);
         }
         bool enabled = true;
@@ -93,7 +92,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
             costs = costList[i];
         }
 
-        oxygine::spBox9Sprite pItemBox = new oxygine::Box9Sprite();
+        oxygine::spBox9Sprite pItemBox = oxygine::spBox9Sprite::create();
         pAnim = pGameManager->getResAnim("menu+middle");
         pItemBox->setResAnim(pAnim);
         pItemBox->setSize(pAnim->getSize());
@@ -108,7 +107,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
         pItemBox->setWidth(width);
 
         // text for the item
-        oxygine::spTextField textField = new oxygine::TextField();
+        oxygine::spTextField textField = oxygine::spTextField::create();
 
         // set color font based
         if (!enabled)
@@ -133,7 +132,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
             pEvent->stopPropagation();
             m_Cursor->setY(y + GameMap::getImageSize() / 2 - m_Cursor->getScaledHeight() / 2);
             m_Cursor->setX(x + width);
-            currentAction = i;
+            m_currentAction = i;
         });
         QString action = actionIDs[i];
         if (enabled)
@@ -176,7 +175,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
         {
             maxY = y;
         }
-        itemHeigth = static_cast<qint32>(pItemBox->getHeight());
+        m_itemHeigth = static_cast<qint32>(pItemBox->getHeight());
     }
     if (xCount > 0)
     {
@@ -185,7 +184,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
         {
             for (qint32 i = 0; i < emptyItems; i++)
             {
-                oxygine::spBox9Sprite pItemBox = new oxygine::Box9Sprite();
+                oxygine::spBox9Sprite pItemBox = oxygine::spBox9Sprite::create();
                 pAnim = pGameManager->getResAnim("menu+middle");
                 pItemBox->setResAnim(pAnim);
                 pItemBox->setSize(pAnim->getSize());
@@ -209,7 +208,7 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
                 });
                 this->addChild(pItemBox);
                 y += static_cast<qint32>(pItemBox->getHeight());
-                itemHeigth = static_cast<qint32>(pItemBox->getHeight());
+                m_itemHeigth = static_cast<qint32>(pItemBox->getHeight());
             }
         }
     }
@@ -224,9 +223,8 @@ HumanPlayerInputMenu::HumanPlayerInputMenu(QStringList texts, QStringList action
 qint32 HumanPlayerInputMenu::createBottomSprite(qint32 x, qint32 y, qint32 width)
 {
     GameManager* pGameManager = GameManager::getInstance();
-    oxygine::ResAnim* pAnim = pGameManager->getResAnim("menu+top");
-    oxygine::spBox9Sprite pBottomBox = new oxygine::Box9Sprite();
-    pAnim = pGameManager->getResAnim("menu+bottom");
+    oxygine::spBox9Sprite pBottomBox = oxygine::spBox9Sprite::create();
+    oxygine::ResAnim* pAnim = pGameManager->getResAnim("menu+bottom");
     pBottomBox->setResAnim(pAnim);
     pBottomBox->setSize(pAnim->getSize());
     pBottomBox->setWidth(width);
@@ -241,7 +239,7 @@ qint32 HumanPlayerInputMenu::createBottomSprite(qint32 x, qint32 y, qint32 width
 qint32 HumanPlayerInputMenu::createTopSprite(qint32 x, qint32 width)
 {
     GameManager* pGameManager = GameManager::getInstance();
-    oxygine::spBox9Sprite pTopBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pTopBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pGameManager->getResAnim("menu+top");
     pTopBox->setResAnim(pAnim);
     pTopBox->setSize(pAnim->getSize());
@@ -255,7 +253,7 @@ qint32 HumanPlayerInputMenu::createTopSprite(qint32 x, qint32 width)
 
 void HumanPlayerInputMenu::leftClick(qint32, qint32)
 {
-    emit sigItemSelected(m_ActionIDs[currentAction], m_CostList[currentAction]);
+    emit sigItemSelected(m_ActionIDs[m_currentAction], m_CostList[m_currentAction]);
 }
 
 void HumanPlayerInputMenu::setMenuPosition(qint32 x, qint32 y)
@@ -296,53 +294,53 @@ void HumanPlayerInputMenu::keyInput(oxygine::KeyEvent event)
                 cur == Settings::getKey_up2())
             {
                 Mainapp::getInstance()->getAudioThread()->playSound("switchmenu.wav");
-                if (currentAction > 0)
+                if (m_currentAction > 0)
                 {
-                    currentAction--;
+                    m_currentAction--;
                 }
                 else
                 {
-                    currentAction = m_ActionIDs.size() - 1;
+                    m_currentAction = m_ActionIDs.size() - 1;
                 }
             }
             else if (cur == Settings::getKey_down() ||
                      cur == Settings::getKey_down2())
             {
                 Mainapp::getInstance()->getAudioThread()->playSound("switchmenu.wav");
-                if (currentAction < m_ActionIDs.size() - 1)
+                if (m_currentAction < m_ActionIDs.size() - 1)
                 {
-                    currentAction++;
+                    m_currentAction++;
                 }
                 else
                 {
-                    currentAction = 0;
+                    m_currentAction = 0;
                 }
             }
             if (cur == Settings::getKey_left() ||
                 cur == Settings::getKey_left2())
             {
                 Mainapp::getInstance()->getAudioThread()->playSound("switchmenu.wav");
-                if (currentAction - Settings::getMenuItemCount() >= 0)
+                if (m_currentAction - Settings::getMenuItemCount() >= 0)
                 {
-                    currentAction -= Settings::getMenuItemCount();
+                    m_currentAction -= Settings::getMenuItemCount();
                 }
                 else
                 {
-                    currentAction = m_ActionIDs.size() - 1;
+                    m_currentAction = m_ActionIDs.size() - 1;
                 }
             }
             else if (cur == Settings::getKey_right() ||
                      cur == Settings::getKey_right2())
             {
                 Mainapp::getInstance()->getAudioThread()->playSound("switchmenu.wav");
-                if (currentAction + Settings::getMenuItemCount() < m_ActionIDs.size())
+                if (m_currentAction + Settings::getMenuItemCount() < m_ActionIDs.size())
                 {
 
-                    currentAction += Settings::getMenuItemCount();
+                    m_currentAction += Settings::getMenuItemCount();
                 }
                 else
                 {
-                    currentAction = 0;
+                    m_currentAction = 0;
                 }
             }
             else if (cur == Settings::getKey_confirm() ||
@@ -350,17 +348,17 @@ void HumanPlayerInputMenu::keyInput(oxygine::KeyEvent event)
             {
                 if (m_ActionIDs.size() > 0)
                 {
-                    if ((m_EnabledList.size() > 0 && m_EnabledList[currentAction]) ||
+                    if ((m_EnabledList.size() > 0 && m_EnabledList[m_currentAction]) ||
                         (m_EnabledList.size() == 0))
                     {
                         Mainapp::getInstance()->getAudioThread()->playSound("okay.wav");
                         if (m_CostList.size() == m_ActionIDs.size())
                         {
-                            emit sigItemSelected(m_ActionIDs[currentAction], m_CostList[currentAction]);
+                            emit sigItemSelected(m_ActionIDs[m_currentAction], m_CostList[m_currentAction]);
                         }
                         else
                         {
-                            emit sigItemSelected(m_ActionIDs[currentAction], 0);
+                            emit sigItemSelected(m_ActionIDs[m_currentAction], 0);
                         }
                     }
                 }
@@ -373,12 +371,12 @@ void HumanPlayerInputMenu::keyInput(oxygine::KeyEvent event)
             else if (cur == Settings::getKey_information() ||
                      cur == Settings::getKey_information2())
             {
-                QString id = m_ActionIDs[currentAction];
+                QString id = m_ActionIDs[m_currentAction];
                 UnitSpriteManager* pUnitSpriteManager = UnitSpriteManager::getInstance();
                 if (pUnitSpriteManager->exists(id))
                 {
-                    spUnit pDummy = new Unit(id, GameMap::getInstance()->getCurrentPlayer(), false);
-                    spFieldInfo fieldinfo = new FieldInfo(nullptr, pDummy.get());
+                    spUnit pDummy = spUnit::create(id, GameMap::getInstance()->getCurrentPlayer(), false);
+                    spFieldInfo fieldinfo = spFieldInfo::create(nullptr, pDummy.get());
                     pMenu->addChild(fieldinfo);
                     connect(fieldinfo.get(), &FieldInfo::sigFinished, [=]
                     {
@@ -405,14 +403,14 @@ void HumanPlayerInputMenu::keyInput(oxygine::KeyEvent event)
             }
 
             qint32 x = 0;
-            qint32 y = currentAction;
+            qint32 y = m_currentAction;
             while (y >= Settings::getMenuItemCount())
             {
                 y -= Settings::getMenuItemCount();
                 x++;
             }
-            m_Cursor->setY(startY + y * itemHeigth + GameMap::getImageSize() / 2 - m_Cursor->getScaledHeight() / 2);
-            m_Cursor->setX(itemWidth * (x + 1));
+            m_Cursor->setY(m_startY + y * m_itemHeigth + GameMap::getImageSize() / 2 - m_Cursor->getScaledHeight() / 2);
+            m_Cursor->setX(m_itemWidth * (x + 1));
         }
     }
 }
@@ -421,6 +419,6 @@ void HumanPlayerInputMenu::moveMouseToItem(qint32 x, qint32 y)
 {
     oxygine::Vector2 pos = local2stage();
     Mainapp* pApp = Mainapp::getInstance();
-    QPoint curPos = pApp->mapToGlobal(QPoint(pos.x + itemWidth / 2 + itemWidth * x, pos.y + startY + itemHeigth / 2 + itemHeigth * y));
+    QPoint curPos = pApp->mapToGlobal(QPoint(pos.x + m_itemWidth / 2 + m_itemWidth * x, pos.y + m_startY + m_itemHeigth / 2 + m_itemHeigth * y));
     pApp->cursor().setPos(curPos);
 }

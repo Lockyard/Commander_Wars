@@ -7,7 +7,7 @@
 namespace oxygine
 {
 
-    ClipRectActor::ClipRectActor(): _clipping(true)
+    ClipRectActor::ClipRectActor(): m_clipping(true)
     {
 
     }
@@ -24,7 +24,9 @@ namespace oxygine
             TouchEvent* te = safeCast<TouchEvent*>(event);
             Vector2 localPosition = parent2local(te->localPosition);
             if (!isOn(localPosition))
+            {
                 return;
+            }
         }
 
         Actor::handleEvent(event);
@@ -32,6 +34,6 @@ namespace oxygine
 
     void ClipRectActor::render(const RenderState& parentRS)
     {
-        _rdelegate->render(this, parentRS);
+        m_rdelegate->render(this, parentRS);
     }
 }

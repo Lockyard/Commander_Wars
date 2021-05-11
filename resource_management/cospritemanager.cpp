@@ -11,13 +11,14 @@ COSpriteManager::COSpriteManager()
     : RessourceManagement<COSpriteManager>("/images/co/res.xml",
                                            "/scripts/cos")
 {
+    setObjectName("COSpriteManager");
     connect(this, &COSpriteManager::sigLoadResAnim, this, &COSpriteManager::loadResAnim, Qt::QueuedConnection);
 }
 
 QVector<QString> COSpriteManager::getSpriteCOIDs()
 {
     QVector<QString> ret;
-    for (auto iter = _resourcesMap.begin(); iter != _resourcesMap.cend(); ++iter)
+    for (auto iter = m_resourcesMap.begin(); iter != m_resourcesMap.end(); ++iter)
     {
         QString id(iter.key());
         if (id.endsWith("+face"))

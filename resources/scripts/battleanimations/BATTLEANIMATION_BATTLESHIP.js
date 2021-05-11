@@ -27,12 +27,17 @@ var Constructor = function()
                                   BATTLEANIMATION_BATTLESHIP.getMaxUnitCount(), Qt.point(0, 20), movement, moveTime, false, -1);
         if (armyName !== "ma")
         {
+            var frameTime = 100;
+            if (typeof map !== 'undefined')
+            {
+                frameTime = map.getFrameTime();
+            }
             sprite.loadMovingSprite("battleship+" + armyName + "+fire",  false,
                                     BATTLEANIMATION_BATTLESHIP.getMaxUnitCount(), Qt.point(47, 20 + 64),
-                                    movement, moveTime, false, 1, 1.0, 0, 0, false, map.getFrameTime() , fireFrames);
+                                    movement, moveTime, false, 1, 1.0, 0, 0, false, frameTime, fireFrames);
             sprite.loadMovingSpriteV2("battleship+" + armyName + "+fire+mask", GameEnums.Recoloring_Table,
                                       BATTLEANIMATION_BATTLESHIP.getMaxUnitCount(), Qt.point(47, 20 + 64),
-                                      movement, moveTime, false, 1, 1.0, 0, 0, false, map.getFrameTime() , fireFrames);
+                                      movement, moveTime, false, 1, 1.0, 0, 0, false, frameTime, fireFrames);
         }
     };
 
@@ -89,7 +94,7 @@ var Constructor = function()
                                                    offset.y + offset2.y),
                                           Qt.point(0, 0), 0, true,
                                           1, 1.0, 5, 200 * i, false);
-            sprite.loadSound("tank_shot.wav", 1, "resources/sounds/", i * 200);
+            sprite.loadSound("cannon_weapon_fire.wav", 1, "resources/sounds/", i * 200);
         }
     };
 
@@ -98,6 +103,7 @@ var Constructor = function()
         var count = sprite.getUnitCount(5);
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
                           1, 1.0, 0, 0);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 200);
         for (var i = 0; i < count; i++)
         {
             sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
@@ -113,6 +119,7 @@ var Constructor = function()
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
         BATTLEANIMATION_BATTLESHIP.baseStandingAnimation(sprite, unit, defender, weapon, 0, Qt.point(-140, 0), 600);
+        sprite.loadSound("ship_dying_move.wav", -2, "resources/sounds/");
     };
 
     this.getFireDurationMS = function(sprite, unit, defender, weapon)

@@ -25,9 +25,22 @@ class Player : public QObject, public oxygine::Actor, public FileSerializable
     Q_OBJECT
 
 public:
+    /**
+     * @brief Player
+     */
     explicit Player();
+    /**
+     * @brief init
+     */
     void init();
-    virtual ~Player() override;
+    /**
+     * @brief ~Player
+     */
+    virtual ~Player();
+    /**
+     * @brief releaseStaticData
+     */
+    static void releaseStaticData();
     /**
      * @brief serialize stores the object
      * @param pStream
@@ -56,7 +69,7 @@ public:
      * @brief setBaseGameInput sets the player input
      * @param pBaseGameInput
      */
-    void setBaseGameInput(BaseGameInputIF *pBaseGameInput);
+    void setBaseGameInput(spBaseGameInputIF pBaseGameInput);
     /**
      * @brief getCO
      * @param id index of the co 0 or 1
@@ -138,10 +151,7 @@ public slots:
      * @brief getBaseGameInput pointer to the ai or human player interface
      * @return
      */
-    inline BaseGameInputIF* getBaseGameInput()
-    {
-        return m_pBaseGameInput.get();
-    }
+    BaseGameInputIF* getBaseGameInput();
     /**
      * @brief getIsDefeated
      * @return
@@ -489,27 +499,57 @@ public slots:
         return &m_Variables;
     }
 private:
+    /**
+     * @brief loadTable
+     * @param table
+     * @return
+     */
     bool loadTable(qint32 table);
+    /**
+     * @brief loadTableFromFile
+     * @param tablename
+     * @return
+     */
     bool loadTableFromFile(QString tablename);
+    /**
+     * @brief colorToTable
+     * @param baseColor
+     * @return
+     */
     bool colorToTable(QColor baseColor);
+    /**
+     * @brief createTable
+     * @param baseColor
+     */
     void createTable(QColor baseColor);
+    /**
+     * @brief getAverageCost
+     * @return
+     */
     qint32 getAverageCost();
+    /**
+     * @brief addVisionFieldInternal
+     * @param x
+     * @param y
+     * @param duration
+     * @param directView
+     */
     void addVisionFieldInternal(qint32 x, qint32 y, qint32 duration, bool directView);
 private:
-    qint32 funds{0};
-    float fundsModifier{1.0f};
+    qint32 m_funds{0};
+    float m_fundsModifier{1.0f};
 
     QColor m_Color;
     QImage m_colorTable;
-    oxygine::spResAnim m_ColorTableAnim{new oxygine::SingleResAnim()};    
-    QString playerArmy{""};
-    qint32 team{0};
-    spCO playerCOs[2]{nullptr, nullptr};
+    oxygine::spResAnim m_ColorTableAnim{oxygine::spSingleResAnim::create()};
+    QString m_playerArmy{""};
+    qint32 m_team{0};
+    spCO m_playerCOs[2]{nullptr, nullptr};
     /**
      * @brief m_pBaseGameInput pointer to the ai or human player
      */
     spBaseGameInputIF m_pBaseGameInput{nullptr};
-    bool isDefeated{false};
+    bool m_isDefeated{false};
     QVector<QVector<std::tuple<GameEnums::VisionType, qint32, bool>>> m_FogVisionFields;
     /**
      * @brief m_BuildList contains all units we're allowed to build

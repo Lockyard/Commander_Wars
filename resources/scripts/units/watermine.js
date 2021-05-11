@@ -92,26 +92,26 @@ var Constructor = function()
                         if (targetUnit.getHp() <= 0)
                         {
                             // we destroyed a unit
-                            map.getGameRecorder().destroyedUnit(targetUnit.getOwner().getPlayerID());
+                            map.getGameRecorder().destroyedUnit(targetUnit.getOwner().getPlayerID(), targetUnit.getUnitID());
                             targetUnit.killUnit();
                         }
                     }
                     var animation = GameAnimationFactory.createAnimation(x + point.x, y + point.y);
                     animation.addSprite("explosion+water", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5);
-                    audio.playSound("explosion+water.wav");
+                    animation.setSound("explosion+water.wav");
                 }
             }
             fields.remove();
-            unit.killUnit();
             // we destroyed a unit
-            map.getGameRecorder().destroyedUnit(owner.getPlayerID());
+            map.getGameRecorder().destroyedUnit(owner.getPlayerID(), unit.getUnitID());
+            unit.killUnit();
         }
     };
     this.createExplosionAnimation = function(x, y, unit)
     {
         var animation = GameAnimationFactory.createAnimation(x, y);
         animation.addSprite("explosion+water", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5);
-        audio.playSound("explosion+water.wav");
+        animation.setSound("explosion+water.wav");
         return animation;
     };
     this.getLoadingPlace = function()

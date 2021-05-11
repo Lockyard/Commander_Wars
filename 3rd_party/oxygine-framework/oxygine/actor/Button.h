@@ -1,6 +1,6 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "Sprite.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Sprite.h"
 
 namespace oxygine
 {
@@ -13,12 +13,12 @@ namespace oxygine
         Button();
         ~Button();
 
-        int getRow() const {return _row;}
+        qint32 getRow() const {return _row;}
 
-        void setResAnim(const ResAnim* r, int  col = 0, int row = 0) override;
+        void setResAnim(const ResAnim* r, qint32  col = 0, qint32 row = 0) override;
 
         /**Sets which row from ResAnim should be used. Default value is 0. Could be used for CheckBoxes*/
-        void setRow(int row);
+        void setRow(qint32 row);
 
     protected:
         enum state
@@ -31,14 +31,14 @@ namespace oxygine
 
         state _state;
         const ResAnim* _resAnim;
-        int _row;
+        qint32 _row;
+    private:
+        void _mouseEvent(Event* event);
+        void setState(state s);
 
     private:
-        pointer_index _btnPressed;
-        pointer_index _btnOvered;
-
-        void _mouseEvent(Event* event);
-
-        void setState(state s);
+        pointer_index m_btnPressed;
+        pointer_index m_btnOvered;
+        qint32 m_touchUpCbId{0};
     };
 }

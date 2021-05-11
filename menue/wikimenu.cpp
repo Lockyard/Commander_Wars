@@ -13,8 +13,9 @@
 #include "wiki/wikiview.h"
 
 Wikimenu::Wikimenu()
-    : QObject()
+    : Basemenu()
 {
+    setObjectName("Wikimenu");
     Mainapp* pApp = Mainapp::getInstance();
     pApp->pauseRendering();
     this->moveToThread(pApp->getWorkerthread());
@@ -22,7 +23,7 @@ Wikimenu::Wikimenu()
 
     BackgroundManager* pBackgroundManager = BackgroundManager::getInstance();
     // load background
-    oxygine::spSprite sprite = new oxygine::Sprite();
+    oxygine::spSprite sprite = oxygine::spSprite::create();
     addChild(sprite);
     oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("wikimenu");
     sprite->setResAnim(pBackground);
@@ -43,7 +44,7 @@ Wikimenu::Wikimenu()
     {
         emit sigExitMenue();
     });
-    addChild(new WikiView(Settings::getWidth(), Settings::getHeight()));
+    addChild(spWikiView::create(Settings::getWidth(), Settings::getHeight()));
     connect(this, &Wikimenu::sigExitMenue, this, &Wikimenu::exitMenue, Qt::QueuedConnection);
     pApp->continueRendering();
 }
@@ -52,7 +53,6 @@ void Wikimenu::exitMenue()
 {    
     // save changed settings :)
     Console::print("Leaving Wiki Menue", Console::eDEBUG);
-    oxygine::getStage()->addChild(new Mainwindow());
-    oxygine::Actor::detach();
-    
+    oxygine::getStage()->addChild(spMainwindow::create());
+    oxygine::Actor::detach();    
 }

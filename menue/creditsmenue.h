@@ -1,16 +1,18 @@
 #ifndef CREDITSMENUE_H
 #define CREDITSMENUE_H
 
-#include <QObject>
-
-
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
+#include "menue/basemenu.h"
 
-#include <QObject>
 #include <QVector>
 #include <QElapsedTimer>
 
-class CreditsMenue : public QObject, public oxygine::Actor
+#include <QObject>
+
+class CreditsMenue;
+using spCreditsMenue = oxygine::intrusive_ptr<CreditsMenue>;
+
+class CreditsMenue : public Basemenu
 {
     Q_OBJECT
 public:
@@ -24,11 +26,11 @@ public slots:
     void exitMenue();
 
 private:
-    QElapsedTimer speedTimer;
+    QElapsedTimer m_speedTimer;
     QVector<QString> m_Headlines;
     QVector<QVector<QString>> m_Authors;
     qint32 m_creditsHeigth{100};
-    oxygine::spActor creditsActor;
+    oxygine::spActor m_creditsActor;
 };
 
 #endif // CREDITSMENUE_H

@@ -10,20 +10,21 @@
 
 #include "objects/achievementbanner.h"
 
-Userdata* Userdata::m_pInstance = nullptr;
+spUserdata Userdata::m_pInstance = nullptr;
 
 Userdata* Userdata::getInstance()
 {
-    if (m_pInstance == nullptr)
+    if (m_pInstance.get() == nullptr)
     {
-        m_pInstance = new Userdata();
+        m_pInstance = spUserdata::create();
     }
-    return m_pInstance;
+    return m_pInstance.get();
 }
 
 Userdata::Userdata()
     : QObject()
 {
+    setObjectName("Userdata");
     Interpreter::setCppOwnerShip(this);
     changeUser();
 }
@@ -68,7 +69,7 @@ void Userdata::changeUser()
     {
         user.open(QIODevice::ReadOnly);
         QDataStream pStream(&user);
-        deserializeObject(pStream);
+        Userdata::deserializeObject(pStream);
         user.close();
     }
 }
@@ -127,7 +128,7 @@ void Userdata::increaseAchievement(QString id, qint32 value)
             achievement.progress += value;
             if (!achieved && (achievement.progress >= achievement.targetValue))
             {
-                spAchievementBanner banner = new AchievementBanner(achievement);
+                spAchievementBanner banner = spAchievementBanner::create(achievement);
                 oxygine::getStage()->addChild(banner);
                 
             }
@@ -149,7 +150,7 @@ void Userdata::deleteAchievement(QString id)
 
 bool Userdata::achieved(QString id)
 {
-    for (const auto & achievement : m_achievements)
+    for (const auto & achievement : qAsConst(m_achievements))
     {
         if (achievement.id == id)
         {
@@ -161,7 +162,7 @@ bool Userdata::achieved(QString id)
 
 QString Userdata::getActiveCoStyle(QString coid)
 {
-    for (const auto & style : m_customCOStyles)
+    for (const auto & style : qAsConst(m_customCOStyles))
     {
         if (coid == std::get<0>(style))
         {
@@ -267,7 +268,7 @@ const Userdata::MapVictoryInfo * Userdata::getVictoryForMap(QString mapPath)
 QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, bool buyable, bool bought)
 {
     QVector<Userdata::ShopItem> ret;
-    for (const auto & item : m_shopItems)
+    for (const auto & item : qAsConst(m_shopItems))
     {
         if ((item.itemType == type || type == GameEnums::ShopItemType::ShopItemType_All) &&
             item.buyable == buyable &&
@@ -282,7 +283,7 @@ QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, boo
 QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, bool bought)
 {
     QVector<Userdata::ShopItem> ret;
-    for (const auto & item : m_shopItems)
+    for (const auto & item : qAsConst(m_shopItems))
     {
         if ((item.itemType == type || type == GameEnums::ShopItemType::ShopItemType_All) &&
             item.bought == bought)
@@ -296,7 +297,7 @@ QVector<Userdata::ShopItem> Userdata::getItems(GameEnums::ShopItemType type, boo
 QStringList Userdata::getShopItemsList(GameEnums::ShopItemType type, bool bought)
 {
     QStringList ret;
-    for (const auto & item : m_shopItems)
+    for (const auto & item : qAsConst(m_shopItems))
     {
         if ((item.itemType == type || type == GameEnums::ShopItemType::ShopItemType_All) &&
             item.bought == bought)
@@ -408,7 +409,7 @@ void Userdata::serializeObject(QDataStream& pStream) const
     }
     pStream << static_cast<qint32>(m_mapVictoryInfo.size());
     auto keys = m_mapVictoryInfo.keys();
-    for (auto key : keys)
+    for (const auto & key : qAsConst(keys))
     {
         auto & item = m_mapVictoryInfo[key];
         pStream << key;
@@ -417,7 +418,7 @@ void Userdata::serializeObject(QDataStream& pStream) const
         Filesupport::writeVectorList(pStream, item.score);
     }
     pStream << static_cast<qint32>(m_shopItems.size());
-    for (auto & item : m_shopItems)
+    for (const auto & item : qAsConst(m_shopItems))
     {
         pStream << item.key;
         pStream << item.name;
@@ -504,7 +505,6 @@ void Userdata::deserializeObject(QDataStream& pStream)
         m_shopItems.clear();
         for (qint32 i = 0; i < size; i++)
         {
-            QString key;
             ShopItem item;
             pStream >> item.key;
             pStream >> item.name;

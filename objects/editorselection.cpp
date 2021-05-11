@@ -13,38 +13,39 @@
 
 #include "objects/base/label.h"
 
-const float EditorSelection::xFactor = 1.5f;
-const float EditorSelection::yFactor = 2.5f;
+const float EditorSelection::m_xFactor = 1.5f;
+const float EditorSelection::m_yFactor = 2.5f;
 
 EditorSelection::EditorSelection()
     : QObject()
 {
+    setObjectName("EditorSelection");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
     this->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     this->setWidth(Settings::getWidth() / 4.0f);
     this->setPosition(Settings::getWidth() - Settings::getWidth() / 4.0f, 0);
-    m_BoxSelectionType = createV9Box(0, startHSelectionType, Settings::getWidth() / 4.0f, selectionHeight);
-    m_BoxPlacementSize = createV9Box(0, startHPlacementSize, Settings::getWidth() / 4.0f, selectionHeight);
-    m_BoxSelectedPlayer = createV9Box(0, startHSelectedPlayer, Settings::getWidth() / 4.0f, selectionHeight);
-    m_BoxPlacementSelection = createV9Box(0, startHTerrain, Settings::getWidth() / 4.0f, Settings::getHeight() - startHTerrain);
-    m_PlacementSelectionClip = new oxygine::ClipRectActor();
+    m_BoxSelectionType = createV9Box(0, m_startHSelectionType, Settings::getWidth() / 4.0f, m_selectionHeight);
+    m_BoxPlacementSize = createV9Box(0, m_startHPlacementSize, Settings::getWidth() / 4.0f, m_selectionHeight);
+    m_BoxSelectedPlayer = createV9Box(0, m_startHSelectedPlayer, Settings::getWidth() / 4.0f, m_selectionHeight);
+    m_BoxPlacementSelection = createV9Box(0, m_startHTerrain, Settings::getWidth() / 4.0f, Settings::getHeight() - m_startHTerrain);
+    m_PlacementSelectionClip = oxygine::spClipRectActor::create();
     m_PlacementSelectionClip->setPosition(10, 50);
     m_PlacementSelectionClip->setSize(m_BoxPlacementSelection->getWidth() - 20,
                                         m_BoxPlacementSelection->getHeight() - 100);
     m_BoxPlacementSelection->addChild(m_PlacementSelectionClip);
-    m_PlacementActor = new oxygine::Actor();
+    m_PlacementActor = oxygine::spActor::create();
     m_PlacementActor->setY(-GameMap::getImageSize());
     m_PlacementSelectionClip->addChild(m_PlacementActor);
 
-    m_labelWidth = m_PlacementSelectionClip->getWidth() - GameMap::getImageSize() - frameSize - frameSize;
-    m_xCount = m_labelWidth / (GameMap::getImageSize() * xFactor) + 1;
+    m_labelWidth = m_PlacementSelectionClip->getWidth() - GameMap::getImageSize() - m_frameSize - m_frameSize;
+    m_xCount = m_labelWidth / (GameMap::getImageSize() * m_xFactor) + 1;
     createBoxPlacementSize();
     createBoxSelectionMode();
     createPlayerSelection();
 
-    m_CurrentSelector = new oxygine::Sprite();
+    m_CurrentSelector = oxygine::spSprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("editor+selector");
     m_CurrentSelector->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     m_CurrentSelector->setScale(GameMap::getImageSize() / pAnim->getWidth());
@@ -58,7 +59,7 @@ EditorSelection::EditorSelection()
         m_CurrentSelector->setResAnim(pAnim);
     }
 
-    oxygine::spButton pButtonTop = new oxygine::Button();
+    oxygine::spButton pButtonTop = oxygine::spButton::create();
     pButtonTop->setResAnim(ObjectManager::getInstance()->getResAnim("arrow+down"));
     pButtonTop->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     oxygine::Sprite* ptr = pButtonTop.get();
@@ -79,7 +80,7 @@ EditorSelection::EditorSelection()
     pButtonTop->setPosition(m_BoxPlacementSelection->getWidth() / 2 - pButtonTop->getWidth() / 2, 15);
     m_BoxPlacementSelection->addChild(pButtonTop);
 
-    oxygine::spButton pButtonDown = new oxygine::Button();
+    oxygine::spButton pButtonDown = oxygine::spButton::create();
     pButtonDown->setResAnim(ObjectManager::getInstance()->getResAnim("arrow+down"));
     pButtonDown->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     ptr = pButtonDown.get();
@@ -109,7 +110,7 @@ EditorSelection::EditorSelection()
     m_BoxPlacementSelection->addChild(pButtonDown);
 
     m_PlacementActor->addChild(m_CurrentSelector);
-    m_CurrentSelector->setPosition(frameSize, startH);
+    m_CurrentSelector->setPosition(m_frameSize, m_startH);
     m_CurrentSelector->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
 
     // create terrains
@@ -137,7 +138,7 @@ EditorSelection::EditorSelection()
     BuildingSpriteManager* pBuildingSpriteManager = BuildingSpriteManager::getInstance();
     for (qint32 i = 0; i < pBuildingSpriteManager->getCount(); i++)
     {
-        spBuilding building = new Building(pBuildingSpriteManager->getID(i));
+        spBuilding building = spBuilding::create(pBuildingSpriteManager->getID(i));
         building->setTooltipText(building->getName());
         qint32 width = building->getBuildingWidth();
         qint32 heigth = building->getBuildingHeigth();
@@ -173,10 +174,10 @@ EditorSelection::EditorSelection()
     QStringList sortedUnits = pUnitSpriteManager->getUnitsSorted();
     for (const auto& unitId : sortedUnits)
     {
-        spUnit unit = new Unit(unitId, m_Players.at(1)->getOwner(), false);
+        spUnit unit = spUnit::create(unitId, m_Players.at(1)->getOwner(), false);
         unit->setTooltipText(unit->getName());
         m_Units.append(unit);
-        oxygine::spSprite pSprite = new oxygine::Sprite();
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
         QString movementType = unit->getMovementType();
         if (pMovementTableManager->getBaseMovementPoints(movementType, plains.get(), plains.get(), unit.get()) > 0)
         {
@@ -235,7 +236,7 @@ void EditorSelection::createBoxPlacementSize()
     qint32 xChange = 40;
     ObjectManager* pObjectManager = ObjectManager::getInstance();
 
-    m_CurrentSelectorSize = new oxygine::Sprite();
+    m_CurrentSelectorSize = oxygine::spSprite::create();
     oxygine::ResAnim* pAnimMarker = pObjectManager->getResAnim("editor+selector");
     m_CurrentSelectorSize->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     if (pAnimMarker->getTotalFrames() > 1)
@@ -249,55 +250,55 @@ void EditorSelection::createBoxPlacementSize()
     }
     m_BoxPlacementSize->addChild(m_CurrentSelectorSize);
 
-    oxygine::spSprite pSpriteSmall = new oxygine::Sprite();
+    oxygine::spSprite pSpriteSmall = oxygine::spSprite::create();
 
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("editor+small");
     pSpriteSmall->setResAnim(pAnim);
-    pSpriteSmall->setPosition(frameSize, yStartPos);
-    m_CurrentSelectorSize->setPosition(frameSize, yStartPos);
+    pSpriteSmall->setPosition(m_frameSize, yStartPos);
+    m_CurrentSelectorSize->setPosition(m_frameSize, yStartPos);
     m_BoxPlacementSize->addChild(pSpriteSmall);
     pSpriteSmall->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_SizeMode = PlacementSize::Small;
-        m_CurrentSelectorSize->setPosition(frameSize, yStartPos);
+        m_CurrentSelectorSize->setPosition(m_frameSize, yStartPos);
         emit sigSelectionChanged();
     });
     // scale marker to correct size if needed
     m_CurrentSelectorSize->setScale(pAnim->getWidth() / pAnimMarker->getWidth());
 
-    oxygine::spSprite pSpriteMedium = new oxygine::Sprite();
+    oxygine::spSprite pSpriteMedium = oxygine::spSprite::create();
     pAnim = pObjectManager->getResAnim("editor+medium");
     pSpriteMedium->setResAnim(pAnim);
-    pSpriteMedium->setPosition(frameSize + xChange, yStartPos);
+    pSpriteMedium->setPosition(m_frameSize + xChange, yStartPos);
     m_BoxPlacementSize->addChild(pSpriteMedium);
     pSpriteMedium->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_SizeMode = PlacementSize::Medium;
-        m_CurrentSelectorSize->setPosition(frameSize + xChange, yStartPos);
+        m_CurrentSelectorSize->setPosition(m_frameSize + xChange, yStartPos);
         emit sigSelectionChanged();
     });
 
-    oxygine::spSprite pSpriteBig = new oxygine::Sprite();
+    oxygine::spSprite pSpriteBig = oxygine::spSprite::create();
     pAnim = pObjectManager->getResAnim("editor+big");
     pSpriteBig->setResAnim(pAnim);
-    pSpriteBig->setPosition(frameSize + xChange * 2, yStartPos );
+    pSpriteBig->setPosition(m_frameSize + xChange * 2, yStartPos );
     m_BoxPlacementSize->addChild(pSpriteBig);
     pSpriteBig->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_SizeMode = PlacementSize::Big;
-        m_CurrentSelectorSize->setPosition(frameSize + xChange * 2, yStartPos);
+        m_CurrentSelectorSize->setPosition(m_frameSize + xChange * 2, yStartPos);
         emit sigSelectionChanged();
     });
 
-    oxygine::spSprite pSpriteFill = new oxygine::Sprite();
+    oxygine::spSprite pSpriteFill = oxygine::spSprite::create();
     pAnim = pObjectManager->getResAnim("editor+fill");
     pSpriteFill->setResAnim(pAnim);
-    pSpriteFill->setPosition(frameSize + xChange * 3, yStartPos );
+    pSpriteFill->setPosition(m_frameSize + xChange * 3, yStartPos );
     m_BoxPlacementSize->addChild(pSpriteFill);
     pSpriteFill->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_SizeMode = PlacementSize::Fill;
-        m_CurrentSelectorSize->setPosition(frameSize + xChange * 3, yStartPos);
+        m_CurrentSelectorSize->setPosition(m_frameSize + xChange * 3, yStartPos);
         emit sigSelectionChanged();
     });
 }
@@ -308,7 +309,7 @@ void EditorSelection::createPlayerSelection()
     m_BoxSelectedPlayer->removeChildren();
     m_Players.clear();
 
-    oxygine::spButton pButtonLeft = new oxygine::Button();
+    oxygine::spButton pButtonLeft = oxygine::spButton::create();
     pButtonLeft->setResAnim(ObjectManager::getInstance()->getResAnim("arrow+right"));
     pButtonLeft->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     oxygine::Sprite* ptr = pButtonLeft.get();
@@ -334,7 +335,7 @@ void EditorSelection::createPlayerSelection()
     pButtonLeft->setPosition(20, 20);
     m_BoxSelectedPlayer->addChild(pButtonLeft);
 
-    oxygine::spButton pButtonRight = new oxygine::Button();
+    oxygine::spButton pButtonRight = oxygine::spButton::create();
     pButtonRight->setResAnim(ObjectManager::getInstance()->getResAnim("arrow+right"));
     pButtonRight->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     ptr = pButtonRight.get();
@@ -365,8 +366,8 @@ void EditorSelection::createPlayerSelection()
     TerrainManager* pTerrainManager = TerrainManager::getInstance();
     for (qint32 i = -1; i < GameMap::getInstance()->getPlayerCount(); i++)
     {
-        spBuilding pBuilding = new Building("HQ");
-        oxygine::spSprite pSprite = new oxygine::Sprite();
+        spBuilding pBuilding = spBuilding::create("HQ");
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
         oxygine::ResAnim* pAnim = pTerrainManager->getResAnim("plains+0");
         pSprite->setResAnim(pAnim);
         pSprite->setPriority(-100);
@@ -443,14 +444,14 @@ void EditorSelection::updateSelectedPlayer()
         if (i < m_Players.size())
         {
             m_Players[i]->setVisible(true);
-            m_Players[i]->setPosition(50 + frameSize * (i - m_playerStartIndex), 32);
+            m_Players[i]->setPosition(50 + m_frameSize * (i - m_playerStartIndex), 32);
         }
     }
 }
 
 qint32 EditorSelection::calcMaxPlayerSelection()
 {
-    return (m_BoxSelectedPlayer->getScaledWidth() - 100) / frameSize;
+    return (m_BoxSelectedPlayer->getScaledWidth() - 100) / m_frameSize;
 }
 
 void EditorSelection::createBoxSelectionMode()
@@ -459,7 +460,7 @@ void EditorSelection::createBoxSelectionMode()
     qint32 xChange = 40;
     ObjectManager* pObjectManager = ObjectManager::getInstance();
 
-    m_CurrentSelectorMode = new oxygine::Sprite();
+    m_CurrentSelectorMode = oxygine::spSprite::create();
     oxygine::ResAnim* pAnimMarker = pObjectManager->getResAnim("editor+selector");
     m_CurrentSelectorMode->setPriority(static_cast<qint32>(Mainapp::ZOrder::Objects));
     if (pAnimMarker->getTotalFrames() > 1)
@@ -473,47 +474,47 @@ void EditorSelection::createBoxSelectionMode()
     }
     m_BoxSelectionType->addChild(m_CurrentSelectorMode);
 
-    m_pSpriteTerrainMode = new oxygine::Sprite();
+    m_pSpriteTerrainMode = oxygine::spSprite::create();
 
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("editor+terrain");
     m_pSpriteTerrainMode->setResAnim(pAnim);
-    m_pSpriteTerrainMode->setPosition(frameSize, yStartPos);
-    m_CurrentSelectorMode->setPosition(frameSize, yStartPos);
+    m_pSpriteTerrainMode->setPosition(m_frameSize, yStartPos);
+    m_CurrentSelectorMode->setPosition(m_frameSize, yStartPos);
     m_BoxSelectionType->addChild(m_pSpriteTerrainMode);
     m_pSpriteTerrainMode->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_Mode = EditorMode::Terrain;
-        m_CurrentSelectorMode->setPosition(frameSize, yStartPos);
+        m_CurrentSelectorMode->setPosition(m_frameSize, yStartPos);
         emit sigUpdateTerrainView();
         selectTerrain(0);
     });
     // scale marker to correct size if needed
     m_CurrentSelectorMode->setScale(pAnim->getWidth() / pAnimMarker->getWidth());
 
-    m_pSpriteBuildingMode = new oxygine::Sprite();
+    m_pSpriteBuildingMode = oxygine::spSprite::create();
 
     pAnim = pObjectManager->getResAnim("editor+building");
     m_pSpriteBuildingMode->setResAnim(pAnim);
-    m_pSpriteBuildingMode->setPosition(frameSize + xChange, yStartPos);
+    m_pSpriteBuildingMode->setPosition(m_frameSize + xChange, yStartPos);
     m_BoxSelectionType->addChild(m_pSpriteBuildingMode);
     m_pSpriteBuildingMode->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_Mode = EditorMode::Building;
-        m_CurrentSelectorMode->setPosition(frameSize + xChange, yStartPos);
+        m_CurrentSelectorMode->setPosition(m_frameSize + xChange, yStartPos);
         emit sigUpdateBuildingView();
         selectBuilding(0);
     });
 
-    m_pSpriteUnitMode = new oxygine::Sprite();
+    m_pSpriteUnitMode = oxygine::spSprite::create();
 
     pAnim = pObjectManager->getResAnim("editor+unit");
     m_pSpriteUnitMode->setResAnim(pAnim);
-    m_pSpriteUnitMode->setPosition(frameSize + xChange * 2, yStartPos);
+    m_pSpriteUnitMode->setPosition(m_frameSize + xChange * 2, yStartPos);
     m_BoxSelectionType->addChild(m_pSpriteUnitMode);
     m_pSpriteUnitMode->addEventListener(oxygine::TouchEvent::CLICK, [=](oxygine::Event *)->void
     {
         m_Mode = EditorMode::Unit;
-        m_CurrentSelectorMode->setPosition(frameSize + xChange * 2, yStartPos);
+        m_CurrentSelectorMode->setPosition(m_frameSize + xChange * 2, yStartPos);
         emit sigUpdateUnitView();
         selectUnit(0);
     });
@@ -523,7 +524,7 @@ void EditorSelection::createBoxSelectionMode()
 oxygine::spSprite EditorSelection::createV9Box(qint32 x, qint32 y, qint32 width, qint32 heigth)
 {
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSprite = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSprite = oxygine::spBox9Sprite::create();
     pSprite->setVerticalMode(oxygine::Box9Sprite::STRETCHING);
     pSprite->setHorizontalMode(oxygine::Box9Sprite::STRETCHING);
     this->addChild(pSprite);
@@ -619,16 +620,16 @@ void EditorSelection::initSelection()
 
 void EditorSelection::initBuildingSection()
 {
-    qint32 posY = startH;
+    qint32 posY = m_startH;
     qint32 xCounter = 0;
     for (qint32 i = 0; i < m_Buildings.size(); i++)
     {
         qint32 posX = getPosX(xCounter);
         if (xCounter >= m_xCount)
         {
-            posY += GameMap::getImageSize() * yFactor;
+            posY += GameMap::getImageSize() * m_yFactor;
             xCounter = 0;
-            posX = frameSize;
+            posX = m_frameSize;
         }
         qint32 width = m_Buildings[i]->getBuildingWidth();
         qint32 heigth = m_Buildings[i]->getBuildingHeigth();
@@ -645,7 +646,7 @@ void EditorSelection::initBuildingSection()
 
 void EditorSelection::initTerrainSection()
 {
-    qint32 posY = startH - GameMap::getImageSize();
+    qint32 posY = m_startH - GameMap::getImageSize();
     qint32 xCounter = 0;
     qint32 currentIdentifier = std::numeric_limits<qint32>::min();
     for (qint32 i = 0; i < m_Terrains.size(); i++)
@@ -654,9 +655,9 @@ void EditorSelection::initTerrainSection()
         qint32 posX = getPosX(xCounter);
         if (xCounter >= m_xCount)
         {
-            posY += GameMap::getImageSize() * yFactor;
+            posY += GameMap::getImageSize() * m_yFactor;
             xCounter = 0;
-            posX = frameSize;
+            posX = m_frameSize;
         }
         m_Terrains[i]->setPosition(posX, posY);
         m_Terrains[i]->setVisible(false);
@@ -683,20 +684,20 @@ void EditorSelection::createTerrainSectionLabel(qint32 item, qint32 & currentIde
         style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
         style.multiline = false;
 
-        spLabel pTextfield = new Label(m_labelWidth);
+        spLabel pTextfield = spLabel::create(m_labelWidth);
         pTextfield->setStyle(style);
         pTextfield->setPosition(getPosX(xCounter), posY);
         pTextfield->setHtmlText(pTerrainManager->getTerrainGroupName(currentIdentifier));
         pTextfield->setVisible(false);
         m_PlacementActor->addChild(pTextfield);
         m_terrainActors.append(pTextfield);
-        posY += GameMap::getImageSize() * yFactor;
+        posY += GameMap::getImageSize() * m_yFactor;
     }
 }
 
 void EditorSelection::initUnitSelection()
 {
-    qint32 posY = startH - GameMap::getImageSize();
+    qint32 posY = m_startH - GameMap::getImageSize();
     qint32 xCounter = 0;
     qint32 currentIdentifier = std::numeric_limits<qint32>::min();
     for (qint32 i = 0; i < m_Units.size(); i++)
@@ -707,7 +708,7 @@ void EditorSelection::initUnitSelection()
         {
             posY += GameMap::getImageSize() * 1.5f;
             xCounter = 0;
-            posX = frameSize;
+            posX = m_frameSize;
         }
         m_Units[i]->setPosition(posX, posY);
         m_Units[i]->setVisible(false);
@@ -733,7 +734,7 @@ void EditorSelection::createUnitSectionLabel(qint32 item, qint32 & currentIdenti
         style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
         style.multiline = false;
 
-        spLabel pTextfield = new Label(m_labelWidth);
+        spLabel pTextfield = spLabel::create(m_labelWidth);
         pTextfield->setStyle(style);
         pTextfield->setPosition(getPosX(xCounter), posY);
         pTextfield->setHtmlText(UnitSpriteManager::getUnitTypeText(currentIdentifier));
@@ -746,7 +747,7 @@ void EditorSelection::createUnitSectionLabel(qint32 item, qint32 & currentIdenti
 
 qint32 EditorSelection::getPosX(qint32 xCounter)
 {
-    return frameSize + xCounter * GameMap::getImageSize() * xFactor;
+    return m_frameSize + xCounter * GameMap::getImageSize() * m_xFactor;
 }
 
 void EditorSelection::selectBuilding(qint32 building)

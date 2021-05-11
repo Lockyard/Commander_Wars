@@ -94,29 +94,33 @@ var Constructor = function()
         else
         {
             // mg
-            offset = Qt.point(81, 75);
+            // 0, 20
+            offset = Qt.point(81, 83);
             if (armyName === "yc")
             {
-                offset = Qt.point(82, 74);
+                offset = Qt.point(81, 83);
             }
             else if (armyName === "ge")
             {
-                offset = Qt.point(82, 74);
+                offset = Qt.point(81, 83);
             }
             else if (armyName === "bm")
             {
-                offset = Qt.point(81, 74);
+                offset = Qt.point(81, 83);
             }
             else if (armyName === "bh")
             {
-                offset = Qt.point(81, 74);
+                offset = Qt.point(81, 78);
             }
             else if (armyName === "ma")
             {
-                offset = Qt.point(93, 56);
+                offset = Qt.point(93, 57);
             }
             sprite.loadSprite("mg_shot_air",  false, sprite.getMaxUnitCount(), offset,
                               1, 1, 0, 0, false, true);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 0);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 200);
+            sprite.loadSound("anti_air_gun_fire.wav", 1, "resources/sounds/", 400);
         }
     };
 
@@ -139,13 +143,14 @@ var Constructor = function()
         {
             sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
                               1, 1.0, 0, 300);
+            sprite.addSpriteScreenshake(8, 0.95, 800, 500);
             sprite.loadMovingSprite("rocket_down", false, 5, Qt.point(127, 90),
                                     Qt.point(-127, -60), 400, true,
                                     1, 1, 0, 0, true);
             for (i = 0; i < count; i++)
             {
                 sprite.loadSound("rocket_flying.wav", 1, "resources/sounds/", 0);
-                sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 300 + i * BATTLEANIMATION.defaultFrameDelay);
             }
         }
         else
@@ -174,7 +179,7 @@ var Constructor = function()
     this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 1200;
+        return 2200;
     };
 
     this.hasDyingAnimation = function()
@@ -185,7 +190,8 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_CRUISER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
+        BATTLEANIMATION_CRUISER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 2000);
+        sprite.loadSound("ship_dying_move.wav", -2, "resources/sounds/");
     };
 };
 

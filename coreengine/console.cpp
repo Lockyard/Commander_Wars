@@ -5,6 +5,7 @@
 #include <QClipboard>
 #include <QGuiApplication>
 #include <qlogging.h>
+#include <qdatetime.h>
 
 #include "coreengine/console.h"
 #include "coreengine/mainapp.h"
@@ -23,22 +24,23 @@
 
 // values which differ from release to debug build
 #ifdef GAMEDEBUG
-Console::eLogLevels Console::LogLevel = Console::eDEBUG;
+Console::eLogLevels Console::m_LogLevel = Console::eDEBUG;
 #else
-Console::eLogLevels Console::LogLevel = Console::eINFO;
+Console::eLogLevels Console::m_LogLevel = Console::eINFO;
 #endif
 
-bool Console::show = false;
-bool Console::toggled = false;
-QList<QString> Console::output;
-Console* Console::m_pConsole = nullptr;
-QString Console::curmsg = nullptr;
-qint32 Console::curmsgpos = 0;
-QElapsedTimer Console::toggle;
-qint32 Console::curlastmsgpos = 0;
-QList<QString> Console::lastmsgs;
-qint32 Console::outputSize = 100;
-QMutex Console::datalocker;
+bool Console::m_show = false;
+bool Console::m_toggled = false;
+bool Console::m_developerMode = false;
+QList<QString> Console::m_output;
+spConsole Console::m_pConsole = nullptr;
+QString Console::m_curmsg = nullptr;
+qint32 Console::m_curmsgpos = 0;
+QElapsedTimer Console::m_toggle;
+qint32 Console::m_curlastmsgpos = 0;
+QList<QString> Console::m_lastmsgs;
+qint32 Console::m_outputSize = 100;
+QMutex Console::m_datalocker;
 
 // Console Libary
 const QString Console::functions[] =
@@ -56,23 +58,28 @@ const QString Console::functions[] =
     QString("extendMaskImages"),
     QString("help"),
     QString("logActions"),
+    QString("version"),
+    QString("setDeveloperMode"),
     QString("")
 };
+const char* const Console::compileTime = __TIME__;
+const char* const Console::compileDate = __DATE__;
 
 Console::Console()
 {
+    setObjectName("Console");
     Interpreter::setCppOwnerShip(this);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     // move console to top
     oxygine::Actor::setPriority(static_cast<qint32>(Mainapp::ZOrder::Console));
-    m_pBackgroundsprite = new oxygine::ColorRectSprite();
+    m_pBackgroundsprite = oxygine::spColorRectSprite::create();
     m_pBackgroundsprite->setPosition(0, 0);
     m_pBackgroundsprite->setSize(Settings::getWidth(), Settings::getHeight());
     m_pBackgroundsprite->attachTo(this);
     m_pBackgroundsprite->setColor(QColor(0,0,0, 180));
 
-    m_text = new oxygine::TextField();
+    m_text = oxygine::spTextField::create();
     oxygine::TextStyle style = oxygine::TextStyle(FontManager::getMainFont16()).withColor(QColor(255,127,39)).alignLeft();
     m_text->setStyle(style);
 
@@ -83,19 +90,19 @@ Console::Console()
 
 Console* Console::getInstance()
 {
-    if (m_pConsole == nullptr)
+    if (m_pConsole.get() == nullptr)
     {
-        m_pConsole = new Console();
+        m_pConsole = spConsole::create();
     }
-    return m_pConsole;
+    return m_pConsole.get();
 }
 
 void Console::init()
 {
-    toggle.start();
+    m_toggle.start();
 
     Mainapp* pMainapp = Mainapp::getInstance();
-    connect(pMainapp, &Mainapp::sigConsoleKeyDown, m_pConsole, &Console::KeyInput, Qt::QueuedConnection);
+    connect(pMainapp, &Mainapp::sigConsoleKeyDown, m_pConsole.get(), &Console::KeyInput, Qt::QueuedConnection);
     // Print some Info
 
     Console::print("Enter \"help()\" for console info.", Console::eLogLevels::eINFO);
@@ -135,7 +142,6 @@ void Console::applyImagesTable(QString input, QString inTable, QString outTable,
 void Console::extendMaskImages(QString folder, QString filter)
 {
     SpriteCreator::extendMaskImages(folder, filter);
-
 }
 
 void Console::dotask(QString message)
@@ -147,7 +153,8 @@ void Console::dotask(QString message)
     spGameMenue pGameMenue = GameMenue::getInstance();
     if (message.startsWith("game:") &&
         pGameMenue.get() != nullptr &&
-        !pGameMenue->isNetworkGame())
+        !pGameMenue->isNetworkGame() &&
+        getDeveloperMode())
     {
         order = order.replace("GameConsole.game:", "");
         pInterpreter->doString(order);
@@ -167,15 +174,16 @@ void Console::dotask(QString message)
 
 void Console::print(QString message, qint8 LogLevel)
 {
-    print(message, static_cast<eLogLevels>(LogLevel));}
+    print(message, static_cast<eLogLevels>(LogLevel));
+}
 
 void Console::print(QString message, eLogLevels MsgLogLevel)
 {
-    QMutexLocker locker(&datalocker);
+    QMutexLocker locker(&m_datalocker);
 
-    if (MsgLogLevel >= Console::LogLevel)
+    if (MsgLogLevel >= Console::m_LogLevel)
     {
-        QString msg = tr(message.toStdString().c_str());
+        QString msg = QDateTime::currentDateTime().toString("dd.MM.yyyy hh:mm:ss") + ": " + message;
         QString prefix = "";
         switch (MsgLogLevel)
         {
@@ -212,10 +220,10 @@ void Console::print(QString message, eLogLevels MsgLogLevel)
             default:
                 break;
         }
-        output.append(prefix + msg);
-        while (output.size() > outputSize)
+        m_output.append(prefix + msg);
+        while (m_output.size() > m_outputSize)
         {
-            output.removeFirst();
+            m_output.removeFirst();
         }
     }
 }
@@ -223,41 +231,41 @@ void Console::print(QString message, eLogLevels MsgLogLevel)
 void Console::update(const oxygine::UpdateState& us)
 {
     // no need to calculate more than we need if we're invisible
-    if(show)
+    if(m_show)
     {
 
-        QMutexLocker locker(&datalocker);
+        QMutexLocker locker(&m_datalocker);
         qint32 screenheight = Settings::getHeight();
         qint32 h = FontManager::getMainFont16()->getSize();
         // pre calc message start
-        qint32 num = screenheight / h - 1;
-        outputSize = num + 30;
+        qint32 num = screenheight / h - 4;
+        m_outputSize = num + 30;
         qint32 i = 0;
-        qint32 start = output.size() - num;
+        qint32 start = m_output.size() - num;
         if (start < 0)
         {
             start = 0;
         }
         // create output text
         QString drawText;
-        for(i = start; i < output.size();i++)
+        for(i = start; i < m_output.size();i++)
         {
             if(i >= 0)
             {
-                drawText += "> " + output[i] + "\n";
+                drawText += "> " + m_output[i] + "\n";
             }
         }
         // create blinking cursor position
-        QString curprintmsg = curmsg;
-        if (toggle.elapsed() < BLINKFREQG)
+        QString curprintmsg = m_curmsg;
+        if (m_toggle.elapsed() < BLINKFREQG)
         {
-            curprintmsg.insert(curmsgpos,"|");
+            curprintmsg.insert(m_curmsgpos,"|");
         }else{
-            curprintmsg.insert(curmsgpos," ");
+            curprintmsg.insert(m_curmsgpos," ");
         }
-        if (toggle.elapsed() > BLINKFREQG * 2)
+        if (m_toggle.elapsed() > BLINKFREQG * 2)
         {
-            toggle.start();
+            m_toggle.start();
         }
         drawText += "> " + curprintmsg;
         m_text->setHtmlText(drawText);
@@ -267,18 +275,37 @@ void Console::update(const oxygine::UpdateState& us)
 
 void Console::toggleView()
 {
-    show = !show;
-    oxygine::Actor::setVisible(show);
-    if (show)
+    m_show = !m_show;
+    oxygine::Actor::setVisible(m_show);
+    if (m_show)
     {
         m_pBackgroundsprite->setSize(Settings::getWidth(), Settings::getHeight());
     }
-    toggled = true;
+    m_toggled = true;
+}
+
+bool Console::getDeveloperMode()
+{
+    if (m_developerMode)
+    {
+        print("Developer Mode enabled! And used for changing some data.", Console::eINFO);
+    }
+    return m_developerMode;
+}
+
+void Console::setDeveloperMode(bool developerMode)
+{
+    m_developerMode = developerMode;
+    if (m_developerMode)
+    {
+        print("Developer Mode enabled! Note this may lead to crashes or weird behaviour.", Console::eWARNING);
+        setLogLevel(eLogLevels::eDEBUG);
+    }
 }
 
 Console::eLogLevels Console::getLogLevel()
 {
-    return LogLevel;
+    return m_LogLevel;
 }
 
 void Console::setVolume(qint32 volume)
@@ -288,7 +315,7 @@ void Console::setVolume(qint32 volume)
 
 void Console::setLogLevel(eLogLevels newLogLevel)
 {
-    Console::LogLevel = newLogLevel;
+    Console::m_LogLevel = newLogLevel;
 }
 
 void Console::help(qint32 start, qint32 end)
@@ -303,6 +330,11 @@ void Console::help(qint32 start, qint32 end)
         }
         index++;
     }
+}
+
+void Console::version()
+{
+    print(QCoreApplication::applicationVersion() + " Builddate: " + compileDate + " " + compileTime, Console::eINFO);
 }
 
 void Console::logActions(bool log)
@@ -1302,6 +1334,9 @@ void Console::createfunnymessage(qint32 message){
         case 327:
             printmessage = "It isn't over until it's over!";
             break;
+        case 328:
+            printmessage = "We need to train tanks to talk. So we can get another Advance Wars game.";
+            break;
         default:
             printmessage = "No more funny Messages found. Delete your Harddisk instead";
             break;
@@ -1317,7 +1352,7 @@ void Console::KeyInput(oxygine::KeyEvent event)
     {
         Console::toggleView();
     }
-    else if (show)
+    else if (m_show)
     {
         if ((event.getModifiers() & Qt::KeyboardModifier::ControlModifier) > 0)
         {
@@ -1326,21 +1361,21 @@ void Console::KeyInput(oxygine::KeyEvent event)
                 case Qt::Key_V:
                 {
                     QString text = QGuiApplication::clipboard()->text();
-                    curmsg = curmsg.insert(curmsgpos, text);
-                    curmsgpos += text.size();
+                    m_curmsg = m_curmsg.insert(m_curmsgpos, text);
+                    m_curmsgpos += text.size();
                     break;
                 }
                 case Qt::Key_C:
                 {
-                    QGuiApplication::clipboard()->setText(curmsg);
-                    curmsgpos += curmsg.size();
+                    QGuiApplication::clipboard()->setText(m_curmsg);
+                    m_curmsgpos += m_curmsg.size();
                     break;
                 }
                 case Qt::Key_X:
                 {
-                    QGuiApplication::clipboard()->setText(curmsg);
-                    curmsg = "";
-                    curmsgpos = 0;
+                    QGuiApplication::clipboard()->setText(m_curmsg);
+                    m_curmsg = "";
+                    m_curmsgpos = 0;
                     break;
                 }
                 default:
@@ -1357,97 +1392,97 @@ void Console::KeyInput(oxygine::KeyEvent event)
             {
                 case Qt::Key_Home:
                 {
-                    curmsgpos = 0;
+                    m_curmsgpos = 0;
                     break;
                 }
                 case Qt::Key_Up:
                 {
-                    curlastmsgpos--;
-                    if(curlastmsgpos < 0)
+                    m_curlastmsgpos--;
+                    if(m_curlastmsgpos < 0)
                     {
-                        curlastmsgpos = lastmsgs.size() - 1;
+                        m_curlastmsgpos = m_lastmsgs.size() - 1;
                     }
-                    if(curlastmsgpos < lastmsgs.size() && curlastmsgpos >= 0)
+                    if(m_curlastmsgpos < m_lastmsgs.size() && m_curlastmsgpos >= 0)
                     {
-                        curmsg = lastmsgs[curlastmsgpos];
-                        curmsgpos = curmsg.size();
+                        m_curmsg = m_lastmsgs[m_curlastmsgpos];
+                        m_curmsgpos = m_curmsg.size();
                     }
                     break;
                 }
                 case Qt::Key_Left:
                 {
-                    curmsgpos--;
-                    if(curmsgpos < 0)
+                    m_curmsgpos--;
+                    if(m_curmsgpos < 0)
                     {
-                        curmsgpos = 0;
+                        m_curmsgpos = 0;
                     }
                     break;
                 }
                 case Qt::Key_Down:
                 {
-                    curlastmsgpos++;
-                    if(curlastmsgpos >= lastmsgs.size())
+                    m_curlastmsgpos++;
+                    if(m_curlastmsgpos >= m_lastmsgs.size())
                     {
-                        curlastmsgpos = 0;
+                        m_curlastmsgpos = 0;
                     }
-                    if(curlastmsgpos < lastmsgs.size())
+                    if(m_curlastmsgpos < m_lastmsgs.size())
                     {
-                        curmsg = lastmsgs[curlastmsgpos];
-                        curmsgpos = curmsg.size();
+                        m_curmsg = m_lastmsgs[m_curlastmsgpos];
+                        m_curmsgpos = m_curmsg.size();
                     }
                     break;
                 }
                 case Qt::Key_Right:
                 {
-                    curmsgpos++;
-                    if(curmsgpos > curmsg.size())
+                    m_curmsgpos++;
+                    if(m_curmsgpos > m_curmsg.size())
                     {
-                        curmsgpos = curmsg.size();
+                        m_curmsgpos = m_curmsg.size();
                     }
                     break;
                 }
                 case Qt::Key_Enter:
                 case Qt::Key_Return:
                 {
-                    dotask(curmsg);
-                    lastmsgs.append(curmsg);
-                    while (lastmsgs.size() > lastMsgSize)
+                    dotask(m_curmsg);
+                    m_lastmsgs.append(m_curmsg);
+                    while (m_lastmsgs.size() > m_lastMsgSize)
                     {
-                        lastmsgs.removeFirst();
+                        m_lastmsgs.removeFirst();
                     }
-                    curlastmsgpos = lastmsgs.size();
-                    curmsg = "";
-                    curmsgpos = 0;
+                    m_curlastmsgpos = m_lastmsgs.size();
+                    m_curmsg = "";
+                    m_curmsgpos = 0;
                     break;
                 }
                 case Qt::Key_Backspace:
                 {
-                    if(curmsgpos > 0)
+                    if(m_curmsgpos > 0)
                     {
-                        curmsg.remove(curmsgpos - 1,1);
-                        curmsgpos--;
+                        m_curmsg.remove(m_curmsgpos - 1,1);
+                        m_curmsgpos--;
                     }
                     break;
                 }
                 case Qt::Key_Delete:
                 {
-                    if (curmsgpos < curmsg.size())
+                    if (m_curmsgpos < m_curmsg.size())
                     {
-                        curmsg.remove(curmsgpos, 1);
+                        m_curmsg.remove(m_curmsgpos, 1);
                     }
                     break;
                 }
                 case Qt::Key_End:
                 {
-                    curmsgpos = curmsg.size();
+                    m_curmsgpos = m_curmsg.size();
                     break;
                 }
                 default:
                 {
                     // for the start we don't check for upper or lower key input
                     QString msg = event.getText();
-                    curmsg.insert(curmsgpos,msg);
-                    curmsgpos += msg.size();
+                    m_curmsg.insert(m_curmsgpos,msg);
+                    m_curmsgpos += msg.size();
                 }
             }
         }
@@ -1477,7 +1512,7 @@ void Console::messageOutput(QtMsgType type, const QMessageLogContext &context, c
     switch (type)
     {
         case QtDebugMsg:
-            if (Console::LogLevel <= Console::eLogLevels::eDEBUG)
+            if (Console::m_LogLevel <= Console::eLogLevels::eDEBUG)
             {
                 stream << "Debug: " << msg << " File: " << context.file << " Line: " << context.line << " Function: " << context.function << "\n";
                 stream.flush();
@@ -1485,7 +1520,7 @@ void Console::messageOutput(QtMsgType type, const QMessageLogContext &context, c
             }
             break;
         case QtInfoMsg:
-            if (Console::LogLevel <= Console::eLogLevels::eINFO)
+            if (Console::m_LogLevel <= Console::eLogLevels::eINFO)
             {
                 stream << "Info: " << msg << " File: " << context.file << " Line: " << context.line << " Function: " << context.function << "\n";
                 stream.flush();
@@ -1493,7 +1528,7 @@ void Console::messageOutput(QtMsgType type, const QMessageLogContext &context, c
             }
             break;
         case QtWarningMsg:
-            if (Console::LogLevel <= Console::eLogLevels::eWARNING)
+            if (Console::m_LogLevel <= Console::eLogLevels::eWARNING)
             {
                 stream << "Warning: " << msg << " File: " << context.file << " Line: " << context.line << " Function: " << context.function << "\n";
                 stream.flush();
@@ -1501,7 +1536,7 @@ void Console::messageOutput(QtMsgType type, const QMessageLogContext &context, c
             }
             break;
         case QtCriticalMsg:
-            if (Console::LogLevel <= Console::eLogLevels::eERROR)
+            if (Console::m_LogLevel <= Console::eLogLevels::eERROR)
             {
                 stream << "Critical: " << msg << " File: " << context.file << " Line: " << context.line << " Function: " << context.function << "\n";
                 stream.flush();
@@ -1509,7 +1544,7 @@ void Console::messageOutput(QtMsgType type, const QMessageLogContext &context, c
             }
             break;
         case QtFatalMsg:
-            if (Console::LogLevel <= Console::eLogLevels::eFATAL)
+            if (Console::m_LogLevel <= Console::eLogLevels::eFATAL)
             {
                 stream << "Fatal: " << msg << " File: " << context.file << " Line: " << context.line << " Function: " << context.function << "\n";
                 stream.flush();

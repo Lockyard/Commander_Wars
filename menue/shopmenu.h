@@ -9,8 +9,12 @@
 #include "objects/base/panel.h"
 #include "coreengine/userdata.h"
 #include "objects/base/label.h"
+#include "menue/basemenu.h"
 
-class Shopmenu : public QObject, public oxygine::Actor
+class Shopmenu;
+using spShopmenu = oxygine::intrusive_ptr<Shopmenu>;
+
+class Shopmenu : public Basemenu
 {
     Q_OBJECT
 public:

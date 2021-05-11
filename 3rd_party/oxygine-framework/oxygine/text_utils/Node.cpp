@@ -10,79 +10,74 @@ namespace oxygine
 {
     namespace text
     {
-        Node::Node(): _firstChild(0), _lastChild(0), _nextSibling(0)
+        Node::Node(): m_firstChild(0), m_lastChild(0), m_nextSibling(0)
         {
-
         }
 
         Node::~Node()
         {
         }
 
-        void Node::appendNode(Node* tn)
+        void Node::appendNode(spNode tn)
         {
-            if (!_firstChild)
+            if (!m_firstChild)
             {
-                _firstChild = tn;
+                m_firstChild = tn;
             }
             else
             {
-                _lastChild->_nextSibling = tn;
+                m_lastChild->m_nextSibling = tn;
             }
 
-            _lastChild = tn;
+            m_lastChild = tn;
         }
-
-
 
         void Node::resize(Aligner& rd)
         {
             xresize(rd);
-
             resizeChildren(rd);
         }
 
         void Node::resizeChildren(Aligner& rd)
         {
-            spNode child = _firstChild;
+            spNode child = m_firstChild;
             while (child)
             {
                 child->resize(rd);
-                child = child->_nextSibling;
+                child = child->m_nextSibling;
             }
         }
 
         void Node::finalPass(Aligner& rd)
         {
             xfinalPass(rd);
-
-            spNode child = _firstChild;
+            spNode child = m_firstChild;
             while (child)
             {
                 child->finalPass(rd);
-                child = child->_nextSibling;
+                child = child->m_nextSibling;
             }
         }
 
         void Node::drawChildren(DrawContext& dc)
         {
-            spNode child = _firstChild;
+            spNode child = m_firstChild;
             while (child)
             {
                 child->draw(dc);
-                child = child->_nextSibling;
+                child = child->m_nextSibling;
             }
         }
 
         Symbol* Node::getSymbol(int& pos)
         {
-            spNode node = _firstChild;
+            spNode node = m_firstChild;
             while (node)
             {
                 Symbol* res = node->getSymbol(pos);
                 if (res)
                     return res;
-                node = node->_nextSibling;
+                node = node->m_nextSibling;
             }
             return 0;
         }
@@ -92,19 +87,16 @@ namespace oxygine
             drawChildren(dc);
         }
 
-
-
         void Node::updateMaterial(const STDMaterial& mat)
         {
-            spNode node = _firstChild;
+            spNode node = m_firstChild;
             while (node)
             {
                 node->updateMaterial(mat);
-                node = node->_nextSibling;
+                node = node->m_nextSibling;
             }
             xupdateMaterial(mat);
         }
-
 
         TextNode::TextNode(QString v)
         {
@@ -138,7 +130,7 @@ namespace oxygine
                 }
 
                 s.mat->apply();
-                s.mat->render(dc.color, s.gl.src, s.destRect);
+                s.mat->render(dc.m_color, s.gl.src, s.destRect);
             }
 
             drawChildren(dc);
@@ -146,23 +138,23 @@ namespace oxygine
 
         void TextNode::xupdateMaterial(const STDMaterial& mat)
         {
-            for (int i = 0; i < _data.size(); ++i)
+            for (qint32 i = 0; i < _data.size(); ++i)
             {
                 size_t size = _data.size();
                 for (size_t i = 0; i < size; ++i)
                 {
                     Symbol& s = _data[i];
 
-                    spSTDMaterial m = mat.clone();
-                    m->_base = s.mat->_base;
+                    spSTDMaterial m = dynamic_pointer_cast<STDMaterial>(mat.clone());
+                    m->m_base = s.mat->m_base;
 
                     s.mat = MaterialCache::mc().cache(*m.get());
                 }
             }
         }
 
-        int _defMissing = '?';
-        void TextNode::setDefaultMissingSymbol(int v)
+        qint32 _defMissing = '?';
+        void TextNode::setDefaultMissingSymbol(qint32 v)
         {
             _defMissing = v;
         }
@@ -171,10 +163,10 @@ namespace oxygine
         {
             if (!_data.empty())
             {
-                int i = 0;
-                const Font* font = rd._font;
+                qint32 i = 0;
+                const Font* font = rd.m_font;
 
-                const size_t opt = rd.options;
+                const size_t opt = rd.m_options;
 
                 while (i != (int)_data.size())
                 {
@@ -201,29 +193,33 @@ namespace oxygine
                             }
                         }
 
-                        if (rd.mat->_base.get() == gl->texture.get())
+                        if (gl != nullptr)
                         {
-                            s.mat = rd.mat;
-                        }
-                        else
-                        {
-                            spSTDMaterial mat = rd.mat->clone();
-                            mat->_base = gl->texture;
+                            if (rd.m_mat->m_base.get() == gl->texture.get())
+                            {
+                                s.mat = rd.m_mat;
+                            }
+                            else
+                            {
+                                spSTDMaterial mat = dynamic_pointer_cast<STDMaterial>(rd.m_mat->clone());
+                                mat->m_base = gl->texture;
 
-                            s.mat = MaterialCache::mc().cache(*mat.get());
-                            rd.mat = s.mat;
+                                s.mat = dynamic_pointer_cast<STDMaterial>(MaterialCache::mc().cache(*mat.get()));
+                                rd.m_mat = s.mat;
+                            }
                         }
                     }
                     ++i;
                     if (i < 0)
+                    {
                         i = 0;
+                    }
                 }
             }
         }
 
-        float mlt(int x, float sf)
+        float mlt(qint32 x, float sf)
         {
-            //return (x + 0.01f) / sf;
             return x / sf;
         }
 
@@ -231,46 +227,50 @@ namespace oxygine
         {
             float scaleFactor = rd.getScale();
 
-            int offsetY = rd.bounds.pos.y;
+            qint32 offsetY = rd.m_bounds.pos.y;
 
-            for (int i = 0; i < _data.size(); ++i)
+            for (qint32 i = 0; i < _data.size(); ++i)
             {
                 Symbol& s = _data[i];
                 s.y += offsetY;
 
                 if (s.gl.texture)
+                {
                     s.destRect = RectF(mlt(s.x, scaleFactor), mlt(s.y, scaleFactor), mlt(s.gl.sw, scaleFactor), mlt(s.gl.sh, scaleFactor));
+                }
                 else
+                {
                     s.destRect = RectF(0, 0, 0, 0);
+                }
             }
         }
 
         void DivNode::resize(Aligner& rd)
         {
-            if (options == 0xff)
+            if (m_options == 0xff)
             {
                 resizeChildren(rd);
                 return;
             }
 
-            size_t prevOpt = rd.options;
-            rd.options = options;
+            size_t prevOpt = rd.m_options;
+            rd.m_options = m_options;
             resizeChildren(rd);
-            rd.options = prevOpt;
+            rd.m_options = prevOpt;
         }
 
         void DivNode::draw(DrawContext& dc)
         {
-            QColor prev = dc.color;
+            QColor prev = dc.m_color;
 
-            dc.color = color * dc.primary;
+            dc.m_color = m_color * dc.m_primary;
             drawChildren(dc);
-            dc.color = prev;
+            dc.m_color = prev;
         }
 
         DivNode::DivNode(QDomElement& reader)
         {
-            options = std::numeric_limits<quint32>::max();
+            m_options = std::numeric_limits<quint32>::max();
             if (reader.hasAttribute("c"))
             {
                 QString colorText(reader.attributeNode("c").value());
@@ -278,7 +278,7 @@ namespace oxygine
                 {
                     colorText.push_front("#");
                 }
-                color = QColor(colorText);
+                m_color = QColor(colorText);
             }
             else if (reader.hasAttribute("color"))
             {
@@ -287,11 +287,11 @@ namespace oxygine
                 {
                     colorText.push_front("#");
                 }
-                color = QColor(colorText);
+                m_color = QColor(colorText);
             }
             else if (reader.hasAttribute("opt"))
             {
-                options = reader.attributeNode("opt").value().toUInt();
+                m_options = reader.attributeNode("opt").value().toUInt();
             }
         }
     }

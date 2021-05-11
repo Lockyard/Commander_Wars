@@ -6,45 +6,56 @@
 
 CoPowermeter::CoPowermeter(CO* pCO)
     : QObject(),
-      _pCO(pCO)
+      m_pCO(pCO)
 {
-
+    setObjectName("CoPowermeter");
 }
 
 void CoPowermeter::drawPowerMeter()
 {
     removeChildren();
-    if ((GameMap::getInstance() == nullptr ||
-        !GameMap::getInstance()->getGameRules()->getNoPower()) &&
-        _pCO != nullptr)
+    spGameMap pMap = GameMap::getInstance();
+    if ((pMap.get() == nullptr ||
+        !pMap->getGameRules()->getNoPower()) &&
+        m_pCO != nullptr)
     {
         GameManager* pGameManager = GameManager::getInstance();
         oxygine::ResAnim* pAnim = nullptr;
-        qint32 power = _pCO->getPowerStars();
-        qint32 superpower = _pCO->getSuperpowerStars();
-        bool usePower = _pCO->canUsePower();
-        bool useSuperpower = _pCO->canUseSuperpower();
-        float powerFilled = _pCO->getPowerFilled();
-        switch (_pCO->getPowerMode())
+        qint32 power = m_pCO->getPowerStars();
+        qint32 superpower = m_pCO->getSuperpowerStars();
+        bool usePower = m_pCO->canUsePower();
+        bool useSuperpower = m_pCO->canUseSuperpower();
+        float powerFilled = m_pCO->getPowerFilled();
+        switch (m_pCO->getPowerMode())
         {
             case GameEnums::PowerMode_Unknown:
             case GameEnums::PowerMode_Off:
             {
                 for (qint32 i2 = 0; i2 < power + superpower; i2++)
                 {
-                    oxygine::spSprite pSprite = new oxygine::Sprite();
+                    oxygine::spSprite pSprite = oxygine::spSprite::create();
                     if (i2 >= power)
                     {
                         if (powerFilled >= static_cast<float>(i2 + 1))
                         {
                             pAnim = pGameManager->getResAnim("superpowerstarfull");
-                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
+                            qint32 totalFrames = 0;
+                            if (pAnim != nullptr)
+                            {
+                                totalFrames = pAnim->getTotalFrames();
+                            }
+                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(totalFrames * GameMap::frameTime), -1);
                             pSprite->addTween(tween);
                         }
                         else if (powerFilled >= static_cast<float>(i2 + 1) - 0.5f)
                         {
                             pAnim = pGameManager->getResAnim("superpowerstarhalf");
-                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
+                            qint32 totalFrames = 0;
+                            if (pAnim != nullptr)
+                            {
+                                totalFrames = pAnim->getTotalFrames();
+                            }
+                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(totalFrames * GameMap::frameTime), -1);
                             pSprite->addTween(tween);
                         }
                         else
@@ -76,13 +87,23 @@ void CoPowermeter::drawPowerMeter()
                         if (powerFilled >= static_cast<float>(i2 + 1))
                         {
                             pAnim = pGameManager->getResAnim("powerstarfull");
-                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
+                            qint32 totalFrames = 0;
+                            if (pAnim != nullptr)
+                            {
+                                totalFrames = pAnim->getTotalFrames();
+                            }
+                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(totalFrames * GameMap::frameTime), -1);
                             pSprite->addTween(tween);
                         }
                         else if (powerFilled >= static_cast<float>(i2 + 1) - 0.5f)
                         {
                             pAnim = pGameManager->getResAnim("powerstarhalf");
-                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
+                            qint32 totalFrames = 0;
+                            if (pAnim != nullptr)
+                            {
+                                totalFrames = pAnim->getTotalFrames();
+                            }
+                            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(totalFrames * GameMap::frameTime), -1);
                             pSprite->addTween(tween);
                         }
                         else
@@ -115,19 +136,19 @@ void CoPowermeter::drawPowerMeter()
             {
                 oxygine::TextStyle style = FontManager::getMainFont24();
                 style.color = FontManager::getFontColor();
-                oxygine::spTextField Text = new oxygine::TextField();
-                Text->setStyle(style);
-                Text->setHtmlText(tr("Power"));
-                Text->setY(0);
+                oxygine::spTextField pText = oxygine::spTextField::create();
+                pText->setStyle(style);
+                pText->setHtmlText(tr("Power"));
+                pText->setY(0);
                 if (m_flippedX)
                 {
-                    Text->setX(-10 - Text->getTextRect().getWidth());
+                    pText->setX(-10 - pText->getTextRect().getWidth());
                 }
                 else
                 {
-                    Text->setX(0);
+                    pText->setX(0);
                 }
-                oxygine::spTweenQueue queue = new oxygine::TweenQueue();
+                oxygine::spTweenQueue queue = oxygine::spTweenQueue::create();
                 oxygine::Sprite::TweenColor tweenColor1(QColor(255, 255, 255, 255));
                 oxygine::spTween tween1 = oxygine::createTween(tweenColor1, oxygine::timeMS(200), 1, false);
                 oxygine::Sprite::TweenColor tweenColor2(QColor(255, 0, 0, 255));
@@ -138,27 +159,27 @@ void CoPowermeter::drawPowerMeter()
                 queue->add(tween2);
                 queue->add(tween3);
                 queue->setLoops(-1);
-                Text->addTween(queue);
-                this->addChild(Text);
+                pText->addTween(queue);
+                this->addChild(pText);
                 break;
             }
             case GameEnums::PowerMode_Superpower:
             {
                 oxygine::TextStyle style = FontManager::getMainFont24();
                 style.color = FontManager::getFontColor();
-                oxygine::spTextField Text = new oxygine::TextField();
-                Text->setStyle(style);
-                Text->setHtmlText(tr("Superpower"));
-                Text->setY(0);
+                oxygine::spTextField pText = oxygine::spTextField::create();
+                pText->setStyle(style);
+                pText->setHtmlText(tr("Superpower"));
+                pText->setY(0);
                 if (m_flippedX)
                 {
-                    Text->setX(-10 - Text->getTextRect().getWidth());
+                    pText->setX(-10 - pText->getTextRect().getWidth());
                 }
                 else
                 {
-                    Text->setX(0);
+                    pText->setX(0);
                 }
-                oxygine::spTweenQueue queue = new oxygine::TweenQueue();
+                oxygine::spTweenQueue queue = oxygine::spTweenQueue::create();
                 oxygine::Sprite::TweenColor tweenColor1(QColor(255, 255, 255, 255));
                 oxygine::spTween tween1 = oxygine::createTween(tweenColor1, oxygine::timeMS(200), 1, false);
                 oxygine::Sprite::TweenColor tweenColor2(QColor(255, 0, 0, 255));
@@ -169,27 +190,27 @@ void CoPowermeter::drawPowerMeter()
                 queue->add(tween2);
                 queue->add(tween3);
                 queue->setLoops(-1);
-                Text->addTween(queue);
-                this->addChild(Text);
+                pText->addTween(queue);
+                this->addChild(pText);
                 break;
             }
             case GameEnums::PowerMode_Tagpower:
             {
                 oxygine::TextStyle style = FontManager::getMainFont24();
                 style.color = FontManager::getFontColor();
-                oxygine::spTextField Text = new oxygine::TextField();
-                Text->setStyle(style);
-                Text->setHtmlText(tr("Tagpower"));
-                Text->setY(- 4);
+                oxygine::spTextField pText = oxygine::spTextField::create();
+                pText->setStyle(style);
+                pText->setHtmlText(tr("Tagpower"));
+                pText->setY(- 4);
                 if (m_flippedX)
                 {
-                    Text->setX(-10 - Text->getTextRect().getWidth());
+                    pText->setX(-10 - pText->getTextRect().getWidth());
                 }
                 else
                 {
-                    Text->setX(0);
+                    pText->setX(0);
                 }
-                oxygine::spTweenQueue queue = new oxygine::TweenQueue();
+                oxygine::spTweenQueue queue = oxygine::spTweenQueue::create();
                 oxygine::Sprite::TweenColor tweenColor1(QColor(255, 255, 255, 255));
                 oxygine::spTween tween1 = oxygine::createTween(tweenColor1, oxygine::timeMS(100), 1, false);
                 oxygine::Sprite::TweenColor tweenColor2(QColor(255, 0, 0, 255));
@@ -200,8 +221,8 @@ void CoPowermeter::drawPowerMeter()
                 queue->add(tween2);
                 queue->add(tween3);
                 queue->setLoops(-1);
-                Text->addTween(queue);
-                this->addChild(Text);
+                pText->addTween(queue);
+                this->addChild(pText);
                 break;
             }
         }
@@ -210,12 +231,12 @@ void CoPowermeter::drawPowerMeter()
 
 CO *CoPowermeter::getCO() const
 {
-    return _pCO;
+    return m_pCO;
 }
 
 void CoPowermeter::setCO(CO *pCO)
 {
-    _pCO = pCO;
+    m_pCO = pCO;
 }
 
 bool CoPowermeter::getFlippedX() const

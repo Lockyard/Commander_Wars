@@ -12,6 +12,7 @@ const QString VictoryRule::spinbox = "spinbox";
 
 VictoryRule::VictoryRule()
 {
+    setObjectName("VictoryRule");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -21,6 +22,7 @@ VictoryRule::VictoryRule(QString ruleID)
     : QObject(),
       m_RuleID(ruleID)
 {
+    setObjectName("VictoryRule");
     init();
 }
 
@@ -34,7 +36,7 @@ void VictoryRule::init()
     QJSValueList args1;
     QJSValue obj1 = pInterpreter->newQObject(this);
     args1 << obj1;
-    QJSValue erg = pInterpreter->doFunction(m_RuleID, function1, args1);
+    pInterpreter->doFunction(m_RuleID, function1, args1);
 }
 
 QStringList VictoryRule::getRuleType()
@@ -78,7 +80,7 @@ void VictoryRule::setRuleValue(qint32 value, qint32 itemNumber)
     args << obj1;
     args << value;
     args << itemNumber;
-    QJSValue ret = pInterpreter->doFunction(m_RuleID, function1, args);
+    pInterpreter->doFunction(m_RuleID, function1, args);
 }
 
 qint32 VictoryRule::getInfiniteValue(qint32 itemNumber)

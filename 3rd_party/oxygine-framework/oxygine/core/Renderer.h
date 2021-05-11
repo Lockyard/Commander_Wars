@@ -1,10 +1,9 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "NativeTexture.h"
-#include "VideoDriver.h"
-#include "../math/AffineTransform.h"
-#include "../math/Rect.h"
-#include <vector>
+#include "3rd_party/oxygine-framework/oxygine/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/core/NativeTexture.h"
+#include "3rd_party/oxygine-framework/oxygine/core/VideoDriver.h"
+#include "3rd_party/oxygine-framework/oxygine/math/AffineTransform.h"
+#include "3rd_party/oxygine-framework/oxygine/math/Rect.h"
 
 namespace oxygine
 {
@@ -23,7 +22,7 @@ namespace oxygine
 
 
     template<class V>
-    void fillQuadT(V* pv, const RectF& srcRect, const RectF& destRect, const AffineTransform& transform, unsigned int rgba)
+    void fillQuadT(V* pv, const RectF& srcRect, const RectF& destRect, const AffineTransform& transform, quint32 rgba)
     {
         float u = srcRect.pos.x;
         float v = srcRect.pos.y;
@@ -80,7 +79,7 @@ namespace oxygine
     }
 
     template<class V>
-    void fillQuadZT(V* pv, const RectF& srcRect, const RectF& destRect, float Z, unsigned int rgba)
+    void fillQuadZT(V* pv, const RectF& srcRect, const RectF& destRect, float Z, quint32 rgba)
     {
         float u = srcRect.pos.x;
         float v = srcRect.pos.y;
@@ -133,7 +132,7 @@ namespace oxygine
 
 
     template<class V>
-    void fillQuadT2(V* pv, const RectF& srcRect, const RectF& srcRect2, const RectF& destRect, const AffineTransform& transform, unsigned int rgba)
+    void fillQuadT2(V* pv, const RectF& srcRect, const RectF& srcRect2, const RectF& destRect, const AffineTransform& transform, quint32 rgba)
     {
         float u = srcRect.pos.x;
         float v = srcRect.pos.y;
@@ -207,5 +206,5 @@ namespace oxygine
     typedef intrusive_ptr<Material> spMaterialX;
 
     /**Returns View matrix where Left Top corner is (0,0), and right bottom is (w,h)*/
-    Matrix makeViewMatrix(int w, int h, bool flipU = false);
+    Matrix makeViewMatrix(qint32 w, qint32 h, bool flipU = false);
 }

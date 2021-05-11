@@ -8,10 +8,12 @@ var Constructor = function()
     this.loadStandingAnimation = function(sprite, unit, defender, weapon)
     {
         sprite.loadSprite("waterplane",  false,
-                          BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20));
+                          BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20), -1, 1.0, 0, 0,
+                          false, false, 30);
         sprite.addMoveTweenToLastLoadedSprites(0, -5, 1200);
         sprite.loadSpriteV2("waterplane+mask", GameEnums.Recoloring_Table,
-                            BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20));
+                            BATTLEANIMATION_WATERPLANE.getMaxUnitCount(), Qt.point(-50, 20), -1, 1.0, 0, 0,
+                            false, false, 30);
         sprite.addMoveTweenToLastLoadedSprites(0, -5, 1200);
     };
     this.loadFireAnimation = function(sprite, unit, defender, weapon)
@@ -33,7 +35,7 @@ var Constructor = function()
         }
         for (var i = 0; i < count; i++)
         {
-            sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("missile_weapon_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
         }
     };
 
@@ -47,6 +49,7 @@ var Constructor = function()
         var count = sprite.getUnitCount(BATTLEANIMATION_WATERPLANE.getMaxUnitCount());
         sprite.loadSprite("unit_explosion",  false, sprite.getMaxUnitCount(), Qt.point(0, 20),
                           1, 1.0, 0, 300);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 500);
         if (defender.getUnitType() === GameEnums.UnitType_Air)
         {
             sprite.loadMovingSprite("rocket", false, sprite.getMaxUnitCount(), Qt.point(127, 20),
@@ -62,7 +65,7 @@ var Constructor = function()
         for (var i = 0; i < count; i++)
         {
             sprite.loadSound("rocket_flying.wav", 1, "resources/sounds/", 0);
-            sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("rockets_explode.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
         }
     };
 

@@ -19,13 +19,25 @@
 
 class Player;
 class TerrainFindingSystem;
+using spTerrainFindingSystem = oxygine::intrusive_ptr<TerrainFindingSystem>;
 
 class Terrain;
-typedef oxygine::intrusive_ptr<Terrain> spTerrain;
+using spTerrain = oxygine::intrusive_ptr<Terrain>;
 
 class Terrain : public Tooltip, public FileSerializable
 {
     Q_OBJECT
+
+    struct TerrainOverlay
+    {
+        qint32 duration{-1};
+        QString resAnim;
+        QPoint offset;
+        float scale{1.0f};
+        QColor color;
+        oxygine::spSprite sprite;
+
+    };
 public:
     /**
      * @brief The DrawPriority enum z-priority for sprites
@@ -37,6 +49,7 @@ public:
         Shroud,
         Building,
         Fog,
+        TerrainMarker,
         MarkedField,
         Arrow
     };
@@ -48,7 +61,12 @@ public:
     /**
      * @brief syncAnimation call this on all terrains to make their animation synchronized.
      */
-    void syncAnimation();
+    void syncAnimation(oxygine::timeMS syncTime);
+    /**
+     * @brief getTweenElapsed
+     * @return
+     */
+    oxygine::timeMS getTweenElapsed();
     /**
      * @brief setBaseTerrain replace base terrain
      * @param terrain
@@ -93,14 +111,8 @@ public:
      */
     inline virtual qint32 getVersion() const override
     {
-        return 7;
+        return 8;
     }
-    /**
-     * @brief update
-     * @param us
-     */
-    virtual void update(const oxygine::UpdateState& us) override;
-
     /**
      * @brief getFixedSprite only avaible for ingame editor
      * @return
@@ -131,7 +143,21 @@ public:
      * @return
      */
     bool isValid();
+    /**
+     * @brief createTerrainFindingSystem
+     * @return a path finding system that contains
+     */
+    spTerrainFindingSystem createTerrainFindingSystem();
+
 public slots:
+    /**
+     * @brief addTerrainOverlay
+     */
+    void addTerrainOverlay(QString id, qint32 x, qint32 y, QColor color = Qt::white, qint32 duration = -1, float scale = 1.0f);
+    /**
+     * @brief removeTerrainOverlay
+     */
+    void removeTerrainOverlay(QString id);
     /**
      * @brief getVariables
      * @return
@@ -298,7 +324,7 @@ public slots:
         }
         else
         {
-            return terrainID;
+            return m_terrainID;
         }
     }
     /**
@@ -315,7 +341,7 @@ public slots:
         }
         else
         {
-            return terrainID;
+            return m_terrainID;
         }
     }
     /**
@@ -363,11 +389,6 @@ public slots:
      */
     bool getVisionHide(Player* pPlayer);
     /**
-     * @brief createTerrainFindingSystem
-     * @return a path finding system that contains
-     */
-    TerrainFindingSystem* createTerrainFindingSystem();
-    /**
      * @brief getTerrainAnimationBase
      * @return
      */
@@ -402,11 +423,14 @@ protected:
      */
     void removeDownstream();
 private:
+    friend class oxygine::intrusive_ptr<Terrain>;
     explicit Terrain(QString terrainID, qint32 x, qint32 y);
+
+private:
     /**
      * @brief terrainName terrain name shown in the game
      */
-    QString terrainName;
+    QString m_terrainName;
     /**
      * @brief m_terrainDescription
      */
@@ -414,7 +438,7 @@ private:
     /**
      * @brief terrainID our terrain id
      */
-    QString terrainID;
+    QString m_terrainID;
     /**
      * @brief m_pTerrainSprite actor holding our sprite data
      */
@@ -436,21 +460,17 @@ private:
      */
     oxygine::spResAnim m_SpriteAnim;
     /**
-     * @brief loadSprite
-     */
-    bool loadSprite{false};
-    /**
      * @brief m_pBaseTerrain base terrain of this terrain
      */
     spTerrain m_pBaseTerrain{nullptr};
     /**
      * @brief x coordinates in x direction in the map array
      */
-    qint32 x{-1};
+    qint32 m_x{-1};
     /**
      * @brief y coordinates in y direction in the map array
      */
-    qint32 y{-1};
+    qint32 m_y{-1};
     /**
       * the building at this position
       */
@@ -462,12 +482,13 @@ private:
     /**
       * hp of this unit
       */
-    qint32 hp{-1};
+    qint32 m_hp{-1};
     qint32 m_VisionHigh{0};
     ScriptVariables m_Variables;
     bool m_hasStartOfTurn{false};
 
     oxygine::intrusive_ptr<JsCallback<Terrain>> m_pStartDayCallback;
+    QVector<TerrainOverlay> m_terrainOverlay;
 };
 
 #endif // TERRAIN_H

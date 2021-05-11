@@ -8,7 +8,7 @@
 namespace oxygine
 {
 
-    VideoDriverGLES20::VideoDriverGLES20(): _programID(0), _p(0)
+    VideoDriverGLES20::VideoDriverGLES20(): m_programID(0), m_p(0)
     {
     }
 
@@ -20,7 +20,6 @@ namespace oxygine
 
     void VideoDriverGLES20::restore()
     {
-        //_us.restore();
         setDefaultSettings();
     }
 
@@ -31,12 +30,11 @@ namespace oxygine
 
     spNativeTexture VideoDriverGLES20::createTexture()
     {
-        return new NativeTextureGLES;
+        return spNativeTextureGLES::create();
     }
 
     void VideoDriverGLES20::reset()
     {
-        //_currentProgram = 0;
     }
 
 
@@ -62,11 +60,11 @@ namespace oxygine
     void VideoDriverGLES20::setShaderProgram(ShaderProgram* prog_)
     {
         prog_->bind();
-        _programID = prog_->getID();
-        _p = prog_;
+        m_programID = prog_->getID();
+        m_p = prog_;
     }
 
-    void VideoDriverGLES20::setTexture(int sampler, spNativeTexture t)
+    void VideoDriverGLES20::setTexture(qint32 sampler, spNativeTexture t)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
         window->glActiveTexture(GL_TEXTURE0 + sampler);
@@ -82,7 +80,7 @@ namespace oxygine
 
 
 
-    void VideoDriverGLES20::draw(PRIMITIVE_TYPE pt, const VertexDeclaration* decl_, const void* vdata, unsigned int verticesDataSize)
+    void VideoDriverGLES20::draw(PRIMITIVE_TYPE pt, const VertexDeclaration* decl_, const void* vdata, quint32 verticesDataSize)
     {
         Q_ASSERT(verticesDataSize > 0);
         Q_ASSERT((verticesDataSize % decl_->size) == 0);
@@ -92,8 +90,8 @@ namespace oxygine
 
         const unsigned char* verticesData = (const unsigned char*)vdata;
 
-        const VertexDeclarationGL::Element* el = decl->elements;
-        for (int i = 0; i < decl->numElements; ++i)
+        const VertexDeclarationGL::Element* el = decl->m_elements;
+        for (qint32 i = 0; i < decl->numElements; ++i)
         {
             window->glEnableVertexAttribArray(el->index);
             window->glVertexAttribPointer(el->index, el->size, el->elemType, el->normalized, decl->size, verticesData + el->offset);
@@ -103,15 +101,15 @@ namespace oxygine
         size_t primitives = verticesDataSize / decl->size;
         window->glDrawArrays(getPT(pt), 0, (GLsizei)primitives);
 
-        el = decl->elements;
-        for (int i = 0; i < decl->numElements; ++i)
+        el = decl->m_elements;
+        for (qint32 i = 0; i < decl->numElements; ++i)
         {
             window->glDisableVertexAttribArray(el->index);
             el++;
         }
     }
 
-    void VideoDriverGLES20::draw(PRIMITIVE_TYPE pt, const VertexDeclaration* decl_, const void* vdata, unsigned int verticesDataSize, const unsigned short* indicesData, unsigned int numIndices)
+    void VideoDriverGLES20::draw(PRIMITIVE_TYPE pt, const VertexDeclaration* decl_, const void* vdata, quint32 verticesDataSize, const unsigned short* indicesData, quint32 numIndices)
     {
         Q_ASSERT(verticesDataSize > 0);
         Q_ASSERT((verticesDataSize % decl_->size) == 0);
@@ -121,8 +119,8 @@ namespace oxygine
 
         const unsigned char* verticesData = (const unsigned char*)vdata;
 
-        const VertexDeclarationGL::Element* el = decl->elements;
-        for (int i = 0; i < decl->numElements; ++i)
+        const VertexDeclarationGL::Element* el = decl->m_elements;
+        for (qint32 i = 0; i < decl->numElements; ++i)
         {
             window->glEnableVertexAttribArray(el->index);
             window->glVertexAttribPointer(el->index, el->size, el->elemType, el->normalized, decl->size, verticesData + el->offset);
@@ -131,8 +129,8 @@ namespace oxygine
 
         window->glDrawElements(getPT(pt), numIndices, GL_UNSIGNED_SHORT, indicesData);
 
-        el = decl->elements;
-        for (int i = 0; i < decl->numElements; ++i)
+        el = decl->m_elements;
+        for (qint32 i = 0; i < decl->numElements; ++i)
         {
             window->glDisableVertexAttribArray(el->index);
             el++;
@@ -147,13 +145,15 @@ namespace oxygine
         window->glDisable(GL_BLEND);
         window->glDepthMask(GL_FALSE);
         window->glCullFace(GL_FRONT_AND_BACK);
+#ifdef GL_MULTISAMPLE
         window->glEnable(GL_MULTISAMPLE);
+#endif
     }
 
-    void VideoDriverGLES20::setUniformInt(const char* id, int v)
+    void VideoDriverGLES20::setUniformInt(const char* id, qint32 v)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int location = window->glGetUniformLocation(_programID, id);
+        qint32 location = window->glGetUniformLocation(m_programID, id);
         if (location == -1)
         {
             return;
@@ -161,10 +161,10 @@ namespace oxygine
         window->glUniform1i(location, v);
     }
 
-    void VideoDriverGLES20::setUniform(const char* id, const Vector4* v, int num)
+    void VideoDriverGLES20::setUniform(const char* id, const Vector4* v, qint32 num)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int p = window->glGetUniformLocation(_programID, id);
+        qint32 p = window->glGetUniformLocation(m_programID, id);
         if (p == -1)
         {
             return;
@@ -172,10 +172,10 @@ namespace oxygine
         window->glUniform4fv(p, num, v->m);
     }
 
-    void VideoDriverGLES20::setUniform(const char* id, const Vector2* v, int num)
+    void VideoDriverGLES20::setUniform(const char* id, const Vector2* v, qint32 num)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int p = window->glGetUniformLocation(_programID, id);
+        qint32 p = window->glGetUniformLocation(m_programID, id);
         if (p == -1)
         {
             return;
@@ -183,10 +183,10 @@ namespace oxygine
         window->glUniform2fv(p, num, &v->x);
     }
 
-    void VideoDriverGLES20::setUniform(const char* id, const Vector3* v, int num)
+    void VideoDriverGLES20::setUniform(const char* id, const Vector3* v, qint32 num)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int p = window->glGetUniformLocation(_programID, id);
+        qint32 p = window->glGetUniformLocation(m_programID, id);
         if (p == -1)
         {
             return;
@@ -194,10 +194,10 @@ namespace oxygine
         window->glUniform3fv(p, num, &v->x);
     }
 
-    void VideoDriverGLES20::setUniform(const char* id, const Matrix* mat, int num)
+    void VideoDriverGLES20::setUniform(const char* id, const Matrix* mat, qint32 num)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int p = window->glGetUniformLocation(_programID, id);
+        qint32 p = window->glGetUniformLocation(m_programID, id);
         if (p == -1)
         {
             return;
@@ -208,7 +208,7 @@ namespace oxygine
     void VideoDriverGLES20::setUniform(const char* id, float val)
     {
         GameWindow* window = oxygine::GameWindow::getWindow();
-        int p = window->glGetUniformLocation(_programID, id);
+        qint32 p = window->glGetUniformLocation(m_programID, id);
         if (p == -1)
         {
             return;

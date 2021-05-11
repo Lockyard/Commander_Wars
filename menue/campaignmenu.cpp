@@ -18,10 +18,13 @@
 
 #include "objects/dialogs/filedialog.h"
 
+#include "ui_reader/uifactory.h"
+
 CampaignMenu::CampaignMenu(spCampaign campaign, bool multiplayer)
-    : QObject(),
+    : Basemenu(),
       m_Multiplayer(multiplayer)
 {
+    setObjectName("CampaignMenu");
     Mainapp* pApp = Mainapp::getInstance();
     pApp->pauseRendering();
     this->moveToThread(pApp->getWorkerthread());
@@ -29,7 +32,7 @@ CampaignMenu::CampaignMenu(spCampaign campaign, bool multiplayer)
 
     BackgroundManager* pBackgroundManager = BackgroundManager::getInstance();
     // load background
-    oxygine::spSprite sprite = new oxygine::Sprite();
+    oxygine::spSprite sprite = oxygine::spSprite::create();
     addChild(sprite);
     oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("campaignmenu");
     sprite->setResAnim(pBackground);
@@ -71,7 +74,7 @@ CampaignMenu::CampaignMenu(spCampaign campaign, bool multiplayer)
     connect(this, &CampaignMenu::sigShowSaveCampaign, this, &CampaignMenu::showSaveCampaign, Qt::QueuedConnection);
 
 
-    m_pMapSelectionView = new MapSelectionView();
+    m_pMapSelectionView = spMapSelectionView::create();
     m_pMapSelectionView->setCurrentCampaign(campaign);
     addChild(m_pMapSelectionView);
     connect(m_pMapSelectionView->getMapSelection(), &MapSelection::itemChanged, this, &CampaignMenu::mapSelectionItemChanged, Qt::QueuedConnection);
@@ -79,16 +82,19 @@ CampaignMenu::CampaignMenu(spCampaign campaign, bool multiplayer)
 
     std::tuple<QString, QStringList> data = campaign->getCampaignMaps();
     m_pMapSelectionView->getMapSelection()->setSelection(std::get<0>(data), std::get<1>(data));
+
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QJSValue obj = pInterpreter->newQObject(this);
+    pInterpreter->setGlobal("currentMenu", obj);
+    UiFactory::getInstance().createUi("ui/campaignmenu.xml", this);
     pApp->continueRendering();
 }
 
 void CampaignMenu::exitMenue()
-{
-    
+{    
     Console::print("Leaving Option Menue", Console::eDEBUG);
-    oxygine::getStage()->addChild(new MapSelectionMapsMenue());
-    oxygine::Actor::detach();
-    
+    oxygine::getStage()->addChild(spMapSelectionMapsMenue::create());
+    oxygine::Actor::detach();    
 }
 
 void CampaignMenu::mapSelectionItemClicked(QString item)
@@ -111,8 +117,7 @@ void CampaignMenu::mapSelectionItemChanged(QString item)
 }
 
 void CampaignMenu::slotButtonNext()
-{
-    
+{    
     m_pMapSelectionView->loadCurrentMap();
     if (m_pMapSelectionView->getCurrentMap()->getGameScript()->immediateStart())
     {
@@ -123,7 +128,7 @@ void CampaignMenu::slotButtonNext()
         pMap->updateSprites();
         // start game
         Console::print("Leaving Campaign Menue", Console::eDEBUG);
-        oxygine::getStage()->addChild(new GameMenue(false, nullptr));
+        oxygine::getStage()->addChild(spGameMenue::create(false, nullptr));
         oxygine::Actor::detach();
     }
     else if (m_Multiplayer)
@@ -133,10 +138,9 @@ void CampaignMenu::slotButtonNext()
     else
     {
         Console::print("Leaving Campaign Menue", Console::eDEBUG);
-        oxygine::getStage()->addChild(new MapSelectionMapsMenue(-1, m_pMapSelectionView));
+        oxygine::getStage()->addChild(spMapSelectionMapsMenue::create(-1, m_pMapSelectionView));
         oxygine::Actor::detach();
-    }
-    
+    }    
 }
 
 void CampaignMenu::showSaveCampaign()
@@ -145,7 +149,7 @@ void CampaignMenu::showSaveCampaign()
     QVector<QString> wildcards;
     wildcards.append("*.camp");
     QString path = QCoreApplication::applicationDirPath() + "/savegames";
-    spFileDialog fileDialog = new FileDialog(path, wildcards);
+    spFileDialog fileDialog = spFileDialog::create(path, wildcards);
     this->addChild(fileDialog);
     connect(fileDialog.get(),  &FileDialog::sigFileSelected, this, &CampaignMenu::saveCampaign, Qt::QueuedConnection);
     

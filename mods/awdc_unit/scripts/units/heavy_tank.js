@@ -15,7 +15,3 @@ HEAVY_TANK.init = function(unit)
     unit.setMaxRange(1);
     unit.setVision(2);
 };
-HEAVY_TANK.getBaseCost = function()
-{
-    return 12000;
-};

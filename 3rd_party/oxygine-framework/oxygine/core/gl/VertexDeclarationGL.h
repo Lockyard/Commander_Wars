@@ -1,6 +1,6 @@
 #pragma once
-#include "../../oxygine-include.h"
-#include "../VertexDeclaration.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/core/VertexDeclaration.h"
 #include <qopengl.h>
 
 namespace oxygine
@@ -13,14 +13,14 @@ namespace oxygine
         struct Element
         {
             QString name;
-            int index;
+            qint32 index;
             bool normalized;
             GLint size;
             GLenum elemType;
-            int offset;
+            qint32 offset;
         };
 
-        Element elements[8];
+        Element m_elements[8];
 
     private:
 

@@ -39,7 +39,7 @@ public:
         LobbyChat,              /**< used for the lobby chat */
         GameChat,               /**< used for ingame chat */
         Multiplayer,            /**< used for the multiplayer game selection */
-        ServerHosting,          /**< used for data when starting a new game on the host or when communicating between slave and master */
+        ServerHosting,          /**< used for data when starting a game on the host or when communicating between slave and master */
         ServerSocketInfo,       /**< used inside the rx-task data is not emitted when recieving this data */
         Max,
     };
@@ -49,9 +49,9 @@ public:
           isConnected(false)
     {
         m_pNetworkInterface = this;
-        QObject::connect(this, &NetworkInterface::sig_connect, this, &NetworkInterface::connectTCP, Qt::QueuedConnection);
-        QObject::connect(this, &NetworkInterface::sig_close, this, &NetworkInterface::closeNetworkInterface, Qt::QueuedConnection);
-        QObject::connect(this, &NetworkInterface::sigChangeThread, this, &NetworkInterface::changeThread, Qt::QueuedConnection);
+        connect(this, &NetworkInterface::sig_connect, this, &NetworkInterface::connectTCP, Qt::QueuedConnection);
+        connect(this, &NetworkInterface::sig_close, this, &NetworkInterface::closeNetworkInterface, Qt::QueuedConnection);
+        connect(this, &NetworkInterface::sigChangeThread, this, &NetworkInterface::changeThread, Qt::QueuedConnection);
     }
 
     virtual ~NetworkInterface()

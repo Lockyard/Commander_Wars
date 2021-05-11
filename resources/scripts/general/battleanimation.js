@@ -12,7 +12,7 @@ var BATTLEANIMATION =
 
     },
 
-    hasMoveInAnimation : function()
+    hasMoveInAnimation : function(sprite, unit, defender, weapon)
     {
         // return true if the unit has an implementation for loadMoveInAnimation
         return false;
@@ -37,6 +37,17 @@ var BATTLEANIMATION =
     loadDyingAnimation : function(sprite, unit, defender, weapon)
     {
         sprite.loadAnimation("loadStandingAnimation", unit, defender, weapon);
+    },
+
+    loadDyingAnimationSound : function(sprite, unit, defender, weapon)
+    {
+        var maxUnitCount = sprite.getMaxUnitCount()
+        var startCount = sprite.getUnitCount(maxUnitCount, globals.roundUp(sprite.getDyingStartHp()));
+        var endCount = sprite.getUnitCount(maxUnitCount, globals.roundUp(sprite.getDyingEndHp()));
+        for (var i = 0; i < startCount - endCount; i++)
+        {
+            //sprite.loadSound("tank_explode.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+        }
     },
 
     loadStandingFiredAnimation : function(sprite, unit, defender, weapon)
@@ -75,6 +86,7 @@ var BATTLEANIMATION =
         {
             sprite.loadSprite("unit_explosion",  false, sprite.getMaxUnitCount(), Qt.point(0, 20),
                               1, 1.0, 0, 0);
+            sprite.addSpriteScreenshake(8, 0.98, 800, 200);
             for (i = 0; i < count; i++)
             {
                 sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);

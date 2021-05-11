@@ -23,10 +23,10 @@ namespace oxygine
     void PostProcess::initShaders()
     {
         if (_ppBuilt)
+        {
             return;
+        }
         _ppBuilt = true;
-
-
 
         spIVideoDriver driver = IVideoDriver::instance;
 
@@ -73,13 +73,13 @@ namespace oxygine
             fs_blit = stream.readAll();
         }
         // create shaders
-        shaderBlurV = new ShaderProgramGL(vs_v, fs_blur, decl);
+        shaderBlurV = spShaderProgramGL::create(vs_v, fs_blur, decl);
         driver->setShaderProgram(shaderBlurV.get());
         driver->setUniformInt("s_texture", 0);
-        shaderBlurH = new ShaderProgramGL(vs_h, fs_blur, decl);
+        shaderBlurH = spShaderProgramGL::create(vs_h, fs_blur, decl);
         driver->setShaderProgram(shaderBlurH.get());
         driver->setUniformInt("s_texture", 0);
-        shaderBlit = new ShaderProgramGL(vs_blit, fs_blit, decl);
+        shaderBlit = spShaderProgramGL::create(vs_blit, fs_blit, decl);
         driver->setShaderProgram(shaderBlit.get());
         driver->setUniformInt("s_texture", 0);
     }
@@ -91,9 +91,9 @@ namespace oxygine
         shaderBlurV = nullptr;
     }
 
-    const int ALIGN_SIZE = 256;
+    const qint32 ALIGN_SIZE = 256;
     const timeMS TEXTURE_LIVE = timeMS(3000);
-    const int MAX_FREE_TEXTURES = 3;
+    const qint32 MAX_FREE_TEXTURES = 3;
 
     using namespace std;
 
@@ -102,19 +102,19 @@ namespace oxygine
     class PPTask;
     vector<PPTask*> postProcessItems;
 
-    int alignTextureSize(int v)
+    qint32 alignTextureSize(qint32 v)
     {
-        int n = (v - 1) / ALIGN_SIZE;
+        qint32 n = (v - 1) / ALIGN_SIZE;
         return (n + 1) * ALIGN_SIZE;
     }
 
     class NTP
     {
     public:
-        int _w;
-        int _h;
+        qint32 _w;
+        qint32 _h;
         ImageData::TextureFormat _tf;
-        NTP(int w, int h, ImageData::TextureFormat tf) : _w(w), _h(h), _tf(tf) {}
+        NTP(qint32 w, qint32 h, ImageData::TextureFormat tf) : _w(w), _h(h), _tf(tf) {}
 
         bool operator()(const spNativeTexture& t1, const spNativeTexture&) const
         {
@@ -146,20 +146,9 @@ namespace oxygine
 
     RenderTargetsManager::RenderTargetsManager()
     {
-        //get(10, 15, TF_R8G8B8A8);
-        //get(10, 15, TF_R8G8B8A8);
     }
 
-    void RenderTargetsManager::print()
-    {
-        qDebug("print");
-        for (size_t i = 0, sz = _free.size(); i < sz; ++i)
-        {
-            spNativeTexture t = _free[i];
-            qDebug("texture %d %d", t->getWidth(), t->getHeight());
-        }
-    }
-    bool RenderTargetsManager::isGood(const spNativeTexture& t, int w, int h, ImageData::TextureFormat tf) const
+    bool RenderTargetsManager::isGood(const spNativeTexture& t, qint32 w, qint32 h, ImageData::TextureFormat tf) const
     {
         if (!t)
         {
@@ -178,7 +167,7 @@ namespace oxygine
         return false;
     }
 
-    spNativeTexture RenderTargetsManager::get(spNativeTexture current, int w, int h, ImageData::TextureFormat tf)
+    spNativeTexture RenderTargetsManager::get(spNativeTexture current, qint32 w, qint32 h, ImageData::TextureFormat tf)
     {
         w = alignTextureSize(w);
         h = alignTextureSize(h);
@@ -221,7 +210,7 @@ namespace oxygine
         for (size_t i = 0, sz = _rts.size(); i < sz; ++i)
         {
             spNativeTexture& texture = _rts[i];
-            if (texture->_ref_counter == 1)
+            if (texture->getRefCounter() == 1)
             {
                 free::iterator it = lower_bound(_free.begin(), _free.end(), texture, NTP::cmp);
                 _free.insert(it, texture);
@@ -237,7 +226,9 @@ namespace oxygine
             spNativeTexture& t = _free[i];
             timeMS createTime = t->getCreationTime();
             if (createTime + TEXTURE_LIVE > tm)
+            {
                 continue;
+            }
             _free.erase(_free.begin() + i);
             --i;
             --sz;
@@ -251,7 +242,7 @@ namespace oxygine
 
     void RenderTargetsManager::reset()
     {
-        for (int i = 0; i < _rts.size(); ++i)
+        for (qint32 i = 0; i < _rts.size(); ++i)
         {
             _rts[i]->release();
         }
@@ -300,12 +291,8 @@ namespace oxygine
         if (!postProcessItems.empty())
         {
             _renderingPP = true;
-
             spIVideoDriver driver = IVideoDriver::instance;
-            //driver->setState(IVideoDriver::STATE_BLEND, 0);
             spNativeTexture prevRT = driver->getRenderTarget();
-
-
             ShaderProgram* sp = driver->getShaderProgram();
 
             for (size_t i = 0; i < postProcessItems.size(); ++i)
@@ -318,7 +305,9 @@ namespace oxygine
             postProcessItems.clear();
             driver->setRenderTarget(prevRT);
             if (sp)
+            {
                 driver->setShaderProgram(sp);
+            }
             _renderingPP = false;
         }
 
@@ -464,8 +453,6 @@ namespace oxygine
             offset.translate(-_screen.pos);
             rs.transform = rs.transform * offset;
         }
-
-        //Q_ASSERT(0);
         RenderDelegate* rd = actor->getRenderDelegate();
         actor->setRenderDelegate(STDRenderDelegate::instance.get());
         STDRenderDelegate::instance->RenderDelegate::render(actor, rs);
@@ -476,10 +463,6 @@ namespace oxygine
 
         Material::null->apply();
     }
-
-
-
-
 
     TweenPostProcess::TweenPostProcess(const PostProcessOptions& opt)
         : _actor(0),

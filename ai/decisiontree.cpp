@@ -12,10 +12,12 @@
 DecisionTree::DecisionTree(spDecisionNode pRootNode)
 	: m_pRootNode(pRootNode)
 {
+    setObjectName("DecisionTree");
 }
 
 DecisionTree::DecisionTree(QVector<QVector<float>>& trainingData, QVector<QVector<spDecisionQuestion>>& questions)
 {
+    setObjectName("DecisionTree");
 	m_pRootNode = train(trainingData, questions);
 }
 
@@ -26,6 +28,7 @@ DecisionTree::DecisionTree(QVector<QVector<float>>& trainingData, QVector<QVecto
  */
 DecisionTree::DecisionTree(QString treeFile, QString trainingDataFile)
 {
+    setObjectName("DecisionTree");
     QFile file(treeFile);
     QFile trainingFile(trainingDataFile);
 
@@ -51,7 +54,7 @@ DecisionTree::DecisionTree(QString treeFile, QString trainingDataFile)
         // check if the training data has changed
         if (currentHash == hash)
         {
-            deserializeObject(stream);
+            DecisionTree::deserializeObject(stream);
             needsTraining = false;
         }
         file.close();
@@ -70,7 +73,7 @@ DecisionTree::DecisionTree(QString treeFile, QString trainingDataFile)
         {
             stream << static_cast<qint8>(hash[i]);
         }
-        serializeObject(stream);
+        DecisionTree::serializeObject(stream);
     }
 }
 
@@ -93,7 +96,7 @@ spDecisionNode DecisionTree::train(QVector<QVector<float>>& trainingData, QVecto
     spDecisionQuestion pQuestion = findBestSplit(trainingData, gain, questions);
 	if (gain <= 0.0f)
 	{
-		return new Leaf(trainingData);
+        return spLeaf::create(trainingData);
 	}
     QVector<QVector<QVector<float>>> splitData;
     seperateData(trainingData, pQuestion, splitData);
@@ -103,7 +106,7 @@ spDecisionNode DecisionTree::train(QVector<QVector<float>>& trainingData, QVecto
     {
         pNodes.append(train(splitData[i], questions));
     }
-    return new DecisionNode(pQuestion, pNodes);
+    return spDecisionNode::create(pQuestion, pNodes);
 }
 
 QVector<qint32> DecisionTree::countClassItems(QVector<QVector<float>>& trainingData)
@@ -216,7 +219,7 @@ spDecisionQuestion DecisionTree::findBestSplit(QVector<QVector<float>>& training
 
 void DecisionTree::serializeObject(QDataStream& pStream) const
 {
-    pStream << getVersion();
+    pStream << DecisionTree::getVersion();
     m_pRootNode->serializeObject(pStream);
 }
 
@@ -227,7 +230,7 @@ void DecisionTree::deserializeObject(QDataStream& pStream)
     // never assume this as a leaf -> pointless
     bool isNode = false;
     pStream >> isNode;
-    m_pRootNode = new DecisionNode();
+    m_pRootNode = spDecisionNode::create();
     m_pRootNode->deserializeObject(pStream);
 }
 
@@ -243,10 +246,17 @@ void DecisionTree::printTree(DecisionNode* pNode, QString spacing)
         Console::print(spacing + "Predict " + pLeaf->print(), Console::eDEBUG);
         return;
     }
-    Console::print(spacing + pNode->getQuestion()->print(), Console::eDEBUG);
-    for (qint32 i = 0; i < pNode->getNodeSize(); i++)
+    if (pNode != nullptr)
     {
-        Console::print(spacing + "--> " + QString::number(i) + ":", Console::eDEBUG);
-        printTree(pNode->getNode(i) , spacing + "    ");
+        auto * pQuestion = pNode->getQuestion();
+        if (pQuestion != nullptr)
+        {
+            Console::print(spacing + pQuestion->print(), Console::eDEBUG);
+        }
+        for (qint32 i = 0; i < pNode->getNodeSize(); i++)
+        {
+            Console::print(spacing + "--> " + QString::number(i) + ":", Console::eDEBUG);
+            printTree(pNode->getNode(i) , spacing + "    ");
+        }
     }
 }

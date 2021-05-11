@@ -1,9 +1,9 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "Actor.h"
-#include "../TextStyle.h"
-#include "../VisualStyle.h"
-#include "../text_utils/Node.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Actor.h"
+#include "3rd_party/oxygine-framework/oxygine/TextStyle.h"
+#include "3rd_party/oxygine-framework/oxygine/VisualStyle.h"
+#include "3rd_party/oxygine-framework/oxygine/text_utils/Node.h"
 
 namespace oxygine
 {
@@ -17,21 +17,21 @@ namespace oxygine
         ~TextField();
 
         /**Returns current text style*/
-        const TextStyle&            getStyle() const {return _style;}
+        const TextStyle&            getStyle() const {return m_style;}
         /**Returns text bounds*/
         const Rect&                 getTextRect() const;
         /**Returns current text*/
         QString              getText() const;
         const ResFont*              getFont() const;
 
-        int                         getFontSize() const;
-        int                         getLinesOffset() const;
-        int                         getKerning() const;
+        qint32                         getFontSize() const;
+        qint32                         getLinesOffset() const;
+        qint32                         getKerning() const;
         TextStyle::VerticalAlign    getVAlign() const;
         TextStyle::HorizontalAlign  getHAlign() const;
         bool                        getMultiline() const;
         bool                        getBreakLongWords() const;
-        text::Symbol*               getSymbolAt(int pos) const;
+        text::Symbol*               getSymbolAt(qint32 pos) const;
         const QColor&                getStyleColor() const;
         float                       getBaselineScale() const;
         size_t                      getOptions() const;
@@ -49,13 +49,13 @@ namespace oxygine
         /**Overwrites TextStyle breakLongWords*/
         void setBreakLongWords(bool val);
         /**Overwrites TextStyle linesOffset*/
-        void setLinesOffset(int offset);
+        void setLinesOffset(qint32 offset);
         /**Overwrites TextStyle baselineScale*/
         void setBaselineScale(float scale);
         /**Overwrites TextStyle kerning*/
-        void setKerning(int kerning);
+        void setKerning(qint32 kerning);
         /**Overwrites TextStyle fontSize*/
-        void setFontSize(int size);
+        void setFontSize(qint32 size);
         /**Overwrites TextStyle color*/
         void setStyleColor(const QColor&);
         /**Overwrites TextStyle options*/
@@ -76,23 +76,21 @@ namespace oxygine
         void setHtmlText(QString str);
 
         virtual bool isOn(const Vector2& localPosition, float) override;
-
-
-    public:
         void doRender(const RenderState&) override;
-
         text::Node* getRootNode();
-    protected:
-        QString  _text;
-        TextStyle _style;
 
-        text::spNode _root;
-        Rect _textRect;
-        float _rtscale;
-        int _realFontSize;
-        bool m_htmlText = false;
+    protected:
         void sizeChanged(const Vector2& size) override;
         void matChanged() override;
         void rebuildText();
+
+    protected:
+        QString  m_text;
+        TextStyle m_style;
+
+        text::spNode m_root;
+        Rect m_textRect;
+        float m_rtscale;
+        bool m_htmlText = false;
     };
 }

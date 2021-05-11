@@ -13,16 +13,26 @@ var Constructor = function()
                      ["ma", "ma"],];
     this.loadMoveInAnimation = function(sprite, unit, defender, weapon)
     {
+        var count = sprite.getUnitCount(BATTLEANIMATION_HEAVY_TANK.getMaxUnitCount());
         var armyName = BATTLEANIMATION_HEAVY_TANK.getArmyName(unit);
-        sprite.loadMovingSprite("heavy_tank+" + armyName + "+move", false, sprite.getMaxUnitCount(), Qt.point(-85, 5),
+        var startX = -85;
+        if (armyName === "ma")
+        {
+            startX = -95;
+        }
+        sprite.loadMovingSprite("heavy_tank+" + armyName + "+move", false, sprite.getMaxUnitCount(), Qt.point(startX, 5),
                                 Qt.point(65, 0), 600, false,
                                 1, 1);
-        sprite.loadMovingSpriteV2("heavy_tank+" + armyName + "+move+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(-85, 5),
+        sprite.loadMovingSpriteV2("heavy_tank+" + armyName + "+move+mask", GameEnums.Recoloring_Table, sprite.getMaxUnitCount(), Qt.point(startX, 5),
                                   Qt.point(65, 0), 600, false,
                                   1, 1);
-        sprite.loadMovingSprite("vehicle_dust", false, sprite.getMaxUnitCount(), Qt.point(-105, 7),
+        sprite.loadMovingSprite("vehicle_dust", false, sprite.getMaxUnitCount(), Qt.point(startX - 20, 7),
                                 Qt.point(65, 0), 600, false,
                                 1, 1);
+        for (var i = 0; i < count; i++)
+        {
+            sprite.loadSound("heavy_tank_move.wav", 5, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+        }
     };
 
     this.loadStopAnimation = function(sprite, unit, defender, weapon)
@@ -79,7 +89,10 @@ var Constructor = function()
             }
             else if (armyName === "bm")
             {
-                offset = Qt.point(23, 16);
+                offset = Qt.point(21, 21);
+                // 45 31
+                //-20, 5
+                // -7 15
             }
             else if (armyName === "bh")
             {
@@ -112,7 +125,7 @@ var Constructor = function()
                 }
                 else if (armyName === "bm")
                 {
-                    offset = Qt.point(21, 52);
+                    offset = Qt.point(21, 50);
                 }
                 else if (armyName === "bh")
                 {
@@ -120,7 +133,7 @@ var Constructor = function()
                 }
                 else if (armyName === "ma")
                 {
-                    offset = Qt.point(41, 25);
+                    offset = Qt.point(30, 25);
                 }
                 sprite.loadSprite("mg_shot_air",  false, sprite.getMaxUnitCount(), offset,
                                   1, 1, 0, 0);
@@ -140,7 +153,7 @@ var Constructor = function()
                 }
                 else if (armyName === "bm")
                 {
-                    offset = Qt.point(21, 46);
+                    offset = Qt.point(21, 45);
                 }
                 else if (armyName === "bh")
                 {
@@ -148,16 +161,22 @@ var Constructor = function()
                 }
                 else if (armyName === "ma")
                 {
-                    offset = Qt.point(41, 20);
+                    offset = Qt.point(30, 21);
                 }
                 sprite.loadSprite("mg_shot",  false, sprite.getMaxUnitCount(), offset,
                                   1, 1, 0, 0);
+            }
+            for (var i = 0; i < count; i++)
+            {
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 400 + i * BATTLEANIMATION.defaultFrameDelay);
             }
         }
     };
 
 
-    this.hasMoveInAnimation = function()
+    this.hasMoveInAnimation = function(sprite, unit, defender, weapon)
     {
         // return true if the unit has an implementation for loadMoveInAnimation
         return true;

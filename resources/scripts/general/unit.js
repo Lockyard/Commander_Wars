@@ -31,6 +31,11 @@ var UNIT =
         unit.setMaxRange(1);
         unit.setVision(1);
     },
+    initForMods : function(unit)
+    {
+        // you can use this init function to extend
+    },
+
     loadSprites : function(unit)
     {
     },
@@ -58,7 +63,7 @@ var UNIT =
     {
         var animation = GameAnimationFactory.createAnimation(x, y);
         animation.addSprite("explosion+land", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5);
-        audio.playSound("explosion+land.wav");
+        animation.setSound("explosion+land.wav");
         return animation;
     },
 
@@ -212,7 +217,7 @@ var UNIT =
     unitTypeToGround : function(unitType)
     {
         if (unitType === GameEnums.UnitType_Hovercraft ||
-                unitType === GameEnums.UnitType_Ground)
+            unitType === GameEnums.UnitType_Ground)
         {
             return GameEnums.UnitType_Ground;
         }
@@ -265,5 +270,13 @@ var UNIT =
         // WeaponType_Direct
         // WeaponType_Indirect
         return GameEnums.WeaponType_Both;
+    },
+
+    onKilled : function(animation)
+    {
+        animation.seekBuffer();
+        var x = animation.readDataInt32();
+        var y = animation.readDataInt32();
+        map.getTerrain(x, y).getUnit().removeUnit();
     },
 };

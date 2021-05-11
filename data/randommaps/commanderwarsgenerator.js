@@ -1,7 +1,7 @@
 var RANDOMMAPGENERATOR =
         {
     // functions or entries marked mandatory need to be implemented in any random map generator
-    // new random map generators are not implemented like mods
+    // random map generators are not implemented like mods
     // they need to be a complete copy of this file and the variable filled has to have the name RANDOMMAPGENERATOR
     // during generation the generator is overwritten by the current selected one.
     // always need to be here
@@ -105,7 +105,7 @@ var RANDOMMAPGENERATOR =
     },
     getRIVERDistribution : function()
     {
-        return Qt.point(1, 3);
+        return Qt.point(3, 5);
     },
 	getRIVERPlaceable : function(x, y)
     {
@@ -115,6 +115,10 @@ var RANDOMMAPGENERATOR =
     {
         return GameEnums.RandomMapTerrainType_Line;
     },
+	getRIVERStraigthLineChance: function()
+    {
+        return 14;
+	},
     getMOUNTAINTopTerrainIDs : function()
     {
         return [];

@@ -25,14 +25,16 @@
 #include <QMutexLocker>
 #include <qapplication.h>
 
+#include "coreengine/console.h"
 
 namespace oxygine
 {
     GameWindow* GameWindow::_window = nullptr;
 
     GameWindow::GameWindow()
-        : _dispatcher(new EventDispatcher())
+        : m_dispatcher(spEventDispatcher::create())
     {
+        setObjectName("GameWindow");
         QSurfaceFormat newFormat = format();
         newFormat.setSamples(2);    // Set the number of samples used for multisampling
         setFormat(newFormat);
@@ -40,11 +42,12 @@ namespace oxygine
         _window = this;
         m_mainHandle = QThread::currentThreadId();
         connect(this, &GameWindow::sigLoadSingleResAnim, this, &GameWindow::loadSingleResAnim, Qt::BlockingQueuedConnection);
+        connect(this, &GameWindow::sigLoadRessources, this, &GameWindow::loadRessources, Qt::QueuedConnection);
     }
 
     GameWindow::~GameWindow()
     {
-        _dispatcher->removeAllEventListeners();
+        m_dispatcher->removeAllEventListeners();
 
         rsCache().reset();
         rsCache().setDriver(nullptr);
@@ -91,14 +94,14 @@ namespace oxygine
         updateData();
         if (m_pauseMutex.tryLock())
         {
-            oxygine::getStage()->update();
+            oxygine::getStage()->updateStage();
             if (beginRendering())
             {
-                QColor clearColor(181, 255, 32, 255);
+                QColor clearColor(0, 0, 0, 255);
                 QSize size = oxygine::GameWindow::getWindow()->size();
                 oxygine::Rect viewport(oxygine::Point(0, 0), oxygine::Point(size.width(), size.height()));
                 // Render all actors inside the stage. Actor::render will also be called for all its children
-                oxygine::getStage()->render(clearColor, viewport);
+                oxygine::getStage()->renderStage(clearColor, viewport);
                 swapDisplayBuffers();
             }
             m_pauseMutex.unlock();
@@ -112,14 +115,10 @@ namespace oxygine
 
     bool GameWindow::beginRendering()
     {
-        if (!_renderEnabled)
+        if (!m_renderEnabled)
         {
             return false;
         }
-        //        if (!QWindow::isActive())
-        //        {
-        //           return false;
-        //        }
 
         bool ready = STDRenderer::isReady();
         if (ready)
@@ -131,7 +130,7 @@ namespace oxygine
         }
         else
         {
-            qDebug("!ready");
+            Console::print("!ready", Console::eDEBUG);
         }
 
         return ready;
@@ -139,7 +138,7 @@ namespace oxygine
 
     bool GameWindow::isReady2Render()
     {
-        if (!_renderEnabled)
+        if (!m_renderEnabled)
         {
             return false;
         }
@@ -149,7 +148,6 @@ namespace oxygine
     void GameWindow::swapDisplayBuffers()
     {
         IVideoDriver::_stats.duration = Clock::getTimeMS() - IVideoDriver::_stats.start;
-        //sleep(1000/50);
     }
 
     float GameWindow::getGamma() const
@@ -186,16 +184,15 @@ namespace oxygine
         initializeOpenGLFunctions();
         if (!hasOpenGLFeature(QOpenGLFunctions::Shaders))
         {
-            qWarning("Shaders are not supported by open gl. This may result in a black screen.");
+            Console::print("Shaders are not supported by open gl. This may result in a black screen.", Console::eWARNING);
         }
         if (!hasOpenGLFeature(QOpenGLFunctions::Multitexture))
         {
-            qWarning("Multitextures are not supported by open gl. This may result in a black screen.");
+            Console::print("Multitextures are not supported by open gl. This may result in a black screen.", Console::eWARNING);
         }
         // init oxygine engine
-        qDebug("initialize oxygine");
-        qDebug("Qt build");
-        IVideoDriver::instance = new VideoDriverGLES20();
+        Console::print("initialize oxygine", Console::eDEBUG);
+        IVideoDriver::instance = spVideoDriverGLES20::create();
 
         IVideoDriver::instance->setDefaultSettings();
 
@@ -205,32 +202,31 @@ namespace oxygine
 
         registerResourceTypes();
 
-        STDRenderer::instance = new STDRenderer;
-        STDRenderDelegate::instance = new STDRenderDelegate;
-        Material::null       = new NullMaterialX;
+        STDRenderer::instance = spSTDRenderer::create();
+        STDRenderDelegate::instance = spSTDRenderDelegate::create();
+        Material::null       = spNullMaterialX::create();
         Material::current = Material::null;
 
         STDRenderer::current = STDRenderer::instance;
 
         // Create the stage. Stage is a root node for all updateable and drawable objects
-        oxygine::Stage::instance = new oxygine::Stage();
+        oxygine::Stage::instance = oxygine::spStage::create();
         QSize size = GameWindow::size();
         oxygine::getStage()->setSize(size.width(), size.height());
-
-        loadRessources();
+        emit sigLoadRessources();
     }
 
-    void GameWindow::resizeGL(int w, int h)
+    void GameWindow::resizeGL(qint32 w, qint32 h)
     {
-        qDebug("core::restore()");
+        Console::print("core::restore()", Console::eDEBUG);
         IVideoDriver::instance->restore();
         STDRenderer::restore();
         Restorable::restoreAll();
         oxygine::Stage::instance->setSize(w, h);
-        qDebug("core::restore() done");
+        Console::print("core::restore() done", Console::eDEBUG);
     }
 
-    void GameWindow::loadResAnim(oxygine::ResAnim* pAnim, const QImage & image, qint32 columns, qint32 rows, float scaleFactor)
+    void GameWindow::loadResAnim(oxygine::spResAnim pAnim, QImage & image, qint32 columns, qint32 rows, float scaleFactor)
     {
         if (QThread::currentThreadId() == m_mainHandle)
         {
@@ -242,9 +238,12 @@ namespace oxygine
         }
     }
 
-    void GameWindow::loadSingleResAnim(oxygine::ResAnim* pAnim, const QImage & image, qint32 columns, qint32 rows, float scaleFactor)
+    void GameWindow::loadSingleResAnim(oxygine::spResAnim pAnim, QImage & image, qint32 columns, qint32 rows, float scaleFactor)
     {
-        pAnim->init(image, columns, rows, scaleFactor);
+        if (pAnim.get() != nullptr)
+        {
+            pAnim->init(image, columns, rows, scaleFactor);
+        }
     }
 
     void GameWindow::mousePressEvent(QMouseEvent *event)
@@ -314,7 +313,7 @@ namespace oxygine
 
     spEventDispatcher GameWindow::getDispatcher()
     {
-        return _dispatcher;
+        return m_dispatcher;
     }
 
     QOpenGLContext* GameWindow::getGLContext()

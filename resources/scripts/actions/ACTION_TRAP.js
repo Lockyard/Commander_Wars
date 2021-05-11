@@ -41,8 +41,10 @@ var Constructor = function()
     {
         // used to determine if a trap is in the move path.
         // the engine takes care of checking the path in the correct order and cutting the path.
-        if (targetFieldUnit !== null &&
-            targetFieldUnit.isStealthed(map.getCurrentPlayer()))
+        if ((targetFieldUnit !== null &&
+             targetFieldUnit.isStealthed(map.getCurrentPlayer()) &&
+             !targetFieldUnit.getIgnoreUnitCollision()) ||
+             moveCost < 0)
         {
             return true;
         }
@@ -53,7 +55,7 @@ var Constructor = function()
     {
         // this function gets called to find a field at which the unit can actually stop it's movement
         // E.g. don't get trapped on a teleport tile or getting trapped on an allied unit etc.
-        if (targetFieldUnit !== null || moveCost === 0)
+        if (targetFieldUnit !== null || moveCost <= 0)
         {
             return true;
         }

@@ -17,33 +17,33 @@ namespace oxygine
         Sprite();
         virtual ~Sprite() override;
 
-        const AnimationFrame&   getAnimFrame() const {return _frame;}
+        const AnimationFrame&   getAnimFrame() const {return m_frame;}
         RectF                   getDestRect() const override;
-        const Diffuse&          getDiffuse() const {return _frame.getDiffuse();}
-        bool                    getManageResAnim() const {return (_flags & flag_manageResAnim) != 0;}
-        const RectF&            getSrcRect() const {return _frame.getSrcRect();}
-        const ResAnim*          getResAnim() const {return _frame.getResAnim();}
-        int                     getColumn() const {return _frame.getColumn();}
-        int                     getRow() const {return _frame.getRow();}
-        const Vector2&          getLocalScale() const { return _localScale; }
+        const Diffuse&          getDiffuse() const {return m_frame.getDiffuse();}
+        bool                    getManageResAnim() const {return (m_flags & flag_manageResAnim) != 0;}
+        const RectF&            getSrcRect() const {return m_frame.getSrcRect();}
+        const ResAnim*          getResAnim() const {return m_frame.getResAnim();}
+        qint32                     getColumn() const {return m_frame.getColumn();}
+        qint32                     getRow() const {return m_frame.getRow();}
+        const Vector2&          getLocalScale() const { return m_localScale; }
 
         /**load/unload atlas automatically or not*/
         void                    setManageResAnim(bool manage);
         /**Changes sprite image*/
         void                    setAnimFrame(const AnimationFrame& f);
         /**Takes AnimationFrame from ResAnim and set it as current to Sprite. Shows assert is resanim is null. Using this method is more safe than 'setAnimFrame(const AnimationFrame &f)'*/
-        void                    setAnimFrame(const ResAnim* resanim, int col = 0, int row = 0);
+        void                    setAnimFrame(const ResAnim* resanim, qint32 col = 0, qint32 row = 0);
         void                    setColorTable(const oxygine::spResAnim pAnim);
-        virtual void            setResAnim(const ResAnim* resanim, int col = 0, int row = 0);
-        void                    setRow(int row);
-        void                    setColumn(int column);
-        void                    setColumnRow(int column, int row);
+        virtual void            setResAnim(const ResAnim* resanim, qint32 col = 0, qint32 row = 0);
+        void                    setRow(qint32 row);
+        void                    setColumn(qint32 column);
+        void                    setColumnRow(qint32 column, qint32 row);
         void                    setLocalScale(const Vector2& s);
 
         bool                    isOn(const Vector2& localPosition, float localScale) override;
 
-        bool                    isFlippedX() const {return (_flags & flag_flipX) != 0;}
-        bool                    isFlippedY() const {return (_flags & flag_flipY) != 0;}
+        bool                    isFlippedX() const {return (m_flags & flag_flipX) != 0;}
+        bool                    isFlippedY() const {return (m_flags & flag_flipY) != 0;}
         void                    setFlippedX(bool flippedX);
         virtual void            flipActorsX(bool flippedX){flipActorsX(this, flippedX);}
         static void             flipActorsX(oxygine::spActor pActor, bool flippedX);
@@ -70,12 +70,11 @@ namespace oxygine
         virtual void animFrameChanged(const AnimationFrame& f);
         void sizeChanged(const Vector2& size) override;
 
-        Vector2 _localScale;
-        AnimationFrame _frame;
+    protected:
+        Vector2 m_localScale;
+        AnimationFrame m_frame;
         oxygine::spResAnim m_colorTable;
-
         oxygine::RectF m_DestRecModifier{oxygine::RectF(0.0f, 0.0f, 0.0f, 0.0f)};
-
-        bool invertFlipX{false};
+        bool m_invertFlipX{false};
     };
 }

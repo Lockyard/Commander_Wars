@@ -47,7 +47,7 @@ var Constructor = function()
                                                    offset.y + offset2.y),
                                           Qt.point(0, 0), 0, true,
                                           1, 0.5, 5, 200 * i, false);
-            sprite.loadSound("tank_shot.wav", 1, "resources/sounds/", i * 200);
+            sprite.loadSound("cannon_weapon_fire.wav", 1, "resources/sounds/", i * 200);
         }
     };
 
@@ -62,6 +62,7 @@ var Constructor = function()
         var count = sprite.getUnitCount(5);
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
                           1, 1.0, 0, 0);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 200);
         for (var i = 0; i < count; i++)
         {
             sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
@@ -71,7 +72,7 @@ var Constructor = function()
     this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 1200;
+        return 2200;
     };
 
     this.hasDyingAnimation = function()
@@ -82,7 +83,8 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_CANNONBOAT.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
+        BATTLEANIMATION_CANNONBOAT.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 2000);
+        sprite.loadSound("ship_dying_move.wav", -2, "resources/sounds/");
     };
 };
 

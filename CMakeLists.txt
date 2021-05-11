@@ -3,7 +3,17 @@ project (Commander_Wars)
 
 # Information for building commander wars on other platforms
 # 1. make sure the CMAKE_PREFIX_PATH targets to the correct qt installation
-# 2. make sure the LIBRARY_PATH targets the library folder of qt e.g. LD_LIBRARY_PATH=$HOME/Qt/5.15.0/gcc_64/lib
+# 2. make sure the LIBRARY_PATH targets the library folder of qt e.g. LD_LIBRARY_PATH=$HOME/Qt/5.15.2/gcc_64/lib
+
+# Special Information for Android
+# ANDROID_NATIVE_API_LEVEL needs to be 26 or higher
+# ANDROID_ABI needs to be v8 or higher eg. arm64-v8a
+# The related ANDROID_BUILD_ABI needs to be set e.g. _arm64-v8a
+# NDK Version needs to be: 21.3.6528147
+# Example configuration:
+# -DANDROID_NATIVE_API_LEVEL:STRING=26
+# -DANDROID_ABI:STRING=arm64-v8a
+# -DANDROID_BUILD_ABI_arm64-v8a:BOOL=ON
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -16,14 +26,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
-# show configuration
-message("Prefix Path: ${CMAKE_PREFIX_PATH}")
-message("Module Path: ${CMAKE_MODULE_PATH}")
-message("Qt-Dir: ${Qt5_DIR}")
-find_program(ADDR_2_LINE addr2line)
-message("Addr2Line Path: ${ADDR_2_LINE}")
-message("C-Compiler Path: ${CMAKE_C_COMPILER}")
-message("C++-Compiler Path: ${CMAKE_CXX_COMPILER}")
 
 find_package(Qt5 COMPONENTS Core REQUIRED)
 # Qt5LinguistTools
@@ -43,6 +45,7 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         -DQT_DECLARATIVE_DEBUG
         -DQT_QML_DEBUG
         -DGAMEDEBUG
+        -DOXYGINE_DEBUG_SAFECAST
     )
     find_package(Qt5 COMPONENTS QmlDebug REQUIRED)
 else("Release")
@@ -54,20 +57,34 @@ endif()
 
 # general defines
 add_definitions(
-    -DUSE_MEMORY_POOL
     -DMAJOR=0
-    -DMINOR=18
-    -DREVISION=1
+    -DMINOR=19
+    -DREVISION=0
 )
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
     set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}") # -g for debug info
     set(CMAKE_C_FLAGS "-g ${CMAKE_C_FLAGS}") # -g for debug info
-else()
+    find_program(ADDR_2_LINE addr2line)
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
+    set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}") # -g for debug info
+    set(CMAKE_C_FLAGS "-g ${CMAKE_C_FLAGS}") # -g for debug info
+    set(ADDR_2_LINE "")
+else()  # this branch works at least for linux
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
     set(CMAKE_INSTALL_RPATH "${QT_BIN_DIR}/../")
+    find_program(ADDR_2_LINE addr2line)
 endif()
 
+
+# show configuration
+message("Prefix Path: ${CMAKE_PREFIX_PATH}")
+message("Module Path: ${CMAKE_MODULE_PATH}")
+message("Qt-Dir: ${Qt5_DIR}")
+message("Addr2Line Path: ${ADDR_2_LINE}")
+message("C-Compiler Path: ${CMAKE_C_COMPILER}")
+message("C++-Compiler Path: ${CMAKE_CXX_COMPILER}")
+message("OS: ${CMAKE_SYSTEM_NAME}")
 message ("CFlags: ${CMAKE_C_FLAGS}")
 message ("CXX Flags: ${CMAKE_CXX_FLAGS}")
 message ("CMake Systemname: ${CMAKE_SYSTEM_NAME}")
@@ -157,7 +174,7 @@ set(${PROJECT_NAME}_OXYGINE_SRCS
 set(${PROJECT_NAME}_SRCS
         main.cpp
 
-        #objects
+        #objects --> i don't have a good place to put them right now
         objects/coinfoactor.cpp
         objects/rotatingsprite.cpp
         objects/ruleselection.cpp
@@ -171,6 +188,7 @@ set(${PROJECT_NAME}_SRCS
         objects/coselection.cpp
         objects/playerselection.cpp
         objects/achievementbanner.cpp
+        objects/unitstatisticview.cpp
         # objects base
         objects/base/topbar.cpp
         objects/base/textbox.cpp
@@ -230,6 +248,7 @@ set(${PROJECT_NAME}_SRCS
         modding/csvtableimporter.cpp
 
         #menues
+        menue/basemenu.cpp
         menue/mainwindow.cpp
         menue/ingamemenue.cpp
         menue/editormenue.cpp
@@ -279,10 +298,11 @@ set(${PROJECT_NAME}_SRCS
         coreengine/crashreporter.cpp
         coreengine/filesupport.cpp
         coreengine/globalutils.cpp
+
         # tweens
-        coreengine/tweentogglevisibility.cpp
-        coreengine/tweenwait.cpp
-        coreengine/tweenaddcolorall.cpp
+        coreengine/tweens/tweentogglevisibility.cpp
+        coreengine/tweens/tweenwait.cpp
+        coreengine/tweens/tweenscreenshake.cpp
 
         # network engine
         network/tcpclient.cpp
@@ -321,17 +341,17 @@ set(${PROJECT_NAME}_SRCS
         game/gamerecording/replayrecorder.cpp
         # cool ingame script support
         game/gamescript.cpp
-        game/campaign.cpp
-        game/battleanimationsprite.cpp
+        game/campaign.cpp        
         # animation stuff
-        game/gameanimation.cpp
-        game/gameanimationfactory.cpp
-        game/gameanimationwalk.cpp
-        game/gameanimationcapture.cpp
-        game/gameanimationdialog.cpp
-        game/gameanimationpower.cpp
-        game/gameanimationnextday.cpp
-        game/battleanimation.cpp
+        game/gameanimation/gameanimation.cpp
+        game/gameanimation/gameanimationfactory.cpp
+        game/gameanimation/gameanimationwalk.cpp
+        game/gameanimation/gameanimationcapture.cpp
+        game/gameanimation/gameanimationdialog.cpp
+        game/gameanimation/gameanimationpower.cpp
+        game/gameanimation/gameanimationnextday.cpp
+        game/gameanimation/battleanimation.cpp
+        game/gameanimation/battleanimationsprite.cpp
         # replay/observer
         game/viewplayer.cpp
 
@@ -461,6 +481,9 @@ set(${PROJECT_NAME}_SRCS
 
         # spriting support
         spritingsupport/spritecreator.cpp
+
+        # ui
+        ui_reader/uifactory.cpp
 )
 
 #######################################################
@@ -492,6 +515,9 @@ add_custom_target(shaders SOURCES ${ShaderScripts})
 
 FILE(GLOB_RECURSE DataScripts "data/*.js")
 add_custom_target(data SOURCES ${DataScripts})
+
+FILE(GLOB_RECURSE UiXmls "resources/ui/*.xml")
+add_custom_target(uiXml SOURCES ${UiXmls})
 ##############################################################
 # end of this is just for the ide view nothing for execution #
 ##############################################################
@@ -505,11 +531,22 @@ set(TS_FILES
     translation/lang_de_DE.ts
     translation/lang_en.ts
 )
+
+set(TS_FILES
+    translation/lang_de_DE.ts
+    translation/lang_en.ts
+)
+
+
 # adds the translations and a target for it
 qt5_create_translation(
         QM_FILES
         ${${PROJECT_NAME}_SRCS}
-        ${JavaScripts}
+        ${scripts}
+        ${modScripts}
+        ${GameScripts}
+        ${CampaignScripts}
+        ${UiXmls}
         ${TS_FILES}
         OPTIONS ${LUPDATE_OPTIONS}
 )
@@ -550,21 +587,27 @@ else()
     )
 endif()
 
-
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
     target_link_libraries(
         ${PROJECT_NAME}
         ${QT_LIBRARIES}
         ${QT_DEBUG_LIBRARIES}
-        ${OPENGL_LIBRARIES}
+        # special linking of libs for windows
         Dbghelp
     )
-else()
+elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
     target_link_libraries(
         ${PROJECT_NAME}
         ${QT_LIBRARIES}
-        ${OPENGL_LIBRARIES}
-        # currently no crash reporting supported on other os systems
+        ${QT_DEBUG_LIBRARIES}
+        # special linking of libs for android
+        GLESv2
+    )
+else() # this branch works at least for linux
+    target_link_libraries(
+        ${PROJECT_NAME}
+        ${QT_LIBRARIES}
+        ${QT_DEBUG_LIBRARIES}
     )
 endif()
 

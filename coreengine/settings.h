@@ -11,8 +11,10 @@
 #include "game/GameEnums.h"
 
 class GLGraphicsView;
+class Settings;
+using spSettings = oxygine::intrusive_ptr<Settings>;
 
-class Settings : public QObject
+class Settings : public QObject, public oxygine::ref_counter
 {
     Q_OBJECT
 public:
@@ -34,16 +36,17 @@ public:
 
     static void setUsername(const QString &Username);
 
+public slots:
     static QStringList getActiveModVersions();
-
-
     static QStringList getActiveMods();
     static void setActiveMods(const QStringList &activeMods);
 
     static QString getSlaveServerName();
     static void setSlaveServerName(const QString &slaveServerName);
 
-public slots:
+    static bool getSyncAnimations();
+    static void setSyncAnimations(bool syncAnimations);
+
     static bool getCenterOnMarkedField();
     static void setCenterOnMarkedField(bool centerOnMarkedField);
 
@@ -388,9 +391,11 @@ public slots:
      */
     static bool getIsCosmetic(QString mod);
 private:
+    friend class oxygine::intrusive_ptr<Settings>;
     Settings();
     virtual ~Settings() = default;
 
+private:
     // setting variables
     static qint32 m_x;
     static qint32 m_y;
@@ -472,13 +477,13 @@ private:
 
 
     // ingame options
-    static GameEnums::AnimationMode showAnimations;
-    static GameEnums::BattleAnimationMode battleAnimations;
-    static quint32 animationSpeed;
-    static quint32 walkAnimationSpeed;
+    static GameEnums::AnimationMode m_showAnimations;
+    static GameEnums::BattleAnimationMode m_battleAnimations;
+    static quint32 m_animationSpeed;
+    static quint32 m_walkAnimationSpeed;
     static quint32 battleAnimationSpeed;
-    static quint32 dialogAnimationSpeed;
-    static quint32 captureAnimationSpeed;
+    static quint32 m_dialogAnimationSpeed;
+    static quint32 m_captureAnimationSpeed;
     static bool m_dialogAnimation;
     static quint32 multiTurnCounter;
     static QString m_LastSaveGame;
@@ -496,9 +501,10 @@ private:
     static bool m_autoCamera;
     static GameEnums::AutoFocusing m_autoFocusing;
     static bool m_centerOnMarkedField;
+    static bool m_syncAnimations;
 
     // internal members
-    static Settings* m_pInstance;
+    static spSettings m_pInstance;
     static const QString m_settingFile;
     static QStringList m_activeMods;
     static QStringList m_activeModVersions;

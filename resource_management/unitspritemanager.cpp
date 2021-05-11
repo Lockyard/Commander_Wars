@@ -4,6 +4,7 @@ UnitSpriteManager::UnitSpriteManager()
     : RessourceManagement<UnitSpriteManager>("/images/units/res.xml",
                                              "/scripts/units")
 {
+    setObjectName("UnitSpriteManager");
 }
 
 qint32 UnitSpriteManager::getUnitType(qint32 i)
@@ -53,7 +54,7 @@ QStringList UnitSpriteManager::getUnitsSorted()
     QString function1 = "getUnitTypeSort";
     QJSValue ret = pInterpreter->doFunction("UNIT", function1);
     auto list = ret.toVariant().toList();
-    for (auto unitType : list)
+    for (const auto & unitType : qAsConst(list))
     {
         qint32 value = unitType.toInt();
         if (!unitTypes.contains(value))

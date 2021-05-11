@@ -85,13 +85,14 @@ var Constructor = function()
         var count = sprite.getUnitCount(BATTLEANIMATION_MISSILE.getMaxUnitCount());
         sprite.loadSprite("unit_explosion",  false, sprite.getMaxUnitCount(), Qt.point(0, 60),
                           1, 1.0, 0, 300);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 500);
         sprite.loadMovingSprite("rocket_up", false, sprite.getMaxUnitCount(), Qt.point(127, 0),
                                 Qt.point(-128, 64), 400, true,
                                 1, 1, 0, 0, true);
         for (var i = 0; i < count; i++)
         {
             sprite.loadSound("rocket_flying.wav", 1, "resources/sounds/", 0);
-            sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("rockets_explode.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
         }
     };
 

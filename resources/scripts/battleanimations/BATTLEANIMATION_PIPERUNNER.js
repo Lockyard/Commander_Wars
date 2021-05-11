@@ -22,7 +22,7 @@ var Constructor = function()
             sprite.loadSingleMovingSprite("rocket_up", false, Qt.point(82, 82),
                                           Qt.point(128, 64), 400, false,
                                           1, 1, -1, i * 150);
-            sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", i * 150);
+            sprite.loadSound("pipecannon_weapon_fire.wav", 1, "resources/sounds/", i * 150);
         }
     };
 
@@ -36,6 +36,7 @@ var Constructor = function()
         var count = sprite.getUnitCount(5);
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 60),
                           1, 1.0, 0, 300);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 500);
         if (defender.getUnitType() === GameEnums.UnitType_Air)
         {
             sprite.loadMovingSprite("rocket_up", false, 5, Qt.point(127, 0),

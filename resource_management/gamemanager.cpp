@@ -9,6 +9,7 @@ GameManager::GameManager()
     : RessourceManagement<GameManager>("/images/game/res.xml",
                                        "")
 {
+    setObjectName("GameManager");
 }
 
 void GameManager::reset()
@@ -20,9 +21,9 @@ void GameManager::reset()
 void GameManager::loadAll()
 {
     reset();
-    scriptPath = "scripts/actions/";
+    m_scriptPath = "scripts/actions/";
     RessourceManagement<GameManager>::loadAll(m_loadedRessources);
-    scriptPath = "aidata/heavy/";
+    m_scriptPath = "aidata/heavy/";
     RessourceManagement<GameManager>::loadAll(m_loadedHeavyAis);
 }
 
@@ -58,14 +59,14 @@ oxygine::spSprite GameManager::getIcon(QString icon)
                 pMap->getCurrentPlayer() == nullptr ||
                 pMap->getCurrentPlayer()->getColorTableAnim().get() == nullptr)
             {
-                pPlayer = new Player();
+                pPlayer = spPlayer::create();
                 pPlayer->init();
             }
             else
             {
                 pPlayer = pMap->getCurrentPlayer();
             }
-            oxygine::spSprite ret = new Unit(icon, pPlayer.get(), false);
+            oxygine::spSprite ret = spUnit::create(icon, pPlayer.get(), false);
             return ret;
         }
         else if (pBuildingSpriteManager->exists(icon))
@@ -77,7 +78,7 @@ oxygine::spSprite GameManager::getIcon(QString icon)
             {
                 pPlayer = pMap->getCurrentPlayer();
             }
-            Building* pBuilding = new Building(icon);
+            spBuilding pBuilding = spBuilding::create(icon);
             pBuilding->setOwner(pPlayer.get());
             pBuilding->scaleAndShowOnSingleTile();
             return pBuilding;
@@ -88,7 +89,7 @@ oxygine::spSprite GameManager::getIcon(QString icon)
 
 oxygine::spSprite GameManager::getIconSprite(QString icon)
 {
-    oxygine::spSprite pSprite = new oxygine::Sprite();
+    oxygine::spSprite pSprite = oxygine::spSprite::create();
     GameManager* pGameManager = GameManager::getInstance();
     oxygine::ResAnim* pAnim = pGameManager->getResAnim(icon);
     if (pAnim != nullptr)
@@ -102,8 +103,8 @@ oxygine::spSprite GameManager::getIconSprite(QString icon)
         {
             pSprite->setResAnim(pAnim);
         }
+        pSprite->setScale(GameMap::getImageSize() / pAnim->getWidth());
     }
-    pSprite->setScale(GameMap::getImageSize() / pAnim->getWidth());
     pSprite->setPosition(-(pSprite->getScaledWidth() - GameMap::getImageSize()) / 2, -(pSprite->getScaledHeight() - GameMap::getImageSize()));
     return pSprite;
 }

@@ -23,6 +23,8 @@
 #include "menue/victorymenue.h"
 #include "menue/gamemenue.h"
 #include "menue/mapselectionmapsmenue.h"
+#include "menue/campaignmenu.h"
+#include "menue/editormenue.h"
 
 #include "game/terrain.h"
 #include "game/player.h"
@@ -30,12 +32,12 @@
 #include "game/unit.h"
 #include "game/co.h"
 #include "game/gameaction.h"
-#include "game/gameanimation.h"
-#include "game/gameanimationwalk.h"
-#include "game/gameanimationcapture.h"
-#include "game/gameanimationdialog.h"
-#include "game/gameanimationpower.h"
-#include "game/gameanimationnextday.h"
+#include "game/gameanimation/gameanimation.h"
+#include "game/gameanimation/gameanimationwalk.h"
+#include "game/gameanimation/gameanimationcapture.h"
+#include "game/gameanimation/gameanimationdialog.h"
+#include "game/gameanimation/gameanimationpower.h"
+#include "game/gameanimation/gameanimationnextday.h"
 #include "game/victoryrule.h"
 #include "game/gamerules.h"
 #include "game/gamerule.h"
@@ -60,7 +62,7 @@
 
 #include "ai/heavyai.h"
 
-int main(int argc, char* argv[])
+int main(qint32 argc, char* argv[])
 {
     qInstallMessageHandler(Console::messageOutput);
     srand(static_cast<unsigned>(time(nullptr)));
@@ -70,14 +72,14 @@ QQmlDebuggingEnabler enabler;
 #endif
 
     QGuiApplication app(argc, argv);
-    app.setApplicationName(QObject::tr("Commander Wars"));
+    app.setApplicationName("Commander Wars");
     app.setApplicationVersion(Mainapp::getGameVersion());
     Settings::loadSettings();
     QDir dir("temp/");
     dir.removeRecursively();
     dir.mkpath(".");
     Mainapp window;
-    window.setTitle(QObject::tr("Commander Wars"));
+    window.setTitle("Commander Wars");
     QStringList args = app.arguments();
     window.loadArgs(args);
     // start crash report handler
@@ -108,6 +110,8 @@ QQmlDebuggingEnabler enabler;
     qRegisterMetaType<GameEnums::COInfoPosition>("GameEnums::COInfoPosition");
     qRegisterMetaType<GameEnums::WeaponType>("GameEnums::WeaponType");
     qRegisterMetaType<GameEnums::ShopItemType>("GameEnums::ShopItemType");
+    qRegisterMetaType<Console::eLogLevels>("Console::eLogLevels");
+    qRegisterMetaType<Mainapp::StartupPhase>("Mainapp::StartupPhase");
     qRegisterMetaType<std::shared_ptr<QTcpSocket>>("std::shared_ptr<QTcpSocket>");
     qRegisterMetaType<spScriptEvent>("spScriptEvent");
     qRegisterMetaType<spScriptCondition>("spScriptCondition");
@@ -159,11 +163,14 @@ QQmlDebuggingEnabler enabler;
     qmlRegisterInterface<Mainwindow>("Mainwindow", 1);
     qmlRegisterInterface<VictoryMenue>("VictoryMenue", 1);
     qmlRegisterInterface<GameMenue>("GameMenue", 1);
+    qmlRegisterInterface<CampaignMenu>("CampaignMenu", 1);
+    qmlRegisterInterface<EditorMenue>("EditorMenue", 1);
     qmlRegisterInterface<MapSelectionMapsMenue>("MapSelectionMapsMenue", 1);
     qmlRegisterInterface<PlayerSelection>("PlayerSelection", 1);
     /*************************************************************************************************/
     // show window according to window mode
     window.changeScreenMode(window.getScreenMode());
+
     window.setBrightness(Settings::getBrightness());
     window.setGamma(Settings::getGamma());
     window.setPosition(Settings::getX(), Settings::getY());
@@ -179,6 +186,7 @@ QQmlDebuggingEnabler enabler;
     {
         GameMap::getInstance()->deleteMap();
     }
+    Player::releaseStaticData();
     // store current settings when closing
     Userdata::getInstance()->storeUser();
     if (MainServer::getInstance() != nullptr)

@@ -25,7 +25,7 @@ var Constructor = function()
                               1, 1.0, 0, 0);
             for (var i = 0; i < count; i++)
             {
-                sprite.loadSound("tank_shot.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("neocannonweapon_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
             }
         }
         else
@@ -34,6 +34,12 @@ var Constructor = function()
             offset = Qt.point(32, 17);
             sprite.loadSprite("mg_shot",  false, sprite.getMaxUnitCount(), offset,
                               1, 1, 0, 0, false, true);
+            for (var i = 0; i < count; i++)
+            {
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+                sprite.loadSound("mg_weapon_fire.wav", 1, "resources/sounds/", 400 + i * BATTLEANIMATION.defaultFrameDelay);
+            }
         }
     };
 
@@ -45,6 +51,7 @@ var Constructor = function()
         {
             sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
                               1, 1.0, 0, 0);
+            sprite.addSpriteScreenshake(8, 0.95, 800, 200);
             for (i = 0; i < count; i++)
             {
                 sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", i * BATTLEANIMATION.defaultFrameDelay);

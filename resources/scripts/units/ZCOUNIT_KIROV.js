@@ -37,14 +37,11 @@ var Constructor = function()
     {
         return qsTr("Kirov");
     };
-    this.startOfTurn = function(unit)
-    {
-    };
     this.createExplosionAnimation = function(x, y, unit)
     {
         var animation = GameAnimationFactory.createAnimation(x, y);
         animation.addSprite("explosion+air", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5);
-        audio.playSound("explosion+air.wav");
+        animation.setSound("explosion+air.wav");
         return animation;
     };
     this.doWalkingAnimation = function(action)

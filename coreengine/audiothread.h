@@ -7,6 +7,7 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 #include <QTimer>
+#include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 class QMediaPlaylist;
 
@@ -26,10 +27,20 @@ signals:
     void SignalClearPlayList();
     void SignalPlayRandom();
     void SignalLoadFolder(QString folder);
-    void SignalPlaySound(QString file, qint32 loops, QString folder, qint32 delay);
+    void SignalPlaySound(QString file, qint32 loops, QString folder, qint32 delay, float volume = 1.0f);
     void SignalStopSound(QString file, QString folder);
     void SignalStopAllSounds();
 public slots:
+    /**
+     * @brief getLoadBaseGameFolders
+     * @return
+     */
+    bool getLoadBaseGameFolders() const;
+    /**
+     * @brief setLoadBaseGameFolders
+     * @param loadBaseGameFolders
+     */
+    void setLoadBaseGameFolders(bool loadBaseGameFolders);
     /**
      * @brief playMusic
      * @param File the music file to be played
@@ -71,7 +82,7 @@ public slots:
      * @param loops
      * @param folder
      */
-    void playSound(QString file, qint32 loops = 1, QString folder = "resources/sounds/", qint32 delay = 0);
+    void playSound(QString file, qint32 loops = 1, QString folder = "resources/sounds/", qint32 delay = 0, float volume = 1.0f);
     /**
      * @brief stopSound
      * @param file
@@ -83,7 +94,7 @@ public slots:
      */
     void stopAllSounds();
 protected slots:
-    // stops current Music and launches new one.
+    // stops current Music and launches another one.
     void SlotPlayMusic(qint32 File);
     void SlotSetVolume(qint32 value);
     void SlotAddMusic(QString File, qint64 startPointMs = -1, qint64 endPointMs = -1);
@@ -93,7 +104,7 @@ protected slots:
     void SlotLoadFolder(QString folder);
     void SlotCheckMusicEnded(qint64 duration);
     // audio stuff
-    void SlotPlaySound(QString file, qint32 loops, QString folder, qint32 delay);
+    void SlotPlaySound(QString file, qint32 loops, QString folder, qint32 delay, float volume = 1.0f);
     void SlotStopSound(QString file, QString folder);
     void SlotStopAllSounds();
     void SlotSoundEnded();
@@ -115,13 +126,13 @@ private:
     QMediaPlaylist m_playList;
     QMediaPlayer m_Player2;
     QMediaPlaylist m_playList2;
-    qint32 currentPlayer{-1};
+    qint32 m_currentPlayer{-1};
     QVector<std::tuple<qint64, qint64>> m_PlayListdata;
-    qint32 currentMedia{-1};
+    qint32 m_currentMedia{-1};
     QVector<QSoundEffect*> m_Sounds;
     QVector<QTimer*> m_SoundTimers;
-
     QTimer m_doubleBufferTimer;
+    bool m_loadBaseGameFolders{true};
 };
 
 #endif // AUDIOTHREAD_H

@@ -7,19 +7,20 @@
 CloseablePopUp::CloseablePopUp(qint32 width, qint32 heigth)
     : QObject()
 {
+    setObjectName("CloseablePopUp");
     setSize(width, heigth);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     ObjectManager* pObjectManager = ObjectManager::getInstance();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("panel");
 
-    oxygine::spBox9Sprite pBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pBox = oxygine::spBox9Sprite::create();
     pBox->setVerticalMode(oxygine::Box9Sprite::STRETCHING);
     pBox->setHorizontalMode(oxygine::Box9Sprite::STRETCHING);
     pBox->setResAnim(pAnim);
     pBox->setSize(width, heigth);
 
-    oxygine::spSprite pSprite = new oxygine::Sprite();
+    oxygine::spSprite pSprite = oxygine::spSprite::create();
     pAnim = pObjectManager->getResAnim("checkbox");
     pSprite->setResAnim(pAnim);
     pSprite->setScale(0.5f);
@@ -42,18 +43,18 @@ CloseablePopUp::CloseablePopUp(qint32 width, qint32 heigth)
     addChild(pBox);
     connect(this, &CloseablePopUp::sigClosed, this, &CloseablePopUp::close, Qt::QueuedConnection);
 
-    _drag.init(this);
-    _drag.setDragEnabled(true);
-    _drag.setDragBounds(oxygine::RectF(0, 0, Settings::getWidth() - width, Settings::getHeight() - heigth));
+    m_drag.init(this);
+    m_drag.setDragEnabled(true);
+    m_drag.setDragBounds(oxygine::RectF(0, 0, Settings::getWidth() - width, Settings::getHeight() - heigth));
     QSize size(width - 10, heigth - 4 - pSprite->getScaledHeight());
-    m_pPanel = new Panel(true, size, size);
+    m_pPanel = spPanel::create(true, size, size);
     m_pPanel->setPosition(5, pSprite->getScaledHeight());
     pBox->addChild(m_pPanel);
 }
 
 void CloseablePopUp::setLocked(bool locked)
 {
-    _drag.setDragEnabled(!locked);
+    m_drag.setDragEnabled(!locked);
 }
 
 void CloseablePopUp::close()

@@ -41,13 +41,14 @@ var Constructor = function()
         var count = sprite.getUnitCount(5);
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 20),
                           1, 1.0, 0, 300);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 500);
         sprite.loadMovingSprite("rocket_down", false, 5, Qt.point(127, 80),
                                 Qt.point(-128, -64), 400, true,
                                 1, 1, 0, 0, true);
         for (var i = 0; i < count; i++)
         {
             sprite.loadSound("rocket_flying.wav", 1, "resources/sounds/", 0);
-            sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("rockets_explode.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
         }
     };
 
@@ -59,7 +60,8 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_ZCOUNIT_MISSILE_SUB.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 1000);
+        BATTLEANIMATION_ZCOUNIT_MISSILE_SUB.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, 0), 2000);
+        sprite.loadSound("ship_dying_move.wav", -2, "resources/sounds/");
     };
 
     this.getFireDurationMS = function(sprite, unit, defender, weapon)
@@ -78,7 +80,7 @@ var Constructor = function()
     this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 1200 + BATTLEANIMATION.defaultFrameDelay * 5;
+        return 2200;
     };
 };
 

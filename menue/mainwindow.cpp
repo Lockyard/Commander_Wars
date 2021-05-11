@@ -33,8 +33,12 @@
 #include "objects/dialogs/folderdialog.h"
 #include "objects/loadingscreen.h"
 
+
+#include "ui_reader/uifactory.h"
+
 Mainwindow::Mainwindow()
 {
+    setObjectName("Mainwindow");
     Mainapp* pApp = Mainapp::getInstance();
     pApp->pauseRendering();
     this->moveToThread(pApp->getWorkerthread());
@@ -42,7 +46,7 @@ Mainwindow::Mainwindow()
     Console::print("Entering Main Menue", Console::eDEBUG);
     BackgroundManager* pBackgroundManager = BackgroundManager::getInstance();
     // load background
-    oxygine::spSprite sprite = new oxygine::Sprite();
+    oxygine::spSprite sprite = oxygine::spSprite::create();
     addChild(sprite);
     oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("mainmenu");
     sprite->setResAnim(pBackground);
@@ -217,7 +221,7 @@ Mainwindow::Mainwindow()
 
     if (Settings::getUsername().isEmpty())
     {
-        spDialogTextInput pDialogTextInput = new DialogTextInput(tr("Select Username"), false, "");
+        spDialogTextInput pDialogTextInput = spDialogTextInput::create(tr("Select Username"), false, "");
         addChild(pDialogTextInput);
         connect(pDialogTextInput.get(), &DialogTextInput::sigTextChanged, this, &Mainwindow::changeUsername, Qt::QueuedConnection);
     }
@@ -227,7 +231,7 @@ Mainwindow::Mainwindow()
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
-    oxygine::spTextField pTextfield = new oxygine::TextField();
+    oxygine::spTextField pTextfield = oxygine::spTextField::create();
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(Mainapp::getGameVersion());
     pTextfield->setPosition(Settings::getWidth() - 10 - pTextfield->getTextRect().getWidth(), Settings::getHeight() - 10 - pTextfield->getTextRect().getHeight());
@@ -245,6 +249,11 @@ Mainwindow::Mainwindow()
     btnI++;
 
     connect(this, &Mainwindow::sigOnEnter, this, &Mainwindow::onEnter, Qt::QueuedConnection);
+
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QJSValue obj = pInterpreter->newQObject(this);
+    pInterpreter->setGlobal("currentMenu", obj);
+    UiFactory::getInstance().createUi("ui/mainmenu.xml", this);
     emit sigOnEnter();
     pApp->continueRendering();
 }
@@ -252,7 +261,7 @@ Mainwindow::Mainwindow()
 void Mainwindow::import()
 {
     QString path = QCoreApplication::applicationDirPath();
-    spFolderDialog folderDialog = new FolderDialog(path);
+    spFolderDialog folderDialog = spFolderDialog::create(path);
     addChild(folderDialog);
     connect(folderDialog.get(), &FolderDialog::sigFolderSelected, this, &Mainwindow::importFromDirectory, Qt::QueuedConnection);
 }
@@ -317,14 +326,14 @@ Mainwindow::~Mainwindow()
 
 void Mainwindow::enterSingleplayer()
 {    
-    oxygine::getStage()->addChild(new MapSelectionMapsMenue());
+    oxygine::getStage()->addChild(spMapSelectionMapsMenue::create());
     leaveMenue();    
 }
 
 void Mainwindow::enterMultiplayer()
 {
     
-    oxygine::getStage()->addChild(new LobbyMenu());
+    oxygine::getStage()->addChild(spLobbyMenu::create());
     leaveMenue();
     
 }
@@ -332,7 +341,7 @@ void Mainwindow::enterMultiplayer()
 void Mainwindow::enterEditor()
 {
     
-    oxygine::getStage()->addChild(new EditorMenue());
+    oxygine::getStage()->addChild(spEditorMenue::create());
     leaveMenue();
     
 }
@@ -340,7 +349,7 @@ void Mainwindow::enterEditor()
 void Mainwindow::enterOptionmenue()
 {
     
-    oxygine::getStage()->addChild(new OptionMenue());
+    oxygine::getStage()->addChild(spOptionMenue::create());
     leaveMenue();
     
 }
@@ -348,7 +357,7 @@ void Mainwindow::enterOptionmenue()
 void Mainwindow::enterWikimenue()
 {
     
-    oxygine::getStage()->addChild(new Wikimenu());
+    oxygine::getStage()->addChild(spWikimenu::create());
     leaveMenue();
     
 }
@@ -356,20 +365,20 @@ void Mainwindow::enterWikimenue()
 void Mainwindow::enterCreditsmenue()
 {
     
-    oxygine::getStage()->addChild(new CreditsMenue());
+    oxygine::getStage()->addChild(spCreditsMenue::create());
     leaveMenue();
     
 }
 
 void Mainwindow::enterAchievementmenue()
 {    
-    oxygine::getStage()->addChild(new Achievementmenu());
+    oxygine::getStage()->addChild(spAchievementmenu::create());
     leaveMenue();    
 }
 
 void Mainwindow::enterShopMenu()
 {
-    oxygine::getStage()->addChild(new Shopmenu());
+    oxygine::getStage()->addChild(spShopmenu::create());
     leaveMenue();
 }
 
@@ -379,7 +388,7 @@ void Mainwindow::enterLoadGame()
     QVector<QString> wildcards;
     wildcards.append("*.sav");
     QString path = QCoreApplication::applicationDirPath() + "/savegames";
-    spFileDialog saveDialog = new FileDialog(path, wildcards);
+    spFileDialog saveDialog = spFileDialog::create(path, wildcards);
     this->addChild(saveDialog);
     connect(saveDialog.get(), &FileDialog::sigFileSelected, this, &Mainwindow::loadGame, Qt::QueuedConnection);
     
@@ -390,7 +399,7 @@ void Mainwindow::enterLoadCampaign()
     QVector<QString> wildcards;
     wildcards.append("*.camp");
     QString path = QCoreApplication::applicationDirPath() + "/savegames";
-    spFileDialog saveDialog = new FileDialog(path, wildcards);
+    spFileDialog saveDialog = spFileDialog::create(path, wildcards);
     this->addChild(saveDialog);
     connect(saveDialog.get(), &FileDialog::sigFileSelected, this, &Mainwindow::loadCampaign, Qt::QueuedConnection);    
 }
@@ -403,11 +412,11 @@ void Mainwindow::loadCampaign(QString filename)
         QFile file(filename);
         if (file.exists())
         {
-            spCampaign pCampaign = new Campaign();
+            spCampaign pCampaign = spCampaign::create();
             QDataStream stream(&file);
             file.open(QIODevice::ReadOnly);
             pCampaign->deserializeObject(stream);
-            CampaignMenu* pMenu = new CampaignMenu(pCampaign, false);
+            spCampaignMenu pMenu = spCampaignMenu::create(pCampaign, false);
             oxygine::getStage()->addChild(pMenu);
             leaveMenue();
         }
@@ -421,7 +430,7 @@ void Mainwindow::enterReplayGame()
     QVector<QString> wildcards;
     wildcards.append("*.rec");
     QString path = QCoreApplication::applicationDirPath() + "/data/records";
-    spFileDialog saveDialog = new FileDialog(path, wildcards);
+    spFileDialog saveDialog = spFileDialog::create(path, wildcards);
     this->addChild(saveDialog);
     connect(saveDialog.get(), &FileDialog::sigFileSelected, this, &Mainwindow::replayGame, Qt::QueuedConnection);
     
@@ -440,7 +449,7 @@ void Mainwindow::loadGame(QString filename)
         QFile file(filename);
         if (file.exists())
         {
-            GameMenue* pMenu = new GameMenue(filename, true);
+            spGameMenue pMenu = spGameMenue::create(filename, true);
             oxygine::getStage()->addChild(pMenu);
             Mainapp* pApp = Mainapp::getInstance();
             pApp->getAudioThread()->clearPlayList();
@@ -460,7 +469,7 @@ void Mainwindow::replayGame(QString filename)
         if (file.exists())
         {
             Console::print("Leaving Main Menue", Console::eDEBUG);
-            ReplayMenu* pMenu = new ReplayMenu(filename);
+            spReplayMenu pMenu = spReplayMenu::create(filename);
             oxygine::getStage()->addChild(pMenu);
 
             Mainapp* pApp = Mainapp::getInstance();
@@ -480,7 +489,7 @@ void Mainwindow::leaveMenue()
 void Mainwindow::enterCOStyleMenu()
 {
     
-    oxygine::getStage()->addChild(new COStyleMenu());
+    oxygine::getStage()->addChild(spCOStyleMenu::create());
     leaveMenue();
     
 }

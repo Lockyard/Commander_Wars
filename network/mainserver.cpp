@@ -39,7 +39,7 @@ MainServer::MainServer()
 
 MainServer::~MainServer()
 {
-    m_pGameServer->sig_close();
+    emit m_pGameServer->sig_close();
     // clean up server and client games.
     for (qint32 i = 0; i < m_games.size(); i++)
     {
@@ -75,7 +75,7 @@ void MainServer::joinSlaveGame(quint64 socketID, QDataStream & stream)
     QString slave;
     stream >> slave;
     Console::print("Searching for game " + slave + " for socket " + QString::number(socketID) + " to join game.", Console::eDEBUG);
-    for (const auto & game : m_games)
+    for (const auto & game : qAsConst(m_games))
     {
         if (game->game.getServerName() == slave)
         {
@@ -104,10 +104,11 @@ void MainServer::spawnSlaveGame(QDataStream & stream, quint64 socketID, QByteArr
     {
         m_slaveGameIterator++;
         QString slaveName = "Commander_Wars_Slave_" + QString::number(m_slaveGameIterator);
-        m_games.append(new InternNetworkGame);
+        m_games.append(spInternNetworkGame::create());
         qint32 pos = m_games.size() - 1;
         QString program = "Commander_Wars.exe";
         m_games[pos]->process = new QProcess();
+        m_games[pos]->process->setObjectName("Slaveprocess");
         QStringList args;
         args << "-slave";
         args << "-slaveServer";
@@ -173,15 +174,17 @@ void MainServer::playerJoined(qint64 socketId)
 
 void MainServer::sendGameDataToClient(qint64 socketId)
 {
+    QString command = QString(NetworkCommands::SERVERGAMEDATA);
+    Console::print("Sending command " + command, Console::eDEBUG);
     QByteArray block;
     QBuffer buffer(&block);
     buffer.open(QIODevice::WriteOnly);
     QDataStream out(&buffer);
-    out << NetworkCommands::SERVERGAMEDATA;
+    out << command;
     qint32 sizePos = buffer.pos();
     out << sizePos;
     qint32 count = 0;
-    for (const auto & game : m_games)
+    for (const auto & game : qAsConst(m_games))
     {
         if (!game->game.getData().getLaunched() &&
             game->game.getSlaveRunning())

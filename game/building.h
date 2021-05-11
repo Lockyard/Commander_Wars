@@ -91,7 +91,11 @@ public:
      * @brief scaleAndShowOnSingleTile
      */
     void scaleAndShowOnSingleTile();
-
+    /**
+     * @brief syncAnimation
+     * @param syncTime
+     */
+    void syncAnimation(oxygine::timeMS syncTime);
 signals:
 
 public slots:
@@ -226,7 +230,7 @@ public slots:
      */
     QPoint getPosition() const
     {
-        return QPoint(getX(), getY());
+        return QPoint(Building::getX(), Building::getY());
     }
 
     qint32 getHp() const;
@@ -421,10 +425,10 @@ private:
     /**
       *
       */
-    qint32 fireCount{0};
+    qint32 m_fireCount{0};
 
-    bool alwaysVisble{false};
-    bool neutralLoaded{false};
+    bool m_alwaysVisble{false};
+    bool m_neutralLoaded{false};
     qint32 m_VisionHigh{0};
     ScriptVariables m_Variables;
 };

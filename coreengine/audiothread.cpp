@@ -16,9 +16,10 @@ AudioThread::AudioThread()
       m_playList2(this),
       m_doubleBufferTimer(this)
 {
+    setObjectName("AudioThread");
     Interpreter::setCppOwnerShip(this);
     // move signals and slots to Audio Thread
-    this->moveToThread(Mainapp::getAudioWorker());
+    moveToThread(Mainapp::getAudioWorker());
     connect(this, &AudioThread::SignalPlayMusic,        this, &AudioThread::SlotPlayMusic, Qt::QueuedConnection);
     connect(this, &AudioThread::SignalSetVolume,        this, &AudioThread::SlotSetVolume, Qt::QueuedConnection);
     connect(this, &AudioThread::SignalAddMusic,         this, &AudioThread::SlotAddMusic, Qt::QueuedConnection);
@@ -89,9 +90,9 @@ void AudioThread::playRandom()
     emit SignalPlayRandom();
 }
 
-void AudioThread::playSound(QString file, qint32 loops, QString folder, qint32 delay)
+void AudioThread::playSound(QString file, qint32 loops, QString folder, qint32 delay, float volume)
 {
-    emit SignalPlaySound(file, loops, folder, delay);
+    emit SignalPlaySound(file, loops, folder, delay, volume);
 }
 
 void AudioThread::stopSound(QString file, QString folder)
@@ -116,42 +117,42 @@ void AudioThread::SlotClearPlayList()
     m_Player2.stop();
     m_playList2.clear();
     m_PlayListdata.clear();
-    currentPlayer = -1;
+    m_currentPlayer = -1;
 }
 
 void AudioThread::SlotPlayMusic(qint32 File)
 {
-    currentPlayer = -1;
+    m_currentPlayer = -1;
     m_playList.setCurrentIndex(File);
     m_Player2.stop();
     m_Player.play();
-    currentMedia = File;
+    m_currentMedia = File;
 }
 
 
 void AudioThread::SlotPlayRandom()
 {
     bufferAudio();
-    if (currentPlayer == 0)
+    if (m_currentPlayer == 0)
     {
         // start buffered player
-        currentMedia = m_playList2.currentIndex();
+        m_currentMedia = m_playList2.currentIndex();
         m_Player2.play();
-        currentPlayer = 1;
+        m_currentPlayer = 1;
     }
     else
     {
         // start buffered player
-        currentMedia = m_playList.currentIndex();
+        m_currentMedia = m_playList.currentIndex();
         m_Player.play();
-        currentPlayer = 0;
+        m_currentPlayer = 0;
     }
     m_doubleBufferTimer.start();
 }
 
 void AudioThread::bufferAudio()
 {
-    if (currentPlayer < 0)
+    if (m_currentPlayer < 0)
     {
         qint32 size = m_playList.mediaCount();
         if (size > 0)
@@ -171,7 +172,7 @@ void AudioThread::bufferAudio()
             m_Player2.stop();
             m_playList.setCurrentIndex(newMedia);
             if (std::get<0>(m_PlayListdata[newMedia]) > 0  &&
-                currentPlayer >= 0 &&
+                m_currentPlayer >= 0 &&
                 newMedia2 == newMedia)
             {
                 m_Player.setPosition(std::get<0>(m_PlayListdata[newMedia]));
@@ -190,7 +191,7 @@ void AudioThread::stopSecondPlayer()
     if (size > 0)
     {
         qint32 newMedia = GlobalUtils::randIntBase(0, size - 1);
-        if (currentPlayer == 0)
+        if (m_currentPlayer == 0)
         {
             // load buffe on current player
             m_Player2.stop();
@@ -244,7 +245,7 @@ void AudioThread::SlotAddMusic(QString File, qint64 startPointMs, qint64 endPoin
     }
     else
     {
-        Console::print("Unable to locate music file: " + currentPath, Console::eERROR);
+        Console::print("Unable to locate music file: " + currentPath, Console::eDEBUG);
     }
 }
 
@@ -271,7 +272,10 @@ void AudioThread::SlotLoadFolder(QString folder)
     {
         loadMusicFolder(Settings::getMods().at(i) + "/" + folder, loadedSounds);
     }
-    loadMusicFolder(folder, loadedSounds);
+    if (m_loadBaseGameFolders)
+    {
+        loadMusicFolder(folder, loadedSounds);
+    }
 }
 
 void AudioThread::loadMusicFolder(QString folder, QStringList& loadedSounds)
@@ -284,7 +288,7 @@ void AudioThread::loadMusicFolder(QString folder, QStringList& loadedSounds)
         QStringList files = directory.entryList(filter);
         for (const auto& file : files)
         {
-            if (!loadedSounds.contains(file))
+            if (!loadedSounds.contains(file) && QFile::exists(currentPath + '/' + file))
             {
                 bool loaded = m_playList.addMedia(QUrl::fromLocalFile(currentPath + '/' + file));
                 loaded = loaded && m_playList2.addMedia(QUrl::fromLocalFile(currentPath + '/' + file));
@@ -302,15 +306,25 @@ void AudioThread::loadMusicFolder(QString folder, QStringList& loadedSounds)
     }
     else
     {
-        Console::print("Unable to locate music folder: " + currentPath, Console::eERROR);
+        Console::print("Unable to locate music folder: " + currentPath, Console::eDEBUG);
     }
+}
+
+bool AudioThread::getLoadBaseGameFolders() const
+{
+    return m_loadBaseGameFolders;
+}
+
+void AudioThread::setLoadBaseGameFolders(bool loadBaseGameFolders)
+{
+    m_loadBaseGameFolders = loadBaseGameFolders;
 }
 
 void AudioThread::SlotCheckMusicEnded(qint64 duration)
 {
-    if (currentMedia >= 0 && currentMedia < m_PlayListdata.size())
+    if (m_currentMedia >= 0 && m_currentMedia < m_PlayListdata.size())
     {
-        qint64 loopPos = std::get<1>(m_PlayListdata[currentMedia]);
+        qint64 loopPos = std::get<1>(m_PlayListdata[m_currentMedia]);
         if ((loopPos <= duration) &&
             (loopPos > 0))
         {
@@ -320,10 +334,10 @@ void AudioThread::SlotCheckMusicEnded(qint64 duration)
     }
 }
 
-void AudioThread::SlotPlaySound(QString file, qint32 loops, QString folder, qint32 delay)
+void AudioThread::SlotPlaySound(QString file, qint32 loops, QString folder, qint32 delay, float volume)
 {
     qreal sound = (static_cast<qreal>(Settings::getSoundVolume()) / 100.0 *
-                   static_cast<qreal>(Settings::getTotalVolume()) / 100.0);
+                   static_cast<qreal>(Settings::getTotalVolume()) / 100.0) * volume;
     QString soundfile = folder + file;
     QStringList mods = Settings::getMods();
     for (qint32 i = mods.size() - 1; i >= 0; i--)
@@ -341,39 +355,29 @@ void AudioThread::SlotPlaySound(QString file, qint32 loops, QString folder, qint
     QUrl url = QUrl::fromLocalFile(soundfile);
     if (url.isValid())
     {
-        qint32 count = 0;
-        for (qint32 i = 0; i < m_Sounds.size(); i++)
+        QSoundEffect* pSoundEffect = new QSoundEffect(this);
+        pSoundEffect->setObjectName("SoundEffect");
+        qreal value = QAudio::convertVolume(sound,
+                                            QAudio::LogarithmicVolumeScale,
+                                            QAudio::LinearVolumeScale);
+        QTimer* pTimer = new QTimer(this);
+        pTimer->setObjectName("SoundEffectTimer");
+        pSoundEffect->setVolume(value);
+        pSoundEffect->setSource(url);
+        pSoundEffect->setLoopCount(loops);
+        connect(pSoundEffect, &QSoundEffect::playingChanged, this, &AudioThread::SlotSoundEnded, Qt::QueuedConnection);
+        if (delay > 0)
         {
-            if (m_Sounds[i]->source().path() == url.path())
-            {
-                count++;
-            }
+            connect(pTimer, &QTimer::timeout, this, &AudioThread::SlotSoundStart, Qt::QueuedConnection);
+            pTimer->setSingleShot(true);
+            pTimer->start(delay);
         }
-        if (count < 10)
+        else
         {
-            QSoundEffect* pSoundEffect = new QSoundEffect();
-            qreal value = QAudio::convertVolume(sound,
-                                                QAudio::LogarithmicVolumeScale,
-                                                QAudio::LinearVolumeScale);
-            QTimer* pTimer = new QTimer();
-            pTimer->moveToThread(Mainapp::getInstance()->getAudioWorker());
-            pSoundEffect->setVolume(value);
-            pSoundEffect->setSource(url);
-            pSoundEffect->setLoopCount(loops);
-            connect(pSoundEffect, &QSoundEffect::playingChanged, this, &AudioThread::SlotSoundEnded, Qt::QueuedConnection);
-            if (delay > 0)
-            {
-                connect(pTimer, &QTimer::timeout, this, &AudioThread::SlotSoundStart, Qt::QueuedConnection);
-                pTimer->setSingleShot(true);
-                pTimer->start(delay);
-            }
-            else
-            {
-                pSoundEffect->play();
-            }
-            m_Sounds.push_back(pSoundEffect);
-            m_SoundTimers.push_back(pTimer);
+            pSoundEffect->play();
         }
+        m_Sounds.push_back(pSoundEffect);
+        m_SoundTimers.push_back(pTimer);
     }
 }
 

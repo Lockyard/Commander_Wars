@@ -10,7 +10,7 @@
 #include "game/terrain.h"
 #include "game/co.h"
 
-// some local constants to map old cow stuff to this brand new cool version
+// some local constants to map old cow stuff to this cool version
 static const qint32 terrainCount = 19;
 static const QString terrainIdMapping[terrainCount][2] = {{"SEE", "SEA"},
                                               {"EBENE", "PLAINS"},
@@ -131,11 +131,11 @@ void GameMap::importTxtMap(QString file)
             else if (line.startsWith("SPIELER|"))
             {
                 QStringList data = line.split("|");
-                players.append(new Player());
-                qint32 idx = players.size() - 1;
-                players[idx]->setFundsModifier(static_cast<float>(data[1].toInt()) / 1000.0f);
-                players[idx]->setFunds(data[2].toInt());
-                players[idx]->init();
+                m_players.append(spPlayer::create());
+                qint32 idx = m_players.size() - 1;
+                m_players[idx]->setFundsModifier(static_cast<float>(data[1].toInt()) / 1000.0f);
+                m_players[idx]->setFunds(data[2].toInt());
+                m_players[idx]->init();
             }
             else if (line.startsWith(("GROESSE")))
             {
@@ -144,12 +144,12 @@ void GameMap::importTxtMap(QString file)
                 qint32 heigth = data[2].toInt();
                 for (qint32 y = 0; y < heigth; y++)
                 {
-                    fields.append(QVector<spTerrain>());
+                    m_fields.append(QVector<spTerrain>());
                     for (qint32 x = 0; x < width; x++)
                     {
                         spTerrain pTerrain = Terrain::createTerrain("PLAINS", x, y, "");
                         this->addChild(pTerrain);
-                        fields[y].append(pTerrain);
+                        m_fields[y].append(pTerrain);
                         pTerrain->setPosition(x * m_imagesize, y * m_imagesize);
                         pTerrain->setPriority(static_cast<qint32>(Mainapp::ZOrder::Terrain) + y);
                     }
@@ -187,7 +187,7 @@ void GameMap::importTxtMap(QString file)
                     {
                         if (buildingIdMapping[i][0] == buildingID)
                         {
-                            Building* pBuilding = new Building(buildingIdMapping[i][1]);
+                            spBuilding pBuilding = spBuilding::create(buildingIdMapping[i][1]);
                             qint32 player = data[5].toInt();
                             if (player > 0)
                             {
@@ -197,22 +197,22 @@ void GameMap::importTxtMap(QString file)
                             pBuilding->setHp(data[8].toInt());
                             if (i < building3x3Start)
                             {
-                                pTerrain->setBuilding(pBuilding);
+                                pTerrain->setBuilding(pBuilding.get());
                             }
                             else if (i < building4x4Start)
                             {
-                                Terrain* pTargetTerrain = getTerrain(pTerrain->getX() + 1, pTerrain->getY() + 1);
-                                pTargetTerrain->setBuilding(pBuilding);
+                                Terrain* pTargetTerrain = getTerrain(pTerrain->Terrain::getX() + 1, pTerrain->Terrain::getY() + 1);
+                                pTargetTerrain->setBuilding(pBuilding.get());
                             }
                             else if (i < building3x4Start)
                             {
-                                Terrain* pTargetTerrain = getTerrain(pTerrain->getX() + 2, pTerrain->getY() + 1);
-                                pTargetTerrain->setBuilding(pBuilding);
+                                Terrain* pTargetTerrain = getTerrain(pTerrain->Terrain::getX() + 2, pTerrain->Terrain::getY() + 1);
+                                pTargetTerrain->setBuilding(pBuilding.get());
                             }
                             else
                             {
-                                Terrain* pTargetTerrain = getTerrain(pTerrain->getX() + 1, pTerrain->getY() + 1);
-                                pTargetTerrain->setBuilding(pBuilding);
+                                Terrain* pTargetTerrain = getTerrain(pTerrain->Terrain::getX() + 1, pTerrain->Terrain::getY() + 1);
+                                pTargetTerrain->setBuilding(pBuilding.get());
                             }
                             break;
                         }
@@ -235,7 +235,7 @@ void GameMap::importTxtMap(QString file)
                         if (unitIdMapping[i][0] == unitID)
                         {
                             qint32 player = data[8].toInt();
-                            spUnit pUnit = new Unit(unitIdMapping[i][1], getPlayer(player - 1), false);
+                            spUnit pUnit = spUnit::create(unitIdMapping[i][1], getPlayer(player - 1), false);
                             pUnit->setFuel(data[6].toInt());
                             pUnit->setHp(data[7].toInt());
                             pTerrain->setUnit(pUnit);

@@ -1,5 +1,10 @@
 #include "ai/decisionquestion.h"
 
+DecisionQuestion::DecisionQuestion()
+{
+    setObjectName("DecisionQuestion");
+}
+
 void DecisionQuestion::appendQuestion(spQuestion pQuestions)
 {
     m_Questions.append(pQuestions);
@@ -24,7 +29,7 @@ void DecisionQuestion::deserializeObject(QDataStream& pStream)
     m_Questions.clear();
     for (qint32 i = 0; i < size; i++)
     {
-        m_Questions.append(new Question());
+        m_Questions.append(spQuestion::create());
         m_Questions[i]->deserializeObject(pStream);
     }
 }

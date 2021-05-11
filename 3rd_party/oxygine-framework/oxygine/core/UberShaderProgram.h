@@ -16,7 +16,7 @@ namespace oxygine
             {
             }
             spShaderProgram program;
-            int flags;
+            qint32 flags;
         };
 
         UberShaderProgramBase();
@@ -26,16 +26,17 @@ namespace oxygine
 
         void release();
 
-        virtual ShaderProgram*         getShaderProgram(int flags) = 0;
+        virtual ShaderProgram*         getShaderProgram(qint32 flags) = 0;
 
 
     protected:
-        void* _getRestorableObject() {return this;}
-        void _restore(Restorable*, void*);
+        Restorable* _getRestorableObject() {return this;}
+        void _restore(Restorable*);
 
-        QString _fracShader;
-        QString _vertexShader;
-        QString _fracTableShader;
+    protected:
+        QString m_fracShader;
+        QString m_vertexShader;
+        QString m_fracTableShader;
 
         virtual void releaseShaders() {}
     };
@@ -66,12 +67,14 @@ namespace oxygine
             SAMPLER_NUM,
         };
 
-        ShaderProgram*  getShaderProgram(int flags) override;
+        ShaderProgram*  getShaderProgram(qint32 flags) override;
 
         void apply(IVideoDriver* driver, spNativeTexture base, spNativeTexture alpha);
 
     protected:
         void releaseShaders() override;
-        shader _shaders[_SIZE];
+
+    protected:
+        shader m_shaders[_SIZE];
     };
 }

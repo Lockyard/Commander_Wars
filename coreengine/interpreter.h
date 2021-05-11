@@ -25,7 +25,7 @@ public:
     {
         if (m_pInstance.get() == nullptr)
         {
-            m_pInstance = new Interpreter();
+            m_pInstance = spInterpreter::create();
         }
         return m_pInstance.get();
     }
@@ -89,11 +89,14 @@ public slots:
 
 
 private:
+    friend class oxygine::intrusive_ptr<Interpreter>;
     explicit Interpreter();    
     /**
      * @brief init
      */
     void init();
+
+private:
     static QString m_runtimeData;
     static spInterpreter m_pInstance;
 };

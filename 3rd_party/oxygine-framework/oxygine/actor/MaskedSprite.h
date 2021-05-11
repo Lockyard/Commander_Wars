@@ -1,6 +1,6 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "Sprite.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Sprite.h"
 
 namespace oxygine
 {
@@ -19,7 +19,7 @@ namespace oxygine
         void render(const RenderState& parentRS) override;
 
     private:
-        spSprite _mask;
-        bool _useRChannel;
+        spSprite m_mask;
+        bool m_useRChannel;
     };
 }

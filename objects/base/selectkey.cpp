@@ -11,6 +11,7 @@
 
 SelectKey::SelectKey(Qt::Key code)
 {
+    setObjectName("SelectKey");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
 
@@ -25,7 +26,7 @@ SelectKey::SelectKey(Qt::Key code)
             pText->setX(5);
         }
         pText->setTooltipText("");
-        active = true;
+        m_active = true;
         emit sigFocused();
     });
     addChild(m_Button);
@@ -35,7 +36,7 @@ SelectKey::SelectKey(Qt::Key code)
 
 void SelectKey::focusedLost()
 {
-    setKeycode(currentCode);
+    setKeycode(m_currentCode);
     auto virtualKeyboard = QGuiApplication::inputMethod();
     if (virtualKeyboard != nullptr)
     {
@@ -54,7 +55,7 @@ void SelectKey::focused()
 
 void SelectKey::keyInput(oxygine::KeyEvent event)
 {
-    if (active)
+    if (m_active)
     {
         restartTooltiptimer();
         Qt::Key cur = event.getKey();
@@ -195,7 +196,7 @@ void SelectKey::setKeycode(Qt::Key code)
     QString codeText = getKeycodeText(code);
     if (codeText != tr("Unknown"))
     {
-        currentCode = code;
+        m_currentCode = code;
         Label* pText = dynamic_cast<Label*>(m_Button->getFirstChild()->getFirstChild().get());
         pText->setHtmlText((tr("Key ") + codeText));
         pText->setX(m_Button->getWidth() / 2 - pText->getTextRect().getWidth() / 2);
@@ -204,12 +205,12 @@ void SelectKey::setKeycode(Qt::Key code)
             pText->setX(5);
         }
         pText->setTooltipText("");
-        active = false;
-        emit sigKeyChanged(currentCode);
+        m_active = false;
+        emit sigKeyChanged(m_currentCode);
     }
     else
     {
-        setKeycode(currentCode);
+        setKeycode(m_currentCode);
     }
     looseFocusInternal();
 }

@@ -8,9 +8,12 @@
 
 #include "resource_management/gamemanager.h"
 
+#include "coreengine/filesupport.h"
+
 GameRecorder::GameRecorder()
     : QObject()
 {
+    setObjectName("GameRecorder");
     moveToThread(Mainapp::getInstance()->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
 }
@@ -23,14 +26,14 @@ void GameRecorder::serializeObject(QDataStream& pStream) const
     {
         m_Record[i]->serializeObject(pStream);
     }
-    pStream << static_cast<qint32>(destroyedUnits.size());
-    for (qint32 i = 0; i < destroyedUnits.size(); i++)
+    pStream << static_cast<qint32>(m_destroyedUnits.size());
+    for (qint32 i = 0; i < m_destroyedUnits.size(); i++)
     {
-        pStream << destroyedUnits[i];
-        pStream << lostUnits[i];
-        pStream << damageDealt[i];
-        pStream << attackNumbers[i];
-        pStream << deployedUnits[i];
+        pStream << m_destroyedUnits[i];
+        pStream << m_lostUnits[i];
+        pStream << m_damageDealt[i];
+        pStream << m_attackNumbers[i];
+        pStream << m_deployedUnits[i];
     }
     pStream << m_mapTime;
     pStream << m_deployLimit;
@@ -53,6 +56,14 @@ void GameRecorder::serializeObject(QDataStream& pStream) const
         pStream << m_Attackreports[i]->defenderKilled;
         pStream << m_Attackreports[i]->defenderSeesAttacker;
     }
+
+    pStream << static_cast<qint32>(m_playerDataRecords.size());
+    for (qint32 i = 0; i < m_playerDataRecords.size(); i++)
+    {
+        Filesupport::writeMap(pStream, m_playerDataRecords[i].killedUnits);
+        Filesupport::writeMap(pStream, m_playerDataRecords[i].lostUnits);
+        Filesupport::writeMap(pStream, m_playerDataRecords[i].producedUnits);
+    }
 }
 
 void GameRecorder::deserializeObject(QDataStream& pStream)
@@ -64,44 +75,44 @@ void GameRecorder::deserializeObject(QDataStream& pStream)
     m_Record.clear();
     for (qint32 i = 0; i < size; i++)
     {
-        m_Record.append(new DayToDayRecord());
+        m_Record.append(spDayToDayRecord::create());
         m_Record[i]->deserializeObject(pStream);
     }
     pStream >> size;
-    destroyedUnits.clear();
-    lostUnits.clear();
-    damageDealt.clear();
-    attackNumbers.clear();
-    deployedUnits.clear();
+    m_destroyedUnits.clear();
+    m_lostUnits.clear();
+    m_damageDealt.clear();
+    m_attackNumbers.clear();
+    m_deployedUnits.clear();
     for (qint32 i = 0; i < size; i++)
     {
         if (version > 1)
         {
             quint32 value = 0;
             pStream >> value;
-            destroyedUnits.append(value);
+            m_destroyedUnits.append(value);
             pStream >> value;
-            lostUnits.append(value);
+            m_lostUnits.append(value);
             pStream >> value;
-            damageDealt.append(value);
+            m_damageDealt.append(value);
             pStream >> value;
-            attackNumbers.append(value);
+            m_attackNumbers.append(value);
             pStream >> value;
-            deployedUnits.append(value);
+            m_deployedUnits.append(value);
         }
         else
         {
             quint64 value = 0;
             pStream >> value;
-            destroyedUnits.append(static_cast<quint32>(value));
+            m_destroyedUnits.append(static_cast<quint32>(value));
             pStream >> value;
-            lostUnits.append(static_cast<quint32>(value));
+            m_lostUnits.append(static_cast<quint32>(value));
             pStream >> value;
-            damageDealt.append(static_cast<quint32>(value));
+            m_damageDealt.append(static_cast<quint32>(value));
             pStream >> value;
-            attackNumbers.append(static_cast<quint32>(value));
+            m_attackNumbers.append(static_cast<quint32>(value));
             pStream >> value;
-            deployedUnits.append(static_cast<quint32>(value));
+            m_deployedUnits.append(static_cast<quint32>(value));
         }
     }
     if (version > 2)
@@ -116,7 +127,7 @@ void GameRecorder::deserializeObject(QDataStream& pStream)
         pStream >> size;
         for (qint32 i = 0; i < size; i++)
         {
-            m_Attackreports.append(new AttackReport());
+            m_Attackreports.append(spAttackReport::create());
             pStream >> m_Attackreports[i]->day;
             pStream >> m_Attackreports[i]->attackerKilled;
             pStream >> m_Attackreports[i]->attackerDamage;
@@ -140,82 +151,113 @@ void GameRecorder::deserializeObject(QDataStream& pStream)
             }
         }
     }
+    if (version > 5)
+    {
+        pStream >> size;
+        for (qint32 i = 0; i < size; i++)
+        {
+            PlayerData data;
+            data.killedUnits = Filesupport::readMap<QString, qint32, QMap>(pStream);
+            data.lostUnits = Filesupport::readMap<QString, qint32, QMap>(pStream);
+            data.producedUnits = Filesupport::readMap<QString, qint32, QMap>(pStream);
+            m_playerDataRecords.append(data);
+        }
+    }
 }
 
 void GameRecorder::newDay()
 {
     qint32 playerCount = GameMap::getInstance()->getPlayerCount();
-    if (destroyedUnits.size() == 0)
+    if (m_destroyedUnits.size() == 0)
     {
         for (qint32 i = 0; i < playerCount; i++)
         {
-            destroyedUnits.append(0);
-            lostUnits.append(0);
-            damageDealt.append(0);
-            attackNumbers.append(0);
-            deployedUnits.append(0);
+            m_destroyedUnits.append(0);
+            m_lostUnits.append(0);
+            m_damageDealt.append(0);
+            m_attackNumbers.append(0);
+            m_deployedUnits.append(0);
+            m_playerDataRecords.append(PlayerData());
         }
     }
-    m_Record.append(new DayToDayRecord(playerCount));
+    m_Record.append(spDayToDayRecord::create(playerCount));
 }
 
-void GameRecorder::lostUnit(qint32 player)
+void GameRecorder::lostUnit(qint32 player, QString unitId)
 {
-    if (player >= 0 && player < lostUnits.size())
+    if (player >= 0 && player < m_lostUnits.size())
     {
-        lostUnits[player]++;
+        m_lostUnits[player]++;
+        if (!unitId.isEmpty())
+        {
+            qint32 value = m_playerDataRecords[player].lostUnits.value(unitId);
+            value++;
+            m_playerDataRecords[player].lostUnits.insert(unitId, value);
+        }
     }
 }
 
 quint32 GameRecorder::getLostUnits(qint32 player)
 {
-    if (player >= 0 && player < lostUnits.size())
+    if (player >= 0 && player < m_lostUnits.size())
     {
-        return lostUnits[player];
+        return m_lostUnits[player];
     }
     return 0;
 }
 
-void GameRecorder::destroyedUnit(qint32 player)
+void GameRecorder::destroyedUnit(qint32 player, QString unitId)
 {
-    if (player >= 0 && player < destroyedUnits.size())
+    if (player >= 0 && player < m_destroyedUnits.size())
     {
-        destroyedUnits[player]++;
+        m_destroyedUnits[player]++;
+        if (!unitId.isEmpty())
+        {
+            qint32 value = m_playerDataRecords[player].killedUnits.value(unitId);
+            value++;
+            m_playerDataRecords[player].killedUnits.insert(unitId, value);
+        }
     }
 }
 
 quint32 GameRecorder::getDestroyedUnits(qint32 player)
 {
-    if (player >= 0 && player < destroyedUnits.size())
+    if (player >= 0 && player < m_destroyedUnits.size())
     {
-        return destroyedUnits[player];
+        return m_destroyedUnits[player];
     }
     return 0;
 }
 
-void GameRecorder::buildUnit(qint32 player)
+void GameRecorder::buildUnit(qint32 player, QString unitId)
 {
-    if (player >= 0 && player < deployedUnits.size())
+    if (player >= 0 && player < m_deployedUnits.size())
     {
-        deployedUnits[player]++;
+        m_deployedUnits[player]++;
+        if (!unitId.isEmpty())
+        {
+            qint32 value = m_playerDataRecords[player].producedUnits.value(unitId);
+            value++;
+            m_playerDataRecords[player].producedUnits.insert(unitId, value);
+        }
     }
 }
 
 quint32 GameRecorder::getBuildedUnits(qint32 player)
 {
-    if (player >= 0 && player < deployedUnits.size())
+    if (player >= 0 && player < m_deployedUnits.size())
     {
-        return deployedUnits[player];
+        return m_deployedUnits[player];
     }
     return 0;
 }
 
 void GameRecorder::attacked(qint32 player, float damage)
 {
-    if (player >= 0 && player < attackNumbers.size())
+    if (player >= 0 && player < m_attackNumbers.size())
     {
-        attackNumbers[player]++;
-        damageDealt[player] += damage;
+        m_attackNumbers[player]++;
+        m_damageDealt[player] += damage;
     }
 }
 
@@ -261,7 +303,7 @@ void GameRecorder::logAttack(qint32 day,
                              qint32 attackerDamage, qint32 attackerX, qint32 attackerY, QString attackerID, qint32 attackerOwnerID, bool attackerKilled,
                              qint32 defenderDamage, qint32 defenderX, qint32 defenderY, QString defenderID, qint32 defenderOwnerID, bool defenderKilled, bool defenderSeesAttacker)
 {
-    m_Attackreports.append(new AttackReport());
+    m_Attackreports.append(spAttackReport::create());
     m_Attackreports[m_Attackreports.size() - 1]->day = day;
     m_Attackreports[m_Attackreports.size() - 1]->attackerKilled = attackerKilled;
     m_Attackreports[m_Attackreports.size() - 1]->attackerDamage = attackerDamage;
@@ -290,6 +332,11 @@ QVector<spAttackReport> GameRecorder::getAttackLog(qint32 player)
         }
     }
     return ret;
+}
+
+const QVector<GameRecorder::PlayerData> & GameRecorder::getPlayerDataRecords() const
+{
+    return m_playerDataRecords;
 }
 
 GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePoints)
@@ -337,10 +384,10 @@ GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePo
             scorePoints.setX(0.8f * ((scorePoints.x() * lostDay) / pMap->getCurrentDay()));
         }
         // Force
-        qint32 power = (damageDealt[player] + (destroyedUnits[player] * 140));
-        if (attackNumbers[player] > 0)
+        qint32 power = (m_damageDealt[player] + (m_destroyedUnits[player] * 140));
+        if (m_attackNumbers[player] > 0)
         {
-            power /= attackNumbers[player];
+            power /= m_attackNumbers[player];
         }
         else
         {
@@ -372,9 +419,9 @@ GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePo
         float techScore1 = 0;
         float techScore2 = 0;
         float techScore3 = 0;
-        if (lostUnits[player] > 0)
+        if (m_lostUnits[player] > 0)
         {
-            techScore1 = (destroyedUnits[player] / static_cast<float>(lostUnits[player])) * 0.75f;
+            techScore1 = (m_destroyedUnits[player] / static_cast<float>(m_lostUnits[player])) * 0.75f;
         }
         else
         {
@@ -384,7 +431,7 @@ GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePo
         {
             techScore1 = 2.0f;
         }
-        quint32 deployed = deployedUnits[player];
+        quint32 deployed = m_deployedUnits[player];
         quint32 startUnits = static_cast<quint32>(m_Record[0]->getPlayerRecord(player)->getUnits());
         if (m_Record.size() > 0 &&
             startUnits > 0)
@@ -393,7 +440,7 @@ GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePo
         }
         if (deployed > 0)
         {
-            techScore2 = (1.0f - (lostUnits[player] / static_cast<float>(deployed))) * 2.0f;
+            techScore2 = (1.0f - (m_lostUnits[player] / static_cast<float>(deployed))) * 2.0f;
         }
         else
         {
@@ -407,9 +454,9 @@ GameRecorder::Rang GameRecorder::calculateRang(qint32 player, QVector3D& scorePo
         {
             techScore2 = 0;
         }
-        if (deployedUnits[player] > 0)
+        if (m_deployedUnits[player] > 0)
         {
-            techScore3 = deployLimit / static_cast<float>(deployedUnits[player]);
+            techScore3 = deployLimit / static_cast<float>(m_deployedUnits[player]);
         }
         else
         {

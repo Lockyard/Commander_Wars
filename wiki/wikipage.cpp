@@ -15,12 +15,13 @@
 Wikipage::Wikipage()
     : QObject()
 {
+    setObjectName("Wikipage");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
 
     ObjectManager* pObjectManager = ObjectManager::getInstance();
-    oxygine::spBox9Sprite pSpriteBox = new oxygine::Box9Sprite();
+    oxygine::spBox9Sprite pSpriteBox = oxygine::spBox9Sprite::create();
     oxygine::ResAnim* pAnim = pObjectManager->getResAnim("codialog");
     pSpriteBox->setResAnim(pAnim);
     pSpriteBox->setSize(Settings::getWidth(), Settings::getHeight());
@@ -42,7 +43,7 @@ Wikipage::Wikipage()
     });
 
     // no the fun begins create checkboxes and stuff and a panel down here
-    m_pPanel = new Panel(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 110),
+    m_pPanel = spPanel::create(true, QSize(Settings::getWidth() - 60, Settings::getHeight() - 110),
                                      QSize(Settings::getWidth() - 60, Settings::getHeight() - 110));
     m_pPanel->setPosition(30, 30);
     pSpriteBox->addChild(m_pPanel);
@@ -73,13 +74,13 @@ void Wikipage::loadText(QString text)
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = true;
-    oxygine::spTextField pLabel = new oxygine::TextField();
+    oxygine::spTextField pLabel = oxygine::spTextField::create();
     pLabel->setStyle(style);
     pLabel->setHtmlText(text);
     pLabel->setWidth(m_pPanel->getContentWidth() - 80);
-    pLabel->setPosition(10, y);
+    pLabel->setPosition(10, m_y);
     m_pPanel->addItem(pLabel);
-    y += pLabel->getTextRect().getHeight() + 10;
+    m_y += pLabel->getTextRect().getHeight() + 10;
 }
 
 
@@ -90,12 +91,12 @@ void Wikipage::loadHeadline(QString text)
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = true;
-    oxygine::spTextField pLabel = new oxygine::TextField();
+    oxygine::spTextField pLabel = oxygine::spTextField::create();
     pLabel->setStyle(style);
     pLabel->setHtmlText(text);
-    pLabel->setPosition(m_pPanel->getContentWidth() / 2 - pLabel->getTextRect().getWidth() / 2, y);
+    pLabel->setPosition(m_pPanel->getContentWidth() / 2 - pLabel->getTextRect().getWidth() / 2, m_y);
     m_pPanel->addItem(pLabel);
-    y += 80;
+    m_y += 80;
 }
 
 void Wikipage::showLink(QString pageID)
@@ -115,11 +116,11 @@ void Wikipage::loadImage(QString file, float scale, QString pageID)
     WikiDatabase* pWikiDatabase = WikiDatabase::getInstance();
     oxygine::spSprite pSprite = pWikiDatabase->getIcon(file, 24);
     pSprite->setScale(scale);
-    pSprite->setPosition(m_pPanel->getContentWidth() / 2 - pSprite->getScaledWidth() / 2.0f, y);
+    pSprite->setPosition(m_pPanel->getContentWidth() / 2 - pSprite->getScaledWidth() / 2.0f, m_y);
     pSprite->addClickListener([=](oxygine::Event*)
     {
         emit sigShowLink(pageID);
     });
     m_pPanel->addItem(pSprite);
-    y += pSprite->getScaledHeight() + 10;
+    m_y += pSprite->getScaledHeight() + 10;
 }

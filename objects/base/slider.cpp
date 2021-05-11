@@ -10,17 +10,19 @@ Slider::Slider(qint32 width, qint32 minValue, qint32 maxValue, QString unit)
       m_maxValue(maxValue),
       m_Unit(unit)
 {
+    setObjectName("Slider");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     V_Scrollbar::setScrollspeed( width / (maxValue - minValue));
 
-    m_spinBox = new SpinBox(150, minValue, maxValue);
+    m_spinBox = spSpinBox::create(150, minValue, maxValue);
     m_spinBox->setUnit(" " + unit);
     m_spinBox->setInfinityValue(std::numeric_limits<qreal>::lowest());
     addChild(m_spinBox);
     m_spinBox->setX(getWidth() + 15);
     connect(this, &Slider::V_Scrollbar::sigScrollValueChanged, this, &Slider::slotSliderValueChanged, Qt::QueuedConnection);
     connect(m_spinBox.get(), &SpinBox::sigValueChanged, this, &Slider::slotSpinBoxValueChanged, Qt::QueuedConnection);
+    oxygine::Actor::setWidth(m_spinBox->getX() + m_spinBox->getWidth());
 }
 
 void Slider::slotSliderValueChanged(float value)

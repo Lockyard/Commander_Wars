@@ -1,8 +1,6 @@
 #ifndef CAMPAIGNMENU_H
 #define CAMPAIGNMENU_H
 
-#include <QObject>
-
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "game/campaign.h"
@@ -12,7 +10,12 @@
 #include "objects/mapselectionview.h"
 #include "objects/base/panel.h"
 
-class CampaignMenu : public QObject, public oxygine::Actor
+#include "menue/basemenu.h"
+
+class CampaignMenu;
+using spCampaignMenu = oxygine::intrusive_ptr<CampaignMenu>;
+
+class CampaignMenu : public Basemenu
 {
     Q_OBJECT
 public:

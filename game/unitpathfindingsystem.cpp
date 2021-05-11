@@ -10,12 +10,13 @@
 #include "game/unitpathfindingsystem.h"
 
 UnitPathFindingSystem::UnitPathFindingSystem(Unit* pUnit, Player* pPlayer)
-    : PathFindingSystem(pUnit->getX(), pUnit->getY(),
+    : PathFindingSystem(pUnit->Unit::getX(), pUnit->Unit::getY(),
                         GameMap::getInstance()->getMapWidth(),
                         GameMap::getInstance()->getMapHeight()),
       m_pUnit(pUnit),
       m_pPlayer(pPlayer)
 {
+    setObjectName("UnitPathFindingSystem");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -23,7 +24,7 @@ UnitPathFindingSystem::UnitPathFindingSystem(Unit* pUnit, Player* pPlayer)
     {
         m_pPlayer = m_pUnit->getOwner();
     }
-    setMovepoints(m_pUnit->getMovementpoints(QPoint(pUnit->getX(), pUnit->getY())));
+    setMovepoints(m_pUnit->getMovementpoints(QPoint(pUnit->Unit::getX(), pUnit->Unit::getY())));
 }
 
 qint32 UnitPathFindingSystem::getRemainingCost(qint32 x, qint32 y, qint32 currentCost)
@@ -55,7 +56,7 @@ qint32 UnitPathFindingSystem::getCosts(qint32 index, qint32 x, qint32 y, qint32 
     {
         return m_pUnit->getMovementCosts(x, y, x, y);
     }
-    else if (movecosts[index][direction] == infinite)
+    else if (m_movecosts[index][direction] == infinite)
     {
         spGameMap pMap = GameMap::getInstance();
         if (pMap.get() != nullptr && pMap->onMap(x, y))
@@ -70,8 +71,8 @@ qint32 UnitPathFindingSystem::getCosts(qint32 index, qint32 x, qint32 y, qint32 
                 {
                     if (!m_pUnit->getIgnoreUnitCollision() && !m_ignoreEnemies)
                     {
-                        movecosts[index][direction] = -1;
-                        return movecosts[index][direction];
+                        m_movecosts[index][direction] = -1;
+                        return m_movecosts[index][direction];
                     }
                 }
             }
@@ -83,28 +84,28 @@ qint32 UnitPathFindingSystem::getCosts(qint32 index, qint32 x, qint32 y, qint32 
                 if (found)
                 {
                     qint32 cost = m_costInfo[id];
-                    movecosts[index][direction] = cost;
+                    m_movecosts[index][direction] = cost;
                 }
                 else
                 {
                     qint32 cost = m_pUnit->getMovementCosts(x, y, curX, curY);
                     m_costInfo.insert(id, cost);
-                    movecosts[index][direction] = cost;
+                    m_movecosts[index][direction] = cost;
                 }
             }
             else
             {
-                movecosts[index][direction] = m_pUnit->getMovementCosts(x, y, curX, curY);
+                m_movecosts[index][direction] = m_pUnit->getMovementCosts(x, y, curX, curY);
             }
-            return movecosts[index][direction];
+            return m_movecosts[index][direction];
         }
         else
         {
-            movecosts[index][direction] = -1;
-            return costs[index];
+            m_movecosts[index][direction] = -1;
+            return m_costs[index];
         }
     }
-    return movecosts[index][direction];
+    return m_movecosts[index][direction];
 }
 
 qint32 UnitPathFindingSystem::getCosts(QVector<QPoint> path)
@@ -123,9 +124,9 @@ QVector<QPoint> UnitPathFindingSystem::getClosestReachableMovePath(QPoint target
     spGameMap pMap = GameMap::getInstance();
     if (pMap.get() != nullptr)
     {
-        QList<QVector4D> usedNodes;
-        QList<QVector4D> nextNodes;
-        QList<QVector4D> currentNodes;
+        QVector<QVector4D> usedNodes;
+        QVector<QVector4D> nextNodes;
+        QVector<QVector4D> currentNodes;
         currentNodes.append(QVector4D(target.x(), target.y(), target.x(), target.y()));
         while (currentNodes.size() > 0 || nextNodes.size() > 0)
         {

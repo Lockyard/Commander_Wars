@@ -3,6 +3,7 @@
 #include "3rd_party/oxygine-framework/oxygine/Material.h"
 #include "3rd_party/oxygine-framework/oxygine/core/Renderer.h"
 #include <functional>
+#include <vector>
 
 namespace oxygine
 {
@@ -13,9 +14,9 @@ namespace oxygine
 
         void setDriver(IVideoDriver* d);
 
-        const spNativeTexture& getTexture(int sampler) { return _textures[sampler]; }
+        const spNativeTexture& getTexture(qint32 sampler) { return _textures[sampler]; }
 
-        void setTexture(int sampler, const spNativeTexture& t);
+        void setTexture(qint32 sampler, const spNativeTexture& t);
         void setBlendMode(blend_mode blend);
         bool setShader(ShaderProgram* prog);
 
@@ -87,15 +88,15 @@ namespace oxygine
 
         const Matrix&               getViewProjection() const;
         IVideoDriver*               getDriver();
-        const AffineTransform&      getTransform() const { return _transform; }
-        const VertexDeclaration*    getVertexDeclaration() const { return _vdecl; }
-        unsigned int                getBaseShaderFlags() const { return _baseShaderFlags; }
+        const AffineTransform&      getTransform() const { return m_transform; }
+        const VertexDeclaration*    getVertexDeclaration() const { return m_vdecl; }
+        quint32                     getBaseShaderFlags() const { return m_baseShaderFlags; }
 
         void setShaderFlags(unsigned int);
         void setViewProj(const Matrix& viewProj);
         void setVertexDeclaration(const VertexDeclaration* decl);
         void setUberShaderProgram(UberShaderProgram* pr);
-        void setBaseShaderFlags(unsigned int fl);
+        void setBaseShaderFlags(quint32 fl);
 
         /**Sets World transformation.*/
         void setTransform(const Transform& world);
@@ -107,12 +108,12 @@ namespace oxygine
         /**Completes started rendering and restores previous Frame Buffer.*/
         void end();
         /**initializes View + Projection matrices where TopLeft is (0,0) and RightBottom is (width, height). use flipU = true for render to texture*/
-        void initCoordinateSystem(int width, int height, bool flipU = false);
+        void initCoordinateSystem(qint32 width, qint32 height, bool flipU = false);
 
         /**Draws existing batch immediately.*/
         void flush();
 
-        virtual void addVertices(const void* data, unsigned int size);
+        virtual void addVertices(const void* data, quint32 size);
 
         void swapVerticesData(std::vector<unsigned char>& data);
         void swapVerticesData(STDRenderer& r);
@@ -120,38 +121,28 @@ namespace oxygine
         void pushShaderSetHook(ShaderProgramChangedHook* hook);
         void popShaderSetHook();
 
-        bool isEmpty() const { return _verticesData.empty(); }
+        bool isEmpty() const { return m_verticesData.empty(); }
 
     protected:
         virtual void shaderProgramChanged() {}
-
-        Transform _transform;
-
+        virtual void xbegin();
         void setShader(ShaderProgram* prog);
-
         void xdrawBatch();
-
-
-        void xaddVertices(const void* data, unsigned int size);
+        void xaddVertices(const void* data, quint32 size);
         void checkDrawBatch();
 
-        std::vector<unsigned char> _verticesData;
+    protected:
+        Transform m_transform;
+        std::vector<unsigned char> m_verticesData;
+        const VertexDeclaration* m_vdecl;
+        IVideoDriver* m_driver;
+        Matrix m_vp;
+        ShaderProgramChangedHook* m_sphookFirst;
+        ShaderProgramChangedHook* m_sphookLast;
 
-        const VertexDeclaration* _vdecl;
-
-        IVideoDriver* _driver;
-        Matrix _vp;
-
-        virtual void xbegin();
-
-        ShaderProgramChangedHook* _sphookFirst;
-        ShaderProgramChangedHook* _sphookLast;
-
-        UberShaderProgram* _uberShader;
-
-        unsigned int _baseShaderFlags;
-
-        spNativeTexture _prevRT;
+        UberShaderProgram* m_uberShader;
+        quint32 m_baseShaderFlags;
+        spNativeTexture m_prevRT;
     };
 
 

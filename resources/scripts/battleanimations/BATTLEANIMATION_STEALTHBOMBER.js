@@ -44,7 +44,7 @@ var Constructor = function()
                                               Qt.point(128, -64), 400, false,
                                               1, 1, -1, i * 150);
             }
-            sprite.loadSound("rocket_launch.wav", 1, "resources/sounds/", i * 150);
+            sprite.loadSound("stealthfighter_fire.wav", 1, "resources/sounds/", i * 150);
         }
     };
 
@@ -58,6 +58,7 @@ var Constructor = function()
 		var count = sprite.getUnitCount(5);
         sprite.loadSprite("unit_explosion",  false, 5, Qt.point(0, 60),
                           1, 1.0, 0, 300);
+        sprite.addSpriteScreenshake(8, 0.95, 800, 500);
         if (defender.getUnitType() === GameEnums.UnitType_Air)
         {
             sprite.loadMovingSprite("rocket", false, 5, Qt.point(127, 60),
@@ -73,7 +74,7 @@ var Constructor = function()
         for (var i = 0; i < count; i++)
         {
 			sprite.loadSound("rocket_flying.wav", 1, "resources/sounds/", 0);
-            sprite.loadSound("impact_explosion.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
+            sprite.loadSound("rockets_explode.wav", 1, "resources/sounds/", 200 + i * BATTLEANIMATION.defaultFrameDelay);
 		}
     };
 
@@ -85,7 +86,8 @@ var Constructor = function()
 
     this.loadDyingAnimation = function(sprite, unit, defender, weapon)
     {
-        BATTLEANIMATION_STEALTHBOMBER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, -140), 600, false);
+        BATTLEANIMATION_STEALTHBOMBER.loadSprite(sprite, unit, defender, weapon, Qt.point(-140, -140), 1800, false);
+        sprite.loadSound("airunit_dying.wav", 1, "resources/sounds/");
     };
 
     this.getFireDurationMS = function(sprite, unit, defender, weapon)
@@ -104,7 +106,7 @@ var Constructor = function()
     this.getDyingDurationMS = function(sprite, unit, defender, weapon)
     {
         // the time will be scaled with animation speed inside the engine
-        return 1000;
+        return 2000;
     };
 };
 

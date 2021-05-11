@@ -75,6 +75,7 @@ public:
 
     bool getIsServerGame() const;
     void setIsServerGame(bool isServerGame);
+    bool getIsCampaign();
 
 signals:
     void sigCOsRandom(qint32 mode);
@@ -240,7 +241,7 @@ private:
     spNetworkInterface m_pNetworkInterface{nullptr};
     spCampaign m_pCampaign;
 
-    bool saveGame{false};
+    bool m_saveGame{false};
     bool m_PlayerReady{false};
     bool m_isServerGame{false};
 };

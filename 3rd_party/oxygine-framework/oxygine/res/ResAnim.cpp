@@ -3,11 +3,17 @@
 #include "3rd_party/oxygine-framework/oxygine/Image.h"
 #include "3rd_party/oxygine-framework/oxygine/core/NativeTexture.h"
 #include "3rd_party/oxygine-framework/oxygine/core/VideoDriver.h"
+#include "spritingsupport/spritecreator.h"
 
 namespace oxygine
 {
-    AnimationFrame ResAnim::emptyFrame;
-    ResAnim::ResAnim(Resource* atlas) : _columns(1), _atlas(atlas), _scaleFactor(1.0f), _appliedScale(1.0f), _framerate(30)
+    AnimationFrame ResAnim::m_emptyFrame;
+    ResAnim::ResAnim(Resource* atlas)
+        : m_columns(1),
+          m_atlas(atlas),
+          m_scaleFactor(1.0f),
+          m_appliedScale(1.0f),
+          m_framerate(30)
     {
     }
 
@@ -15,33 +21,35 @@ namespace oxygine
     {
     }
 
-    void ResAnim::init(spNativeTexture texture, const Point& originalSize, int columns, int rows, float scaleFactor)
+    void ResAnim::init(spNativeTexture texture, const Point& originalSize, qint32 columns, qint32 rows, float scaleFactor)
     {
-        _scaleFactor = scaleFactor;
+        m_scaleFactor = scaleFactor;
         if (!texture)
         {
             return;
         }
-        int frame_width = originalSize.x / columns;
-        int frame_height = originalSize.y / rows;
+        qint32 frame_width = originalSize.x / columns;
+        qint32 frame_height = originalSize.y / rows;
+        if (rows > 1 || columns > 1)
+        {
+            frame_height -= 1;
+            frame_width -= 1;
+        }
+        float iw = 1.0f / static_cast<float>(columns);
+        float ih = 1.0f / static_cast<float>(rows);
+        float width = static_cast<float>(frame_width) / static_cast<float>(originalSize.x);
+        float height = static_cast<float>(frame_height) / static_cast<float>(originalSize.y);
 
         animationFrames frames;
-        int frames_count = rows * columns;
+        qint32 frames_count = rows * columns;
         frames.reserve(frames_count);
 
-        Vector2 frameSize((float)frame_width, (float)frame_height);
-        for (int y = 0; y < rows; ++y)
+        Vector2 frameSize(static_cast<float>(frame_width), static_cast<float>(frame_height));
+        for (qint32 y = 0; y < rows; ++y)
         {
-            for (int x = 0; x < columns; ++x)
+            for (qint32 x = 0; x < columns; ++x)
             {
-                Rect src;
-                src.pos = Point(x * frame_width, y * frame_height);
-                src.size = Point(frame_width, frame_height);
-
-                float iw = 1.0f / texture->getWidth();
-                float ih = 1.0f / texture->getHeight();
-                RectF srcRect(src.pos.x * iw, src.pos.y * ih, src.size.x * iw, src.size.y * ih);
-
+                RectF srcRect(x * iw, y * ih, width, height);
                 RectF destRect(Vector2(0, 0), frameSize * scaleFactor);
                 AnimationFrame frame;
                 Diffuse df;
@@ -54,24 +62,26 @@ namespace oxygine
         init(frames, columns, scaleFactor);
     }
 
-    void ResAnim::init(QString file, int columns, int rows, float scaleFactor)
+    void ResAnim::init(QString file, qint32 columns, qint32 rows, float scaleFactor)
     {
         QImage img(file);
+        SpriteCreator::addTransparentBorder(img, columns, rows);
         Image mt;
         mt.init(img, true);
         init(&mt, columns, rows, scaleFactor);
     }
 
-    void ResAnim::init(const QImage & img, int columns, int rows, float scaleFactor)
+    void ResAnim::init(QImage & img, qint32 columns, qint32 rows, float scaleFactor)
     {
         Image mt;
+        SpriteCreator::addTransparentBorder(img, columns, rows);
         mt.init(img, true);
         init(&mt, columns, rows, scaleFactor);
     }
 
-    void ResAnim::init(Image* original, int columns, int rows, float scaleFactor)
+    void ResAnim::init(Image* original, qint32 columns, qint32 rows, float scaleFactor)
     {
-        _scaleFactor = scaleFactor;
+        m_scaleFactor = scaleFactor;
         if (!original)
         {
             return;
@@ -83,53 +93,45 @@ namespace oxygine
         init(texture, original->getSize(), columns, rows, scaleFactor);
     }
 
-    void ResAnim::init(animationFrames& frames, int columns, float scaleFactor, float appliedScale)
+    void ResAnim::init(animationFrames& frames, qint32 columns, float scaleFactor, float appliedScale)
     {
-        _columns = columns;
-        _frames.swap(frames);
-        for (int i = 0; i < _frames.size(); ++i)
+        m_columns = columns;
+        m_frames.swap(frames);
+        for (qint32 i = 0; i < m_frames.size(); ++i)
         {
-            _frames[i].setResAnim(this);
+            m_frames[i].setResAnim(this);
         }
-        _scaleFactor = scaleFactor;
-        _appliedScale = appliedScale;
+        m_scaleFactor = scaleFactor;
+        m_appliedScale = appliedScale;
     }
 
     void ResAnim::_load(LoadResourcesContext* c)
     {
-        if (!_atlas)
+        if (!m_atlas)
         {
             return;
         }
-        _atlas->load(c);
+        m_atlas->load(c);
     }
 
     void ResAnim::_unload()
     {
-        //Q_ASSERT(!"can't unload resanim");
     }
 
     QString ResAnim::getResPath() const
     {
-        return resPath;
+        return m_resPath;
     }
 
     void ResAnim::setResPath(const QString &value)
     {
-        resPath = value;
+        m_resPath = value;
     }
 
     void ResAnim::removeFrames()
     {
-        _frames.clear();
+        m_frames.clear();
     }
-
-    /*
-    void ResAnim::addFrame(const AnimationFrame &frame)
-    {
-        _frames.push_back(frame);
-    }
-    */
 
     ResAnim::operator const AnimationFrame& ()
     {
@@ -144,34 +146,34 @@ namespace oxygine
         return p;
     }
 
-    const AnimationFrame& ResAnim::getFrame(int col, int row) const
+    const AnimationFrame& ResAnim::getFrame(qint32 col, qint32 row) const
     {
-        int i = row * _columns + col;
+        qint32 i = row * m_columns + col;
         return getFrame(i);
     }
 
-    const AnimationFrame&   ResAnim::getFrame(int index) const
+    const AnimationFrame&   ResAnim::getFrame(qint32 index) const
     {
-        if (index < (int)_frames.size())
+        if (index < (int)m_frames.size())
         {
-            return _frames[index];
+            return m_frames[index];
         }
-        return emptyFrame;
+        return m_emptyFrame;
     }
 
-    void ResAnim::setFrame(int col, int row, const AnimationFrame& frame)
+    void ResAnim::setFrame(qint32 col, qint32 row, const AnimationFrame& frame)
     {
-        int i = row * _columns + col;
-        if (i < (int)_frames.size())
+        qint32 i = row * m_columns + col;
+        if (i < (int)m_frames.size())
         {
-            _frames[i] = frame;
+            m_frames[i] = frame;
         }
     }
 
     const Vector2&  ResAnim::getSize() const
     {
-        Q_ASSERT(!_frames.empty());
-        return _frames[0].getSize();
+        Q_ASSERT(!m_frames.empty());
+        return m_frames[0].getSize();
     }
     float   ResAnim::getWidth() const
     {

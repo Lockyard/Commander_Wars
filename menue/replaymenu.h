@@ -11,6 +11,9 @@
 #include "game/viewplayer.h"
 #include "game/GameEnums.h"
 
+class ReplayMenu;
+using spReplayMenu = oxygine::intrusive_ptr<ReplayMenu>;
+
 class ReplayMenu : public GameMenue
 {
     Q_OBJECT
@@ -81,18 +84,18 @@ private:
     oxygine::spButton m_pauseButton;
     oxygine::spButton m_fastForwardButton;
     oxygine::spButton m_configButton;
-    GameEnums::AnimationMode _StoredShowAnimations = GameEnums::AnimationMode_All;
-    spHumanPlayerInput _HumanInput;
+    GameEnums::AnimationMode m_StoredShowAnimations = GameEnums::AnimationMode_All;
+    spHumanPlayerInput m_HumanInput;
     spViewplayer m_Viewplayer;
 
     GameEnums::AnimationMode m_storedAnimMode;
-    GameEnums::BattleAnimationMode _storedBatteAnimMode;
+    GameEnums::BattleAnimationMode m_storedBatteAnimMode;
     quint32 m_storedAnimationSpeed = 1;
     quint32 m_storedBattleAnimationSpeed = 1;
 
     bool m_seeking{false};
-    oxygine::spActor _seekActor;
-    spLabel _seekDayLabel;
+    oxygine::spActor m_seekActor;
+    spLabel m_seekDayLabel;
 };
 
 #endif // REPLAYMENU_H

@@ -84,6 +84,11 @@ public:
      * @brief autoScroll
      */
     virtual void autoScroll() override;
+    /**
+     * @brief doTrapping
+     * @param pGameAction
+     */
+    void doTrapping(spGameAction & pGameAction);
 signals:
     void sigActionPerformed();
     void sigGameStarted();
@@ -134,6 +139,10 @@ public slots:
      */
     void updatePlayerinfo();
     /**
+     * @brief updateMinimap
+     */
+    void updateMinimap();
+    /**
      * @brief cursorMoved
      * @param x
      * @param y
@@ -180,6 +189,10 @@ public slots:
      * @brief showAttackLog
      */
     void showUnitInfo(qint32 player);
+    /**
+     * @brief showUnitStatistics
+     */
+    void showUnitStatistics();
     /**
      * @brief saveMap
      * @param file
@@ -278,17 +291,19 @@ protected:
     QString getSaveFileEnding();
     void skipAllAnimations();
     void skipExceptBattle();
+    void doSaveMap();
 protected:
     ReplayRecorder m_ReplayRecorder;
     spPlayerInfo m_pPlayerinfo;
     spIngameInfoBar m_IngameInfoBar;
-    spLabel xyTextInfo;
+    spLabel m_xyTextInfo;
     oxygine::spActor m_XYButtonBox;
     static spGameMenue m_pInstance;
     spChat m_pChat{nullptr};
     oxygine::spButton m_ChatButton{nullptr};
+    oxygine::spTween m_chatButtonShineTween{nullptr};
     spNetworkInterface m_pNetworkInterface;
-    bool gameStarted{false};
+    bool m_gameStarted{false};
     QVector<quint64> m_PlayerSockets;
     QVector<quint64> m_ReadySockets;
     oxygine::spTextField m_CurrentRoundTime;
@@ -302,6 +317,11 @@ protected:
 
     qint64 m_syncCounter{0};
     qint32 m_autoSaveCounter{0};
+
+    QString m_saveFile;
+    bool m_saveMap{false};
+    bool m_exitAfterSave{false};
+    bool m_saveAllowed{false};
 };
 
 #endif // GAMEMENUE_H

@@ -10,7 +10,7 @@
 
 GlobalUtils GlobalUtils::m_pInstace = GlobalUtils();
 
-QRandomGenerator GlobalUtils::randGenerator;
+QRandomGenerator GlobalUtils::m_randGenerator;
 bool GlobalUtils::m_useSeed{false};
 quint32 GlobalUtils::m_seed = 0;
 
@@ -18,13 +18,13 @@ GlobalUtils::GlobalUtils()
 {
     Interpreter::setCppOwnerShip(this);
     quint32 seedValue = QRandomGenerator::global()->bounded(0u, std::numeric_limits<quint32>::max());
-    randGenerator.seed(seedValue);
+    m_randGenerator.seed(seedValue);
 }
 
 void GlobalUtils::seed(quint32 seed)
 {
     m_seed = seed;
-    randGenerator.seed(seed);
+    m_randGenerator.seed(seed);
     Console::print("Seeding with " + QString::number(m_seed), Console::eDEBUG);
 }
 
@@ -41,7 +41,7 @@ qint32 GlobalUtils::randInt(qint32 low, qint32 high)
     }
     if (m_useSeed)
     {
-        return randGenerator.bounded(low, high + 1);
+        return m_randGenerator.bounded(low, high + 1);
     }
     else
     {
@@ -57,7 +57,7 @@ float GlobalUtils::randFloat(float low, float high)
     }
     if (m_useSeed)
     {
-        return randGenerator.bounded(high + 0.00001f) + low;
+        return m_randGenerator.bounded(high + 0.00001f) + low;
     }
     else
     {
@@ -73,7 +73,7 @@ double GlobalUtils::randDouble(double low, double high)
     }
     if (m_useSeed)
     {
-        return randGenerator.bounded(high + 0.00001) + low;
+        return m_randGenerator.bounded(high + 0.00001) + low;
     }
     else
     {
@@ -342,4 +342,28 @@ double GlobalUtils::distanceVector(const QVector<double>& v1, const QVector<doub
         d += (v1[i] - v2[i])*(v1[i] - v2[i]);
     }
     return d;
+}
+
+QVector<qint32> GlobalUtils::getRandomizedArray(qint32 min, qint32 max)
+{
+    QVector<qint32> ret;
+    if (min < max)
+    {
+        QVector<qint32> temp;
+        for (qint32 i = min; i <= max; ++i)
+        {
+            temp.append(i);
+        }
+        while (temp.size() > 0)
+        {
+            qint32 value = GlobalUtils::randInt(0, temp.size() - 1);
+            ret.push_back(temp[value]);
+            temp.removeAt(value);
+        }
+    }
+    else
+    {
+        Console::print("getRandomizedArray(min, max) min " + QString::number(min) + " is not smaller than max " + QString::number(max), Console::eERROR);
+    }
+    return ret;
 }

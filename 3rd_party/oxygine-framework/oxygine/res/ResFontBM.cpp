@@ -11,42 +11,43 @@
 #include <qdir.h>
 #include "qtextstream.h"
 
+#include "coreengine/console.h"
+
 namespace oxygine
 {
-    Resource* ResFontBM::create(CreateResourceContext& context)
+    spResource ResFontBM::create(CreateResourceContext& context)
     {
-        ResFontBM* font = nullptr;
+        spResFontBM font = nullptr;
 
-        font = new ResFontBM();
+        font = spResFontBM::create();
         font->_createFont(&context, false, false, 1);
-        setNode(font, context.walker.getNode());
-        context.resources->add(font);
+        setNode(font, context.m_walker.getNode());
+        context.m_resources->add(font);
 
         //context.meta = context.meta.next_sibling();
 
         return font;
     }
 
-    Resource* ResFontBM::createBM(CreateResourceContext& context)
+    spResource ResFontBM::createBM(CreateResourceContext& context)
     {
-        ResFontBM* font = nullptr;
+        spResFontBM font = nullptr;
 
-        font = new ResFontBM();
+        font = spResFontBM::create();
         font->_createFont(&context, false, true, 1);
-        setNode(font, context.walker.getNode());
-        context.resources->add(font);
+        setNode(font, context.m_walker.getNode());
+        context.m_resources->add(font);
 
         return font;
     }
 
-    Resource* ResFontBM::createSD(CreateResourceContext& context)
+    spResource ResFontBM::createSD(CreateResourceContext& context)
     {
-        ResFontBM* font = nullptr;
-
-        font = new ResFontBM();
+        spResFontBM font = nullptr;
+        font = spResFontBM::create();
         font->_createFont(&context, true, false, 1);
-        setNode(font, context.walker.getNode());
-        context.resources->add(font);
+        setNode(font, context.m_walker.getNode());
+        context.m_resources->add(font);
 
         //context.meta = context.meta.next_sibling();
 
@@ -55,10 +56,9 @@ namespace oxygine
 
 
     ResFontBM::ResFontBM()
-        : _font(nullptr),
-          _sdf(false),
-          _format(ImageData::TF_R8G8B8A8),
-          _premultipliedAlpha(false)
+        : m_font(nullptr),
+          m_sdf(false),
+          m_premultipliedAlpha(false)
     {
 
     }
@@ -68,46 +68,46 @@ namespace oxygine
         cleanup();
     }
 
-    const oxygine::Font* ResFontBM::getClosestFont(float, int styleFontSize, float& resScale) const
+    const oxygine::Font* ResFontBM::getClosestFont(float, qint32 styleFontSize, float& resScale) const
     {
         if (!styleFontSize)
         {
-            styleFontSize = _size;
+            styleFontSize = m_size;
         }
 
-        float scale = _size / float(styleFontSize) * _font->getScale();
+        float scale = m_size / float(styleFontSize) * m_font->getScale();
         resScale = scale;
-        return _font.get();
+        return m_font.get();
     }
 
     void ResFontBM::init(QString path, bool premultipliedAlpha)
     {
-        _premultipliedAlpha = premultipliedAlpha;
-        _file = path;
+        m_premultipliedAlpha = premultipliedAlpha;
+        m_file = path;
         _createFont(nullptr, false, false, 1);
     }
 
     void ResFontBM::cleanup()
     {
-        for (pages::iterator i = _pages.begin(); i != _pages.end(); ++i)
+        for (pages::iterator i = m_pages.begin(); i != m_pages.end(); ++i)
         {
             const page& p = *i;
             p.texture->release();
         }
-        _pages.clear();
-        _font = nullptr;
-        _loadCounter = 0;
+        m_pages.clear();
+        m_font = nullptr;
+        m_loadCounter = 0;
     }
 
-    void ResFontBM::_restore(Restorable* r, void*)
+    void ResFontBM::_restore(Restorable* r)
     {
-        void* object = r->_getRestorableObject();
-        for (pages::iterator i = _pages.begin(); i != _pages.end(); ++i)
+        Restorable* object = r->_getRestorableObject();
+        for (pages::iterator i = m_pages.begin(); i != m_pages.end(); ++i)
         {
             const page& p = *i;
             if (p.texture.get() == object)
             {
-                _loadPage(p, &RestoreResourcesContext::instance);
+                _loadPage(p, &RestoreResourcesContext::m_instance);
             }
         }
     }
@@ -119,35 +119,35 @@ namespace oxygine
             return;
         }
 
-        spImage mt = new Image;
+        spImage mt = spImage::create();
 
         QImage img(p.file);
-        mt->init(img, !_premultipliedAlpha);
+        mt->init(img, !m_premultipliedAlpha);
         CreateTextureTask opt;
         opt.src = mt;
         opt.dest = p.texture;
         opt.linearFilter = m_linearFilter;
         opt.clamp2edge = m_clamp2edge;
         load_context->createTexture(opt);
-        p.texture->reg(Restorable::RestoreCallback(this, &ResFontBM::_restore), nullptr);
+        p.texture->reg(Restorable::RestoreCallback(this, &ResFontBM::_restore));
     }
 
     void ResFontBM::_load(LoadResourcesContext* load_context)
     {
-        Q_ASSERT(!_pages.empty());
-        if (_pages.empty())
+        Q_ASSERT(!m_pages.empty());
+        if (m_pages.empty())
         {
             return;
         }
 
-        for (pages::iterator i = _pages.begin(); i != _pages.end(); ++i)
+        for (pages::iterator i = m_pages.begin(); i != m_pages.end(); ++i)
         {
             const page& p = *i;
             _loadPage(p, load_context);
         }
     }
 
-    void ResFontBM::addPage(int tw, int th, QString head, QString textureFile)
+    void ResFontBM::addPage(qint32 tw, qint32 th, QString head, QString textureFile)
     {
         page p;
         if (!head.isEmpty())
@@ -157,14 +157,13 @@ namespace oxygine
         }
         p.file += textureFile;
         p.texture = IVideoDriver::instance->createTexture();
-        p.texture->setName(p.file);
 
         if (tw)
         {
             p.texture->init(0, tw, th, ImageData::TF_UNDEFINED);
         }
 
-        _pages.push_back(p);
+        m_pages.push_back(p);
     }
 
     void ResFontBM::loadBase(QDomElement node)
@@ -201,13 +200,13 @@ namespace oxygine
     void ResFontBM::_finalize()
     {
         glyphOptions opt = 0;
-        const glyph* g = _font->getGlyph(0xA0, opt);
+        const glyph* g = m_font->getGlyph(0xA0, opt);
         if (g)
         {
             return;
         }
 
-        g = _font->getGlyph(' ', opt);
+        g = m_font->getGlyph(' ', opt);
         if (!g)
         {
             return;
@@ -215,17 +214,17 @@ namespace oxygine
 
         glyph p = *g;
         p.ch = 0xA0;
-        _font->addGlyph(p);
+        m_font->addGlyph(p);
 
     }
 
-    void ResFontBM::_createFont(CreateResourceContext* context, bool, bool bmc, int downsample)
+    void ResFontBM::_createFont(CreateResourceContext* context, bool, bool bmc, qint32 downsample)
     {
-        _sdf = false;
+        m_sdf = false;
 
         if (context)
         {
-            QDomElement node = context->walker.getNode();
+            QDomElement node = context->m_walker.getNode();
             bool ok = false;
             downsample = node.attribute("downsample").toInt(&ok);
             if (!ok)
@@ -235,19 +234,19 @@ namespace oxygine
             QVariant value(node.attribute("premultiplied_alpha"));
             if (value.type() == QVariant::Type::Bool)
             {
-                _premultipliedAlpha = value.toBool();
+                m_premultipliedAlpha = value.toBool();
             }
 
-            _file = context->walker.getPath("file");
-            setName(Resource::extractID(node, _file, ""));
+            m_file = context->m_walker.getPath("file");
+            setName(Resource::extractID(node, m_file, ""));
 
             if (bmc)
             {
-                _file = context->prebuilt_folder + getName() + ".fnt";
+                m_file = context->m_prebuilt_folder + getName() + ".fnt";
             }
         }
 
-        QString path = _file;
+        QString path = m_file;
         QFile file(path);
         if (!file.exists())
         {
@@ -259,10 +258,14 @@ namespace oxygine
         }
 
         QDomDocument doc;
-        bool isXml = doc.setContent(&file);
+        QString error;
+        qint32 line;
+        qint32 column;
+        bool isXml = doc.setContent(&file, &error, &line, &column);
 
         if (!isXml)
         {
+            Console::print("Error: " + error + " at line " + QString::number(line) + " at column " + QString::number(column), Console::eERROR);
             return;
         }
         /////////////////////////////////////////////////
@@ -271,13 +274,13 @@ namespace oxygine
         QDomElement info = root.firstChildElement("info");
 
         //<info face="Century Gothic" size="-24" bold="0" italic="0" charset="" unicode="1" stretchH="100" smooth="1" aa="1" padding="0,0,0,0" spacing="1,1" outline="0"/>
-        int fontSize = info.attribute("size").toInt() / downsample;
+        qint32 fontSize = info.attribute("size").toInt() / downsample;
 
         QDomElement common = root.firstChildElement("common");
-        int lineHeight = common.attribute("lineHeight").toInt() / downsample;
-        int base = common.attribute("base").toInt() / downsample;
-        int tw = common.attribute("scaleW").toInt();
-        int th = common.attribute("scaleH").toInt();
+        qint32 lineHeight = common.attribute("lineHeight").toInt() / downsample;
+        qint32 base = common.attribute("base").toInt() / downsample;
+        qint32 tw = common.attribute("scaleW").toInt();
+        qint32 th = common.attribute("scaleH").toInt();
 
         QDomElement pages = root.firstChildElement("pages");
         tw /= downsample;
@@ -297,59 +300,77 @@ namespace oxygine
         }
 
         fontSize = qAbs(fontSize);
-        Font* font = new Font();
-        font->init(getName(), fontSize, fontSize, lineHeight + fontSize - base, _sdf);
-        _size = fontSize;
-        _font = font;
+        spFont font = spFont::create();
+        font->init(fontSize, fontSize, lineHeight + fontSize - base, m_sdf);
+        m_size = fontSize;
+        m_font = font;
 
         if (context)
         {
-            float scale = 1.0f / context->walker.getScaleFactor();
-            _font->setScale(scale);
+            float scale = 1.0f / context->m_walker.getScaleFactor();
+            m_font->setScale(scale);
         }
 
         QDomElement chars = root.firstChildElement("chars");
         QDomElement child = chars.firstChildElement();
         while (!child.isNull())
         {
-            int charID = 0;
-            int xpos = 0;
-            int ypos = 0;
-            int width = 0;
-            int height = 0;
-            int xoffset = 0;
-            int yoffset = 0;
-            int xadvance = 0;
-            int page = 0;
+            qint32 charID = 0;
+            qint32 xpos = 0;
+            qint32 ypos = 0;
+            qint32 width = 0;
+            qint32 height = 0;
+            qint32 xoffset = 0;
+            qint32 yoffset = 0;
+            qint32 xadvance = 0;
+            qint32 page = 0;
 
             auto attr = child.attributes();
             for (qint32 i = 0; i < attr.size(); i++)
             {
                 QDomNode attribute = attr.item(i);
                 QString attr_name = attribute.nodeName();
-                int value = attribute.nodeValue().toInt();
+                qint32 value = attribute.nodeValue().toInt();
 
                 if (attr_name == "id")
+                {
                     charID = value;
+                }
                 else if (attr_name == "x")
+                {
                     xpos = value;
+                }
                 else if (attr_name == "y")
+                {
                     ypos = value;
+                }
                 else if (attr_name == "width")
+                {
                     width = value;
+                }
                 else if (attr_name == "height")
+                {
                     height = value;
+                }
                 else if (attr_name == "xoffset")
+                {
                     xoffset = value;
+                }
                 else if (attr_name == "yoffset")
+                {
                     yoffset = value;
+                }
                 else if (attr_name == "xadvance")
+                {
                     xadvance = value;
+                }
                 else if (attr_name == "page")
+                {
                     page = value;
+                }
             }
 
-            spTexture t = _pages[page].texture;
+            spTexture t = m_pages[page].texture;
             float iw = 1.0f / t->getWidth() / downsample;
             float ih = 1.0f / t->getHeight() / downsample;
 
@@ -363,7 +384,7 @@ namespace oxygine
             gl.advance_y = 0;
             gl.ch = charID;
             gl.opt = 0;
-            gl.texture = _pages[page].texture;
+            gl.texture = m_pages[page].texture;
 
             font->addGlyph(gl);
 
@@ -376,8 +397,8 @@ namespace oxygine
 
     void ResFontBM::_unload()
     {
-        Q_ASSERT(!_pages.empty());
-        for (pages::iterator i = _pages.begin(); i != _pages.end(); ++i)
+        Q_ASSERT(!m_pages.empty());
+        for (pages::iterator i = m_pages.begin(); i != m_pages.end(); ++i)
         {
             const page& p = *i;
             p.texture->release();
@@ -386,6 +407,6 @@ namespace oxygine
 
     const Font* ResFontBM::getFont(QString, int) const
     {
-        return _font.get();
+        return m_font.get();
     }
 }

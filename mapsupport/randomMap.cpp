@@ -18,7 +18,7 @@
 
 #include "objects/loadingscreen.h"
 
-static const QString RANDOMMAPGENERATORNAME = "RANDOMMAPGENERATOR";
+const char* const RANDOMMAPGENERATORNAME = "RANDOMMAPGENERATOR";
 qint32 GameMap::randomMap(qint32 width, qint32 heigth, qint32 playerCount,
                           bool roadSupport, qint32 seed,
                           QVector<std::tuple<QString, float>> terrains,
@@ -58,7 +58,7 @@ qint32 GameMap::randomMap(qint32 width, qint32 heigth, qint32 playerCount,
     {
 
         QString terrainID = std::get<0>(terrains[i]);
-        pLoadingScreen->setProgress(QObject::tr("Generating ") + terrainID, progress * 100 / maxSteps);
+        pLoadingScreen->setProgress(tr("Generating ") + terrainID, progress * 100 / maxSteps);
         progress++;
         if (terrainID == "Buildings")
         {
@@ -174,6 +174,13 @@ qint32 GameMap::randomMapPlaceLine(qint32 startX, qint32 startY, qint32 count, Q
     qint32 placed = 0;
     qint32 maximumTries = 1000;
     qint32 maximumTry = maximumTries;
+    Interpreter* pInterpreter = Interpreter::getInstance();
+    QJSValue erg = pInterpreter->doFunction(RANDOMMAPGENERATORNAME, "get" + terrainID + "StraigthLineChance");
+    qint32 lineChance = 4;
+    if (erg.isNumber())
+    {
+        lineChance = erg.toInt();
+    }
     while (count > 0 && maximumTry > 0)
     {
         // we need to place terrains
@@ -202,13 +209,12 @@ qint32 GameMap::randomMapPlaceLine(qint32 startX, qint32 startY, qint32 count, Q
                     }
                     if (randomMapAddTerrainPoint(points, x + 1, y, terrainID, 0))
                     {
-                        points.append(QPoint(x + 1, y));
-                        points.append(QPoint(x + 1, y));
-                        points.append(QPoint(x + 1, y));
                         directions.append(GameEnums::Directions_East);
-                        directions.append(GameEnums::Directions_East);
-                        directions.append(GameEnums::Directions_East);
-                        directions.append(GameEnums::Directions_East);
+                        for (qint32 i = 0; i < lineChance - 1; ++i)
+                        {
+                            points.append(QPoint(x + 1, y));
+                            directions.append(GameEnums::Directions_East);
+                        }
                     }
                     break;
                 }
@@ -224,13 +230,12 @@ qint32 GameMap::randomMapPlaceLine(qint32 startX, qint32 startY, qint32 count, Q
                     }
                     if (randomMapAddTerrainPoint(points, x - 1, y, terrainID, 0))
                     {
-                        points.append(QPoint(x - 1, y));
-                        points.append(QPoint(x - 1, y));
-                        points.append(QPoint(x - 1, y));
                         directions.append(GameEnums::Directions_West);
-                        directions.append(GameEnums::Directions_West);
-                        directions.append(GameEnums::Directions_West);
-                        directions.append(GameEnums::Directions_West);
+                        for (qint32 i = 0; i < lineChance - 1; ++i)
+                        {
+                            points.append(QPoint(x - 1, y));
+                            directions.append(GameEnums::Directions_West);
+                        }
                     }
                     break;
                 }
@@ -246,13 +251,12 @@ qint32 GameMap::randomMapPlaceLine(qint32 startX, qint32 startY, qint32 count, Q
                     }
                     if (randomMapAddTerrainPoint(points, x, y - 1, terrainID, 0))
                     {
-                        points.append(QPoint(x, y - 1));
-                        points.append(QPoint(x, y - 1));
-                        points.append(QPoint(x, y - 1));
                         directions.append(GameEnums::Directions_North);
-                        directions.append(GameEnums::Directions_North);
-                        directions.append(GameEnums::Directions_North);
-                        directions.append(GameEnums::Directions_North);
+                        for (qint32 i = 0; i < lineChance - 1; ++i)
+                        {
+                            points.append(QPoint(x, y - 1));
+                            directions.append(GameEnums::Directions_North);
+                        }
                     }
                     break;
                 }
@@ -268,13 +272,12 @@ qint32 GameMap::randomMapPlaceLine(qint32 startX, qint32 startY, qint32 count, Q
                     }
                     if (randomMapAddTerrainPoint(points, x, y + 1, terrainID, 0))
                     {
-                        points.append(QPoint(x, y + 1));
-                        points.append(QPoint(x, y + 1));
-                        points.append(QPoint(x, y + 1));
                         directions.append(GameEnums::Directions_South);
-                        directions.append(GameEnums::Directions_South);
-                        directions.append(GameEnums::Directions_South);
-                        directions.append(GameEnums::Directions_South);
+                        for (qint32 i = 0; i < lineChance - 1; ++i)
+                        {
+                            points.append(QPoint(x, y + 1));
+                            directions.append(GameEnums::Directions_South);
+                        }
                     }
                     break;
                 }
@@ -441,11 +444,11 @@ void GameMap::randomMapPlaceOnTop(QString terrainID, QString topId, float chance
 
 void GameMap::randomMapCreateRoad(QRandomGenerator& randInt, QVector<QPoint>& playerPositions)
 {
-    for (qint32 i = 0; i < players.size(); i++)
+    for (qint32 i = 0; i < m_players.size(); i++)
     {
         QPoint currentPoint = playerPositions[i];
         QPoint endPoint;
-        if (i == players.size() - 1)
+        if (i == m_players.size() - 1)
         {
             endPoint = playerPositions[0];
         }
@@ -513,14 +516,14 @@ QVector<QPoint> GameMap::randomMapCreateBuildings(qint32 buildings, QRandomGener
     qint32 mapHeigth = getMapHeight();
     qint32 maximumBuildingTry = 3 * mapWidth * mapHeigth;
     qint32 maxTries = maximumBuildingTry;
-    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (players.size()) * 0.7);
+    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (m_players.size()) * 0.7);
     Interpreter* pInterpreter = Interpreter::getInstance();
     QJSValue erg = pInterpreter->doFunction(RANDOMMAPGENERATORNAME, "getHQBaseTerrainID");
-    spUnit pUnit = new Unit("INFANTRY", players[0].get(), false);
+    spUnit pUnit = spUnit::create("INFANTRY", m_players[0].get(), false);
     pUnit->setIgnoreUnitCollision(true);
     qint32 days = minimalDistance / 2;
-    LoadingScreen::getInstance()->setWorktext(QObject::tr("Generating ") + "HQ's");
-    for (qint32 i = 0; i < players.size(); i++)
+    LoadingScreen::getInstance()->setWorktext(tr("Generating ") + "HQ's");
+    for (qint32 i = 0; i < m_players.size(); i++)
     {
         QPoint position;
         for (qint32 i2 = 0; i2 < maxTries; i2++)
@@ -554,9 +557,9 @@ QVector<QPoint> GameMap::randomMapCreateBuildings(qint32 buildings, QRandomGener
         }
         replaceTerrain(erg.toString(), position.x(), position.y());
         playerPositions.push_back(position);
-        Building* pBuilding = new Building("HQ");
+        spBuilding pBuilding = spBuilding::create("HQ");
         pBuilding->setOwner(getPlayer(i));
-        getTerrain(position.x(), position.y())->setBuilding(pBuilding);
+        getTerrain(position.x(), position.y())->setBuilding(pBuilding.get());
     }
 
     buildings -= playerPositions.size();
@@ -584,9 +587,9 @@ QVector<QPoint> GameMap::randomMapCreateBuildings(qint32 buildings, QRandomGener
         if ((x >= 0) && (y >= 0))
         {
             replaceTerrain(erg.toString(), x, y);
-            Building* pBuilding = new Building("FACTORY");
+            spBuilding pBuilding = spBuilding::create("FACTORY");
             pBuilding->setOwner(getPlayer(i));
-            getTerrain(x, y)->setBuilding(pBuilding);
+            getTerrain(x, y)->setBuilding(pBuilding.get());
         }
     }
     buildings -= playerPositions.size();
@@ -610,12 +613,12 @@ void GameMap::randomMapPlaceBuildings(QString buildingId, QString baseTerrainID,
 {
     qint32 mapWidth = getMapWidth();
     qint32 mapHeigth = getMapHeight();
-    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (players.size()) * 0.7);
+    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (m_players.size()) * 0.7);
     qint32 maximumBuildingTry = 1000;
     // number of factorys at start
-    qint32 count = static_cast<qint32>(GlobalUtils::roundUp(static_cast<float>(buildings) * chance / static_cast<float>(players.size())) * players.size());
-    qint32 innerBase = players.size() * 2;
-    qint32 playerBuldings = static_cast<qint32>(GlobalUtils::roundUp(count * startBaseSize / static_cast<float>(players.size())) * players.size());
+    qint32 count = static_cast<qint32>(GlobalUtils::roundUp(static_cast<float>(buildings) * chance / static_cast<float>(m_players.size())) * m_players.size());
+    qint32 innerBase = m_players.size() * 2;
+    qint32 playerBuldings = static_cast<qint32>(GlobalUtils::roundUp(count * startBaseSize / static_cast<float>(m_players.size())) * m_players.size());
 
     QVector<qint32> ownerBuildings;
     for (qint32 i = 0; i < ownedBaseSize.size(); i++)
@@ -628,7 +631,7 @@ void GameMap::randomMapPlaceBuildings(QString buildingId, QString baseTerrainID,
         qint32 x = -1;
         qint32 y = -1;
         qint32 maxTries = maximumBuildingTry;
-        qint32 player = i % players.size();
+        qint32 player = i % m_players.size();
         for (qint32 i2 = 0; i2 < maxTries; i2++)
         {
             x = randInt.bounded(0, mapWidth);
@@ -662,17 +665,17 @@ void GameMap::randomMapPlaceBuildings(QString buildingId, QString baseTerrainID,
         if (onMap(x, y))
         {
             replaceTerrain(baseTerrainID, x, y);
-            Building* pBuilding = new Building(buildingId);
+            spBuilding pBuilding = spBuilding::create(buildingId);
             for (qint32 i2 = 0; i2 < ownedBaseSize.size(); i2++)
             {
                 if ((i < playerBuldings && i2 == 0) ||
                     (i >= playerBuldings))
                 {
-                    qint32 player = (i + i2) % players.size();
+                    qint32 player = (i + i2) % m_players.size();
                     if (ownerBuildings[player] > 0)
                     {
                         ownerBuildings[player]--;
-                        pBuilding->setOwner(players[player].get());
+                        pBuilding->setOwner(m_players[player].get());
                         break;
                     }
                 }
@@ -681,7 +684,7 @@ void GameMap::randomMapPlaceBuildings(QString buildingId, QString baseTerrainID,
                     break;
                 }
             }
-            getTerrain(x, y)->setBuilding(pBuilding);
+            getTerrain(x, y)->setBuilding(pBuilding.get());
             if (innerBase > 0)
             {
                 innerBase--;
@@ -791,9 +794,9 @@ void GameMap::randomMapSpawnUnit(QString unitId, qint32 owner, bool nearHq, QVec
 {
     qint32 mapWidth = getMapWidth();
     qint32 mapHeigth = getMapHeight();
-    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (players.size()) * 0.7);
+    qint32 minimalDistance = static_cast<qint32>((mapWidth * 2 + mapHeigth * 2) / (m_players.size()) * 0.7);
     qint32 maximumUnitTry = 2000;
-    spUnit pUnit = new Unit(unitId, players[owner].get(), false);
+    spUnit pUnit = spUnit::create(unitId, m_players[owner].get(), false);
     qint32 x = 0;
     qint32 y = 0;
     for (qint32 i2 = 0; i2 < maximumUnitTry; ++i2)
@@ -812,7 +815,7 @@ void GameMap::randomMapSpawnUnit(QString unitId, qint32 owner, bool nearHq, QVec
             pUnit->getBaseMovementCosts(x, y) > 0 &&
             getTerrain(x, y)->getUnit() == nullptr)
         {
-            spawnUnit(x, y, unitId, players[owner].get(), 0);
+            spawnUnit(x, y, unitId, m_players[owner].get(), 0);
             break;
         }
     }

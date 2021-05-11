@@ -1,11 +1,15 @@
 #include "multislider.h"
 
 #include "resource_management/fontmanager.h"
+#include "resource_management/objectmanager.h"
+
+#include "objects/base/label.h"
 
 #include "coreengine/mainapp.h"
 
 Multislider::Multislider(QVector<QString> texts, qint32 width, QVector<qint32> values)
 {
+    setObjectName("Multislider");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     qint32 textWidth = 0;
@@ -16,7 +20,7 @@ Multislider::Multislider(QVector<QString> texts, qint32 width, QVector<qint32> v
     style.multiline = false;
     for (qint32 i = 0; i < texts.size(); i++)
     {
-        m_Textfields.append(new oxygine::TextField());
+        m_Textfields.append(oxygine::spTextField::create());
         m_Textfields[i]->setStyle(style);
         m_Textfields[i]->setHtmlText(texts[i]);
         m_Textfields[i]->setY(i * 40);
@@ -26,12 +30,13 @@ Multislider::Multislider(QVector<QString> texts, qint32 width, QVector<qint32> v
         }
         addChild(m_Textfields[i]);
     }
-    width = width - textWidth - 10 - 110;
+    width = width - textWidth - 10 - 110 - 50;
     qint32 totalSliderValue = 0;
     setSize(width, texts.size() * 40);
+    ObjectManager* pObjectManager = ObjectManager::getInstance();
     for (qint32 i = 0; i < texts.size(); i++)
     {
-        m_Slider.append(new Slider(width, 0, 100));
+        m_Slider.append(spSlider::create(width, 0, 100));
         m_Slider[i]->setX(textWidth + 10);
         m_Slider[i]->setY(i * 40);
         if (values.size() != texts.size())
@@ -49,6 +54,31 @@ Multislider::Multislider(QVector<QString> texts, qint32 width, QVector<qint32> v
             emit signalSliderValueChanged(i);
         });
         addChild(m_Slider[i]);
+        char unlockChar = FontManager::SpecialChars::unlockChar;
+        char lockChar = FontManager::SpecialChars::lockChar;
+        oxygine::spButton pLockButton = pObjectManager->createButton(QString(unlockChar), 40, "Locks this slider. So the value can't be changed.", "button_square");
+        pLockButton->getFirstChild()->setY(-5);
+        qint32 x = m_Slider[i]->getX() + m_Slider[i]->getWidth() + 10;
+        pLockButton->setPosition(x, i * 40);
+        pLockButton->addClickListener([=](oxygine::Event*)
+        {
+            Label* pLabel = static_cast<Label*>(pLockButton->getFirstChild()->getFirstChild().get());
+            if (m_locked[i])
+            {
+                pLockButton->getFirstChild()->setY(-5);
+                pLabel->setText(QString(unlockChar));
+            }
+            else
+            {
+                pLockButton->getFirstChild()->setY(0);
+                pLabel->setText(QString(lockChar));
+            }
+            m_Slider[i]->setEnabled(m_locked[i]);
+            m_locked[i] = !m_locked[i];
+        });
+        m_lockButtons.append(pLockButton);
+        m_locked.append(false);
+        addChild(pLockButton);
     }
     connect(this, &Multislider::signalSliderValueChanged, this, &Multislider::sliderValueChanged, Qt::QueuedConnection);
     qint32 sliderDirection = 0;
@@ -64,17 +94,17 @@ Multislider::Multislider(QVector<QString> texts, qint32 width, QVector<qint32> v
     {
         while (totalSliderValue != 100)
         {
-            qint32 currentValue = m_Slider[currentSliderChange]->getCurrentValue();
+            qint32 currentValue = m_Slider[m_currentSliderChange]->getCurrentValue();
             if ((currentValue > 0 && sliderDirection < 0) ||
                 (currentValue < 100 && sliderDirection > 0))
             {
-                m_Slider[currentSliderChange]->setCurrentValue(m_Slider[currentSliderChange]->getCurrentValue() + sliderDirection);
+                m_Slider[m_currentSliderChange]->setCurrentValue(m_Slider[m_currentSliderChange]->getCurrentValue() + sliderDirection);
                 totalSliderValue += sliderDirection;
             }
-            currentSliderChange += 1;
-            if (currentSliderChange >= m_Slider.size())
+            m_currentSliderChange += 1;
+            if (m_currentSliderChange >= m_Slider.size())
             {
-                currentSliderChange = 0;
+                m_currentSliderChange = 0;
             }
         }
     }
@@ -109,22 +139,30 @@ void Multislider::sliderValueChanged(qint32 slider)
     {
         sliderDirection = 1;
     }
+    bool changed = false;
     while (totalSliderValue != 100)
     {
-        if (currentSliderChange != slider)
+        if (m_currentSliderChange != slider && !m_locked[m_currentSliderChange])
         {
-            qint32 currentValue = m_Slider[currentSliderChange]->getCurrentValue();
+            qint32 currentValue = m_Slider[m_currentSliderChange]->getCurrentValue();
             if ((currentValue > 0 && sliderDirection < 0) ||
                 (currentValue < 100 && sliderDirection > 0))
             {
-                m_Slider[currentSliderChange]->setCurrentValue(m_Slider[currentSliderChange]->getCurrentValue() + sliderDirection);
+                changed = true;
+                m_Slider[m_currentSliderChange]->setCurrentValue(m_Slider[m_currentSliderChange]->getCurrentValue() + sliderDirection);
                 totalSliderValue += sliderDirection;
             }
         }
-        currentSliderChange += 1;
-        if (currentSliderChange >= m_Slider.size())
+        m_currentSliderChange += 1;
+        if (m_currentSliderChange >= m_Slider.size())
         {
-            currentSliderChange = 0;
+            if (!changed)
+            {
+                m_Slider[slider]->setCurrentValue(m_Slider[slider]->getCurrentValue() + sliderDirection);
+                totalSliderValue += sliderDirection;
+            }
+            m_currentSliderChange = 0;
+            changed = false;
         }
     }
     emit signalSliderChanged();
@@ -137,5 +175,6 @@ void Multislider::setEnabled(bool value)
     {
         m_Slider[i]->setEnabled(value);
         m_Textfields[i]->setEnabled(value);
+        m_lockButtons[i]->setEnabled(value);
     }
 }

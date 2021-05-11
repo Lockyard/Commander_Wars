@@ -5,57 +5,52 @@
 
 Label::Label(qint32 width)
 {
-    _clipRect = new oxygine::ClipRectActor();
-    _clipRect->setWidth(width);
-    _clipRect->setHeight(28);
-    _textField = new oxygine::TextField();
-    _textField->setWidth(width);
-    setWidth(width);
-    _clipRect->addChild(_textField);
+    setObjectName("Label");
+    m_clipRect = oxygine::spClipRectActor::create();
+    m_clipRect->setWidth(width);
+    m_clipRect->setHeight(28);
+    m_textField = oxygine::spTextField::create();
+    m_textField->setWidth(width);
+    Label::setWidth(width);
+    m_clipRect->addChild(m_textField);
     oxygine::TextStyle style = FontManager::getMainFont24();
     style.color = FontManager::getFontColor();
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
     setStyle(style);
-    addChild(_clipRect);
+    addChild(m_clipRect);
 }
 
 void Label::setWidth(float width)
 {    
-    _clipRect->setWidth(width);
-    _textField->setWidth(width);
+    m_clipRect->setWidth(width);
+    m_textField->setWidth(width);
     oxygine::Sprite::setWidth(width);    
 }
 
 void Label::setHeight(float height)
 {
-    _clipRect->setHeight(height);
-    _textField->setHeight(height);
+    m_clipRect->setHeight(height);
+    m_textField->setHeight(height);
     oxygine::Sprite::setHeight(height);
 }
 
 void Label::setText(QString str)
-{
-    
-    _textField->setHtmlText(str);
-    setTooltipText(str);
-    
+{    
+    m_textField->setHtmlText(str);
+    setTooltipText(str);    
 }
 
 void Label::setHtmlText(QString str)
-{
-    
-    _textField->setHtmlText(str);
-    _clipRect->setHeight(getTextRect().getHeight() * 1.4f);
-    setTooltipText(str);
-    
+{    
+    m_textField->setHtmlText(str);
+    m_clipRect->setHeight(getTextRect().getHeight() * 1.4f);
+    setTooltipText(str);    
 }
 
 void Label::setStyle(const oxygine::TextStyle& st)
-{
-    
-    _textField->setStyle(st);
-    _clipRect->setHeight(getTextRect().getHeight() * 1.4f);
-    
+{    
+    m_textField->setStyle(st);
+    m_clipRect->setHeight(getTextRect().getHeight() * 1.4f);    
 }

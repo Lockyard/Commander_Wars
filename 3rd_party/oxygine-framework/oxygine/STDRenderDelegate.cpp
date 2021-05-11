@@ -28,7 +28,6 @@ namespace oxygine
         {
             return;
         }
-        // render fix changed actor to spActor  to avoid illegal deletion -> little bit slower but safer
         spActor actor = parent->getFirstChild();
         while (actor.get() != nullptr)
         {
@@ -56,15 +55,11 @@ namespace oxygine
         rs.clip = &clippedRect;
 
         Rect scissorRect(0, 0, 0, 0);
-
-
         bool scissorEnabled = driver->getScissorRect(scissorRect);
-
         bool vis = true;
         if (actor->getClipping())
         {
             renderer->flush();
-
             RectF ss_rect = getActorTransformedDestRect(actor, actor->getTransform() * parentRS.transform);
 
             clippedRect.clip(ss_rect);
@@ -148,13 +143,14 @@ namespace oxygine
 
 
 
-        int sflags = renderer->getBaseShaderFlags();
-        int baseShaderFlags = sflags;
+        qint32 sflags = renderer->getBaseShaderFlags();
+        qint32 baseShaderFlags = sflags;
 
         baseShaderFlags |= UberShaderProgram::MASK;
         if (rchannel)
+        {
             baseShaderFlags |= UberShaderProgram::MASK_R_CHANNEL;
-
+        }
         Vector3 msk[4];
 
         clipUV.get(msk);
@@ -194,8 +190,8 @@ namespace oxygine
 
         QColor color = rs.getFinalColor(sprite->getColor());
 
-        sprite->_mat->apply();
-        sprite->_mat->render(rs.transform, color, sprite->getAnimFrame().getSrcRect(), sprite->getDestRect());
+        sprite->m_mat->apply();
+        sprite->m_mat->render(rs.transform, color, sprite->getAnimFrame().getSrcRect(), sprite->getDestRect());
     }
 
     void STDRenderDelegate::doRender(TextField* tf, const RenderState& rs)
@@ -205,24 +201,19 @@ namespace oxygine
         {
             return;
         }
-
         text::DrawContext dc;
-
         STDRenderer* renderer = STDRenderer::getCurrent();
-
-        dc.primary = premultiply(rs.getFinalColor(tf->getColor()));
-        dc.color = tf->getStyle().color * dc.primary;
-
-        //renderer->setBlendMode(tf->getBlendMode());
+        dc.m_primary = premultiply(rs.getFinalColor(tf->getColor()));
+        dc.m_color = tf->getStyle().color * dc.m_primary;
         renderer->setTransform(rs.transform);
         root->draw(dc);
     }
 
     void STDRenderDelegate::doRender(ColorRectSprite* sprite, const RenderState& rs)
     {
-        sprite->_mat->apply();
+        sprite->m_mat->apply();
         QColor color = rs.getFinalColor(sprite->getColor());
-        sprite->_mat->render(rs.transform, color, sprite->getAnimFrame().getSrcRect(), sprite->getDestRect());
+        sprite->m_mat->render(rs.transform, color, sprite->getAnimFrame().getSrcRect(), sprite->getDestRect());
     }
 
     void STDRenderDelegate::doRender(ProgressBar*, const RenderState&)

@@ -78,10 +78,14 @@ public:
 
 class GameRecorder : public QObject, public FileSerializable, public oxygine::ref_counter
 {
-    Q_OBJECT
+    Q_OBJECT    
 public:
-
-
+    struct PlayerData
+    {
+        QMap<QString, qint32> producedUnits;
+        QMap<QString, qint32> lostUnits;
+        QMap<QString, qint32> killedUnits;
+    };
     ENUM_CLASS Rang
     {
         S,
@@ -108,7 +112,7 @@ public:
      */
     inline virtual qint32 getVersion() const override
     {
-        return 5;
+        return 6;
     }
     /**
      * @brief calculateRang
@@ -138,6 +142,12 @@ public:
         }
         return nullptr;
     }
+    /**
+     * @brief getPlayerDataRecords
+     * @return
+     */
+    const QVector<PlayerData> & getPlayerDataRecords() const;
+
 signals:
 
 public slots:
@@ -159,8 +169,9 @@ public slots:
     /**
      * @brief lostUnit
      * @param player
+     * @param unitId is optional to make it upwards compatible
      */
-    void lostUnit(qint32 player);
+    void lostUnit(qint32 player, QString unitId = "");
     /**
      * @brief getLostUnits
      * @param player
@@ -170,8 +181,9 @@ public slots:
     /**
      * @brief destroyedUnit
      * @param player
+     * @param unitId is optional to make it upwards compatible
      */
-    void destroyedUnit(qint32 player);
+    void destroyedUnit(qint32 player, QString unitId = "");
     /**
      * @brief getDestroyedUnits
      * @param player
@@ -181,8 +193,9 @@ public slots:
     /**
      * @brief buildUnit
      * @param player
+     * @param unitId is optional to make it upwards compatible
      */
-    void buildUnit(qint32 player);
+    void buildUnit(qint32 player, QString unitId = "");
     /**
      * @brief getBuildedUnits
      * @param player
@@ -241,14 +254,14 @@ private:
     QVector<spDayToDayRecord> m_Record;
     QVector<spAttackReport> m_Attackreports;
 
-    QVector<quint32> destroyedUnits;
-    QVector<quint32> lostUnits;
-    QVector<quint32> damageDealt;
-    QVector<quint32> attackNumbers;
-    QVector<quint32> deployedUnits;
-
+    QVector<quint32> m_destroyedUnits;
+    QVector<quint32> m_lostUnits;
+    QVector<quint32> m_damageDealt;
+    QVector<quint32> m_attackNumbers;
+    QVector<quint32> m_deployedUnits;
     qint32 m_mapTime{0};
     quint32 m_deployLimit{0};
+    QVector<PlayerData> m_playerDataRecords;
 };
 
 #endif // GAMERECORDER_H

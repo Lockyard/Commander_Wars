@@ -8,6 +8,9 @@
 #include "network/txtask.h"
 #include "network/NetworkInterface.h"
 
+class LocalServer;
+using spLocalServer = oxygine::intrusive_ptr<LocalServer>;
+
 /**
  * @brief The LocalServer class for connecting a local pipe to the hosted game
  */
@@ -38,12 +41,12 @@ public slots:
      */
     void removeSocket(quint64 socket);
 private:
-    QVector<spRxTask> pRXTasks;
-    QVector<spTxTask> pTXTasks;
-    QVector<QLocalSocket*> pTCPSockets;
+    QVector<spRxTask> m_pRXTasks;
+    QVector<spTxTask> m_pTXTasks;
+    QVector<QLocalSocket*> m_pTCPSockets;
     QVector<quint64> m_SocketIDs;
     quint64 m_idCounter = 0;
-    QLocalServer* pTCPServer{nullptr};
+    QLocalServer* m_pTCPServer{nullptr};
     bool m_gameServer{false};
 };
 

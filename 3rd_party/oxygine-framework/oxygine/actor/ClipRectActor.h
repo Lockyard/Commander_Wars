@@ -1,6 +1,6 @@
 #pragma once
-#include "../oxygine-include.h"
-#include "Actor.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/actor/Actor.h"
 
 namespace oxygine
 {
@@ -14,17 +14,16 @@ namespace oxygine
         ClipRectActor();
         ~ClipRectActor();
 
-        bool getClipping() const { return _clipping; }
+        bool getClipping() const { return m_clipping; }
 
         /**Enables clipping for children. By default is on*/
-        void setClipping(bool enable) {_clipping = enable;}
+        void setClipping(bool enable) {m_clipping = enable;}
 
         void render(const RenderState& rs) override;
 
 
         void handleEvent(Event* event) override;
     protected:
-
-        bool _clipping;
+        bool m_clipping;
     };
 }

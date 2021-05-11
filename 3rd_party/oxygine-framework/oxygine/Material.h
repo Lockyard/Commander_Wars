@@ -7,6 +7,9 @@ namespace oxygine
 {
     class MaterialCache;
 
+    class Material;
+    using spMaterial = oxygine::intrusive_ptr<Material>;
+
     class Material : public ref_counter
     {
     public:
@@ -22,16 +25,12 @@ namespace oxygine
         Material(compare cmp);
         Material(const Material& other);
 
-
-        size_t _hash;
-        compare _compare;
-
         virtual void init() {}
 
         virtual void xapply() {}
         virtual void xflush() {}
 
-        virtual Material* clone() const = 0;
+        virtual spMaterial clone() const = 0;
         virtual void update(size_t& hash, compare&) const = 0;
         virtual void rehash(size_t& hash) const = 0;
 
@@ -48,10 +47,16 @@ namespace oxygine
             apply();
             f();
         }
+
+    public:
+        size_t m_hash;
+        compare m_compare;
     };
 
     typedef intrusive_ptr<Material> spMaterialX;
 
+    class NullMaterialX;
+    typedef intrusive_ptr<NullMaterialX> spNullMaterialX;
 
     class NullMaterialX : public Material
     {
@@ -60,12 +65,12 @@ namespace oxygine
         {
             typedef bool (*fn)(const NullMaterialX&a, const NullMaterialX&b);
             fn f = &NullMaterialX::cmp;
-            _compare = (compare)f;
+            m_compare = (compare)f;
             init();
         }
         void copyTo(NullMaterialX &d) const{d = *this;}
         void copyFrom(const NullMaterialX &d) {*this = d;}
-        NullMaterialX* clone() const override {return new NullMaterialX(*this);}
+        spMaterial clone() const override {return spNullMaterialX::create(*this);}
         virtual void update(size_t &hash, compare &cm) const override
         {
             typedef bool (*fn)(const NullMaterialX&a, const NullMaterialX&b);
@@ -79,19 +84,19 @@ namespace oxygine
     };
 
     DECLARE_SMART(STDMaterial, spSTDMaterial);
-    class STDMaterial: public Material
+    class STDMaterial : public Material
     {
     public:
         STDMaterial()
         {
             typedef bool (*fn)(const STDMaterial&a, const STDMaterial&b);
             fn f = &STDMaterial::cmp;
-            _compare = (compare)f;
-            init();
+            m_compare = (compare)f;
+            STDMaterial::init();
         }
         void copyTo(STDMaterial &d) const{d = *this;}
         void copyFrom(const STDMaterial &d) {*this = d;}
-        STDMaterial* clone() const override {return new STDMaterial(*this);}
+        spMaterial clone() const override {return spSTDMaterial::create(*this);}
         virtual void update(size_t &hash, compare &cm) const override
         {
             typedef bool (*fn)(const STDMaterial&a, const STDMaterial&b);
@@ -100,14 +105,6 @@ namespace oxygine
             hash = 0;\
             rehash(hash);
         }
-
-        spNativeTexture    _base;
-        spNativeTexture    _table;
-        spNativeTexture    _alpha;
-        blend_mode         _blend;
-        UberShaderProgram* _uberShader;
-        QColor              _addColor;
-        int                _flags;
 
         static bool cmp(const STDMaterial& a, const STDMaterial& b);
 
@@ -121,6 +118,14 @@ namespace oxygine
         virtual void render(const QColor& c, const RectF& src, const RectF& dest) override;
 
         spSTDMaterial cloneDefaultShader() const;
-    };
-    
+
+    public:
+        spNativeTexture    m_base;
+        spNativeTexture    m_table;
+        spNativeTexture    m_alpha;
+        blend_mode         m_blend;
+        UberShaderProgram* m_uberShader;
+        QColor             m_addColor;
+        qint32             m_flags;
+    };    
 }

@@ -15,12 +15,17 @@ class QMutex;
 class QKeyEvent;
 class Interpreter;
 
+class Console;
+using spConsole = oxygine::intrusive_ptr<Console>;
+
 class Console : public QObject, public oxygine::Actor
 {
     Q_OBJECT
 public:
 
     static const QString functions[];
+    static const char* const compileTime;
+    static const char* const compileDate;
 
     enum eLogLevels
     {
@@ -31,6 +36,7 @@ public:
         eFATAL,
         eOFF
     };
+    Q_ENUM(eLogLevels)
 
     enum
     {
@@ -45,28 +51,49 @@ public:
     void init();
 
 // use slots here since they're part of QMetaObject thus they get published to JSEngine.
-
 public slots:
+    /**
+     * @brief getDeveloperMode
+     * @return
+     */
+    static bool getDeveloperMode();
+    /**
+     * @brief setDeveloperMode
+     * @param developerMode
+     */
+    static void setDeveloperMode(bool developerMode);
+    /**
+     * @brief print
+     * @param message
+     * @param LogLevel
+     */
     static void print(QString message, qint8 LogLevel);
     /**
      * @brief Print
      * @param message
      * @param debugMessage false for Errors or Setup Messages. True for Ingame Actions used for Debugging. But unneeded in release build
      */
-    static void print(QString message, eLogLevels LogLevel);
+    static void print(QString message, Console::eLogLevels LogLevel);
+    /**
+     * @brief createfunnymessage
+     * @param message
+     */
     static void createfunnymessage(qint32 message = -1);
-    // Lua Libs Functions
+    /**
+     * @brief setVolume
+     * @param volume
+     */
     void setVolume(qint32 volume);
     /**
      * @brief setLogLevel
      * @param newLogLevel
      */
-    void setLogLevel(eLogLevels newLogLevel);
+    static void setLogLevel(Console::eLogLevels newLogLevel);
     /**
      * @brief getLogLevel
      * @return
      */
-    eLogLevels getLogLevel();
+    static Console::eLogLevels getLogLevel();
     /**
      * @brief createSprites
      * @param input
@@ -116,6 +143,10 @@ public slots:
      */
     void help(qint32 start = 0, qint32 end = -1);
     /**
+     * @brief version
+     */
+    void version();
+    /**
      * @brief logActions
      * @param log
      */
@@ -140,30 +171,33 @@ public slots:
      */
     QList<QString> getConsoleLog()
     {
-        QMutexLocker locker(&datalocker);
-        return output;
+        QMutexLocker locker(&m_datalocker);
+        return m_output;
     }
 private:
-    static eLogLevels LogLevel;
-    static QString curmsg;
-    static QList<QString> lastmsgs;
-    static const qint32 lastMsgSize{10};
-    static qint32 curlastmsgpos;
-    static qint32 curmsgpos;
-    static QElapsedTimer toggle;
-    static Console* m_pConsole;
-    static bool show;
-    static bool toggled;
-    static QList<QString> output;
-    static qint32 outputSize;
-    static QMutex datalocker;
-    oxygine::spSprite m_pBackgroundsprite;
-    oxygine::spTextField m_text;
-
+    friend class oxygine::intrusive_ptr<Console>;
     Console();
     virtual  ~Console() = default;
 
     void createSprites(QString file, QImage& colorTable, QImage maskTable);
+
+private:
+    static eLogLevels m_LogLevel;
+    static QString m_curmsg;
+    static QList<QString> m_lastmsgs;
+    static const qint32 m_lastMsgSize{10};
+    static qint32 m_curlastmsgpos;
+    static qint32 m_curmsgpos;
+    static QElapsedTimer m_toggle;
+    static spConsole m_pConsole;
+    static bool m_show;
+    static bool m_toggled;
+    static QList<QString> m_output;
+    static qint32 m_outputSize;
+    static QMutex m_datalocker;
+    static bool m_developerMode;
+    oxygine::spSprite m_pBackgroundsprite;
+    oxygine::spTextField m_text;
 };
 
 #endif // CONSOLE_H

@@ -19,9 +19,12 @@ Building::Building(QString BuildingID)
       m_pOwner(nullptr),
       m_pTerrain(nullptr)
 {
+    setObjectName("Building");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
+    setSize(GameMap::getImageSize(),
+            GameMap::getImageSize());
     if (m_BuildingID != "")
     {
         init();
@@ -47,8 +50,8 @@ QPoint Building::getOffset(Terrain* pTerrain)
 {
     if (pTerrain != nullptr)
     {
-        return QPoint(m_pTerrain->getX() - pTerrain->getX(),
-                      m_pTerrain->getY() - pTerrain->getY());
+        return QPoint(m_pTerrain->Terrain::getX() - pTerrain->Terrain::getX(),
+                      m_pTerrain->Terrain::getY() - pTerrain->Terrain::getY());
     }
     else
     {
@@ -71,10 +74,13 @@ void Building::scaleAndShowOnSingleTile()
 {
     qint32 width = getBuildingWidth();
     qint32 heigth = getBuildingHeigth();
-    setScaleX(1.0f / static_cast<float>(width));
-    setScaleY(1.0f / static_cast<float>(heigth));
-    setX(GameMap::getImageSize() * (width - 1) / (width));
-    setY(GameMap::getImageSize() * (heigth - 1) / (heigth));
+    if (width > 0 && heigth > 0)
+    {
+        setScaleX(1.0f / static_cast<float>(width));
+        setScaleY(1.0f / static_cast<float>(heigth));
+        setX(GameMap::getImageSize() * (width - 1) / (width));
+        setY(GameMap::getImageSize() * (heigth - 1) / (heigth));
+    }
 }
 QString Building::getDescription()
 {
@@ -176,7 +182,7 @@ void Building::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode)
     oxygine::ResAnim* pAnim = pBuildingSpriteManager->getResAnim(spriteID);
     if (pAnim != nullptr)
     {
-        oxygine::spSprite pSprite = new oxygine::Sprite();
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
         if (pAnim->getTotalFrames() > 1)
         {
             oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);
@@ -220,8 +226,6 @@ void Building::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode)
             pSprite->setScale(((GameMap::getImageSize() ) * width) / pAnim->getWidth());
             pSprite->setPosition(-pSprite->getScaledWidth() + GameMap::getImageSize(), -pSprite->getScaledHeight() + GameMap::getImageSize());
         }
-        setSize(pAnim->getWidth(),
-                pAnim->getHeight());
         this->addChild(pSprite);
         m_pBuildingSprites.append(pSprite);
         m_addPlayerColor.append(mode);
@@ -232,17 +236,30 @@ void Building::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode)
     }
 }
 
+void Building::syncAnimation(oxygine::timeMS syncTime)
+{
+    for (auto & sprite : m_pBuildingSprites)
+    {
+        oxygine::spTween pTween = sprite->getFirstTween();
+        while (pTween.get() != nullptr)
+        {
+            pTween->setElapsed(syncTime);
+            pTween = pTween->getNextSibling();
+        }
+    }
+}
+
 void Building::updatePlayerColor(bool visible)
 {
     if (m_pOwner != nullptr)
     {
-        if (neutralLoaded && (visible || alwaysVisble))
+        if (m_neutralLoaded && (visible || m_alwaysVisble))
         {
             updateBuildingSprites(false);
         }
         else
         {
-            if (visible || alwaysVisble)
+            if (visible || m_alwaysVisble)
             {
                 for (qint32 i = 0; i < m_pBuildingSprites.size(); i++)
                 {
@@ -257,13 +274,13 @@ void Building::updatePlayerColor(bool visible)
                     }
                 }
             }
-            else if (!neutralLoaded)
+            else if (!m_neutralLoaded)
             {
                 updateBuildingSprites(true);
             }
         }
     }
-    else if (!neutralLoaded)
+    else if (!m_neutralLoaded)
     {
         updateBuildingSprites(true);
     }
@@ -303,7 +320,7 @@ void Building::updateBuildingSprites(bool neutral)
     args1 << obj1;
     args1 << neutral;
     pInterpreter->doFunction(m_BuildingID, function1, args1);
-    neutralLoaded = neutral;
+    m_neutralLoaded = neutral;
 }
 
 bool Building::canBuildingBePlaced(Terrain* pTerrain)
@@ -421,7 +438,7 @@ qint32 Building::getX() const
 {
     if (m_pTerrain != nullptr)
     {
-        return m_pTerrain->getX();
+        return m_pTerrain->Terrain::getX();
     }
     else
     {
@@ -433,7 +450,7 @@ qint32 Building::getY() const
 {
     if (m_pTerrain != nullptr)
     {
-        return m_pTerrain->getY();
+        return m_pTerrain->Terrain::getY();
     }
     else
     {
@@ -552,15 +569,16 @@ QList<qint32> Building::getRepairTypes()
     return retList;
 }
 
-QStringList  Building::getConstructionList()
+QStringList Building::getConstructionList()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getConstructionList";
-    QJSValueList args1;
+    QJSValueList args;
     QJSValue obj1 = pInterpreter->newQObject(this);
-    args1 << obj1;
-    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
-    QStringList buildList = ret.toVariant().toStringList();
+    args << obj1;
+    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args);
+    QVariant var = ret.toVariant();
+    QStringList buildList = var.toStringList();
     QStringList coUnits;
     if (m_pOwner != nullptr)
     {
@@ -580,17 +598,25 @@ QStringList  Building::getConstructionList()
             }
         }
     }
+
     spGameMap pMap = GameMap::getInstance();
     QStringList returnList;
-    if (m_pOwner != nullptr)
+    if (m_pOwner != nullptr && pMap.get() != nullptr)
     {
+     bool coUnits = pMap->getGameRules()->getCoUnits();
         QStringList playerBuildList = m_pOwner->getBuildList();
         for (qint32 i = 0; i < buildList.size(); i++)
         {
             QString unitID = buildList[i];
-            QJSValue erg = pInterpreter->doFunction(unitID, "getCOSpecificUnit", args1);
+            function1 = "getCOSpecificUnit";
+            QJSValue erg = pInterpreter->doFunction(unitID, function1, args);
+            bool isCoUnit = false;
+            if (erg.isBool())
+            {
+                isCoUnit = erg.toBool();
+            }
             if (playerBuildList.contains(unitID) &&
-                (!erg.toBool() || pMap->getGameRules()->getCoUnits()))
+                (!isCoUnit || coUnits))
             {
                 returnList.append(unitID);
             }
@@ -846,17 +872,17 @@ qint32 Building::getTotalVisionHigh()
 
 bool Building::getNeutralLoaded() const
 {
-    return neutralLoaded;
+    return m_neutralLoaded;
 }
 
 bool Building::getAlwaysVisble() const
 {
-    return alwaysVisble;
+    return m_alwaysVisble;
 }
 
 void Building::setAlwaysVisble(bool value)
 {
-    alwaysVisble = value;
+    m_alwaysVisble = value;
 }
 
 QString Building::getTerrainAnimationBase()
@@ -974,12 +1000,12 @@ Terrain* Building::getTerrain()
 
 qint32 Building::getFireCount() const
 {
-    return fireCount;
+    return m_fireCount;
 }
 
 void Building::setFireCount(const qint32 &value)
 {
-    fireCount = value;
+    m_fireCount = value;
 }
 
 qint32 Building::getHp() const
@@ -1011,7 +1037,7 @@ void Building::serializeObject(QDataStream& pStream) const
         pStream << static_cast<qint32>(m_pOwner->getPlayerID());
     }
     pStream << m_Hp;
-    pStream << fireCount;
+    pStream << m_fireCount;
     m_Variables.serializeObject(pStream);
     pStream << m_BuildingName;
 }
@@ -1050,7 +1076,7 @@ void Building::deserializer(QDataStream& pStream, bool fast)
         {
             m_Hp = newHp;
         }
-        pStream >> fireCount;
+        pStream >> m_fireCount;
     }
     if (version > 2)
     {

@@ -161,16 +161,28 @@ private:
      */
     void changeSelection(qint32 item);
 private:
+    void createBoxPlacementSize();
+    void createBoxSelectionMode();
+    void initSelection();
+
+    /**
+     * @brief calcMaxPlayerSelection the amount of player hq's shown in the select player part
+     * @return
+     */
+    qint32 calcMaxPlayerSelection();
+    oxygine::spSprite createV9Box(qint32 x, qint32 y, qint32 width, qint32 heigth);
+
+private:
     // small hints for the ui
-    static const qint32 frameSize = 30;
-    static const qint32 selectionHeight = 80;
-    static const qint32 startHPlacementSize = 0;
-    static const qint32 startHSelectionType = startHPlacementSize + selectionHeight;
-    static const qint32 startHSelectedPlayer = startHSelectionType + startHPlacementSize + selectionHeight;
-    static const qint32 startHTerrain = startHSelectedPlayer + selectionHeight;
-    const qint32 startH = GameMap::getImageSize() * 2;
-    static const float xFactor;
-    static const float yFactor;
+    static const qint32 m_frameSize = 30;
+    static const qint32 m_selectionHeight = 80;
+    static const qint32 m_startHPlacementSize = 0;
+    static const qint32 m_startHSelectionType = m_startHPlacementSize + m_selectionHeight;
+    static const qint32 m_startHSelectedPlayer = m_startHSelectionType + m_startHPlacementSize + m_selectionHeight;
+    static const qint32 m_startHTerrain = m_startHSelectedPlayer + m_selectionHeight;
+    const qint32 m_startH = GameMap::getImageSize() * 2;
+    static const float m_xFactor;
+    static const float m_yFactor;
     EditorMode m_Mode{EditorMode::Terrain};
     PlacementSize m_SizeMode{PlacementSize::Small};
     qint32 m_StartIndex{0};
@@ -205,18 +217,6 @@ private:
     spPlayer m_currentPlayer{nullptr};
     qint32 m_playerStartIndex{0};
     QVector<spBuilding> m_Players;
-
-    oxygine::spSprite createV9Box(qint32 x, qint32 y, qint32 width, qint32 heigth);
-    void createBoxPlacementSize();
-    void createBoxSelectionMode();
-    void initSelection();
-
-    /**
-     * @brief calcMaxPlayerSelection the amount of player hq's shown in the select player part
-     * @return
-     */
-    qint32 calcMaxPlayerSelection();
-
 };
 
 #endif // EDITORSELECTION_H

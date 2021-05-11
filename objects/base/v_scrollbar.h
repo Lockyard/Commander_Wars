@@ -69,7 +69,7 @@ private:
     void scroll(oxygine::Event* pEvent);
 private:
     float m_Scrollvalue{0.0f};
-    qint32 speedCounter{0};
+    qint32 m_speedCounter{0};
     qint32 m_Width;
     qint32 m_ContentWidth;
     qint32 m_scroll{0};
@@ -78,7 +78,6 @@ private:
     bool m_sliding{false};
     oxygine::spBox9Sprite  m_slider;
     QElapsedTimer m_ScrollTimer;
-
     oxygine::spBox9Sprite m_pBox;
     oxygine::spButton m_pArrowRigth;
     oxygine::spButton m_pArrowLeft;

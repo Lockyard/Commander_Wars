@@ -1,8 +1,8 @@
 #ifndef GAMEWINDOW_H
 #define GAMEWINDOW_H
 
-#include "../oxygine-include.h"
-#include "../PointerState.h"
+#include "3rd_party/oxygine-framework/oxygine-include.h"
+#include "3rd_party/oxygine-framework/oxygine/PointerState.h"
 
 #include <qopenglwindow.h>
 #include <qopenglfunctions.h>
@@ -32,7 +32,7 @@ namespace oxygine
         {
             m_quit = true;
         }
-        void loadResAnim(oxygine::ResAnim* pAnim, const QImage & image, qint32 columns = 1, qint32  rows = 1, float scaleFactor = 1.0f);
+        void loadResAnim(oxygine::spResAnim pAnim, QImage & image, qint32 columns = 1, qint32  rows = 1, float scaleFactor = 1.0f);
 
         virtual bool isWorker() = 0;
         /**
@@ -69,8 +69,8 @@ namespace oxygine
 
 
     signals:
-        void sigLoadSingleResAnim(oxygine::ResAnim* pAnim, const QImage & image, qint32 columns, qint32 rows, float scaleFactor);
-
+        void sigLoadSingleResAnim(oxygine::spResAnim pAnim, QImage & image, qint32 columns, qint32 rows, float scaleFactor);
+        void sigLoadRessources();
         void sigMousePressEvent(oxygine::MouseButton button, qint32 x, qint32 y);
         void sigMouseReleaseEvent(oxygine::MouseButton button, qint32 x, qint32 y);
         void sigWheelEvent(qint32 x, qint32 y);
@@ -96,28 +96,28 @@ namespace oxygine
          * @param gamma
          */
         void setGamma(float gamma);
-    protected slots:
-        void loadSingleResAnim(oxygine::ResAnim* pAnim, const QImage & image, qint32 columns, qint32 rows, float scaleFactor);
-    protected:
         virtual void initializeGL() override;
+    protected slots:
+        void loadSingleResAnim(oxygine::spResAnim pAnim, QImage & image, qint32 columns, qint32 rows, float scaleFactor);
+        virtual void loadRessources(){}
+    protected:
         virtual void registerResourceTypes();
         virtual void timerEvent(QTimerEvent *) override;
         virtual void paintGL() override;
 
-        virtual void resizeGL(int w, int h) override;
+        virtual void resizeGL(qint32 w, qint32 h) override;
         // input events
         virtual void mousePressEvent(QMouseEvent *event) override;
         virtual void mouseReleaseEvent(QMouseEvent *event) override;
         virtual void wheelEvent(QWheelEvent *event) override;
         virtual void mouseMoveEvent(QMouseEvent *event)override;
 
-        virtual void loadRessources(){}
         void updateData();
         bool beginRendering();
         void swapDisplayBuffers();
     protected:
-        bool _renderEnabled = true;
-        spEventDispatcher _dispatcher;
+        bool m_renderEnabled = true;
+        spEventDispatcher m_dispatcher;
 
         bool m_quit{false};
         QBasicTimer m_Timer;

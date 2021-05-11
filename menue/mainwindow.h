@@ -2,9 +2,12 @@
 
 
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
-#include <QObject>
+#include "menue/basemenu.h"
 
-class Mainwindow : public QObject, public oxygine::Actor
+class Mainwindow;
+using spMainwindow = oxygine::intrusive_ptr<Mainwindow>;
+
+class Mainwindow : public Basemenu
 {
     Q_OBJECT
 public:

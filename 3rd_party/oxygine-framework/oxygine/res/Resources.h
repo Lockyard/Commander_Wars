@@ -12,25 +12,25 @@ namespace oxygine
     class ResourcesLoadOptions
     {
     public:
-        ResourcesLoadOptions() : _loadCompletely(true), _useLoadCounter(false), _shortenIDS(false) {};
+        ResourcesLoadOptions() : m_loadCompletely(true), m_useLoadCounter(false), m_shortenIDS(false) {};
 
         //load only Resources definitions. Skips internal heavy data (atlasses/textures/buffers). Could be overridden in xml: <your_res_type ... load = "false"/>
-        ResourcesLoadOptions& dontLoadAll(bool v = false) { _loadCompletely = v; return *this; }
+        ResourcesLoadOptions& dontLoadAll(bool v = false) { m_loadCompletely = v; return *this; }
 
         //use load counter internally
-        ResourcesLoadOptions& useLoadCounter(bool v = true) { _useLoadCounter = v; return *this; }
+        ResourcesLoadOptions& useLoadCounter(bool v = true) { m_useLoadCounter = v; return *this; }
 
         //use not standard folder with prebuilt resources (atlasses, fonts, etc)
-        ResourcesLoadOptions& prebuiltFolder(QString folder) {_prebuilFolder = folder; return *this; }
+        ResourcesLoadOptions& prebuiltFolder(QString folder) {m_prebuilFolder = folder; return *this; }
 
         //use load counter internally
-        ResourcesLoadOptions& shortenIDS(bool v = true) { _shortenIDS = v; return *this; }
+        ResourcesLoadOptions& shortenIDS(bool v = true) { m_shortenIDS = v; return *this; }
 
 
-        bool _loadCompletely;
-        bool _useLoadCounter;
-        bool _shortenIDS;
-        QString _prebuilFolder;
+        bool m_loadCompletely;
+        bool m_useLoadCounter;
+        bool m_shortenIDS;
+        QString m_prebuilFolder;
     };
 
     class Resources: public Resource
@@ -39,7 +39,7 @@ namespace oxygine
         typedef QVector<spResource> resources;
         typedef QMap<QString, spResource> resourcesMap;
 
-        typedef Resource* (*createResourceCallback)(CreateResourceContext& context);
+        typedef spResource (*createResourceCallback)(CreateResourceContext& context);
 
         /**Registers your own resource type.
         @param creation callback
@@ -59,7 +59,7 @@ namespace oxygine
         bool loadXML(const QString xmlFile, const ResourcesLoadOptions& opt = ResourcesLoadOptions());
 
         /**Adds Resource*/
-        void add(Resource* r, bool accessByShortenID = false);
+        void add(spResource r, bool accessByShortenID = false);
 
         /**Calls Resource::load for each resource in the list*/
         void load();
@@ -91,26 +91,20 @@ namespace oxygine
         template<class T>
         T* getT(QString id, error_policy ep = ep_show_error, T* defIfNotFound = 0) const { return safeCast<T*>(get(id, ep, defIfNotFound)); }
 
-        /**debug function. prints all loaded resources*/
-        void print() const;
-
         /**collects all resources into vector*/
         void collect(resources&);
 
         resources& _getResources();
         resourcesMap& _getResourcesMap();
 
-        void setLinearFilter(quint32 linearFilter);
-        quint32 getLinearFilter() const;
+        virtual void setLinearFilter(quint32 linearFilter) override;
+        virtual quint32 getLinearFilter() const override;
     protected:
         void updateName(QString filename);
         void _load(LoadResourcesContext* context) override;
         void _unload() override;
-
-
         struct registeredResource
         {
-            registeredResource() {id;}
             QString id;
             createResourceCallback cb;
 
@@ -130,15 +124,12 @@ namespace oxygine
             }
         };
 
-
-        resources _resources;
-        resourcesMap _resourcesMap;
-
-
+    protected:
+        resources m_resources;
+        resourcesMap m_resourcesMap;
         typedef QVector< registeredResource > registeredResources;
-        static registeredResources _registeredResources;
-
-        QString _name;
-        QVector<QDomDocument> _docs;
+        static registeredResources m_registeredResources;
+        QString m_name;
+        QVector<QDomDocument> m_docs;
     };
 }

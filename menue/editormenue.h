@@ -12,6 +12,9 @@
 
 #include "coreengine/LUPDATE_MACROS.h"
 
+class EditorMenue;
+using spEditorMenue = oxygine::intrusive_ptr<EditorMenue>;
+
 class EditorMenue : public InGameMenue
 {
     Q_OBJECT
@@ -258,7 +261,7 @@ public slots:
      * @param p2
      * @param mode
      */
-    void createMarkedArea(oxygine::spActor pActor, QPoint p1, QPoint p2, CursorModes mode, QColor color = Qt::white);
+    void createMarkedArea(oxygine::spActor pActor, QPoint p1, QPoint p2, EditorMenue::CursorModes mode, QColor color = Qt::white);
     /**
      * @brief selectionChanged
      */
@@ -279,15 +282,15 @@ private:
     spEditorSelection m_EditorSelection{nullptr};
     EditorModes m_EditorMode{EditorModes::PlaceEditorSelection};
     spTopbar m_Topbar;
-    spLabel xyTextInfo;
+    spLabel m_xyTextInfo;
 
     static EditorMenue* m_pInstance;
 
-    qint32 tempCounter{0};
+    qint32 m_tempCounter{0};
 
-    QRect copyRect{-1, -1, 0, 0};
-    oxygine::spActor copyRectActor{new oxygine::Actor()};
-    oxygine::spActor cursorActor{new oxygine::Actor()};
+    QRect m_copyRect{-1, -1, 0, 0};
+    oxygine::spActor m_copyRectActor{oxygine::spActor::create()};
+    oxygine::spActor m_cursorActor{oxygine::spActor::create()};
 
     QTimer m_autosaveTimer;
 };

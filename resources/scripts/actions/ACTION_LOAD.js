@@ -86,7 +86,7 @@ var Constructor = function ()
     this.getDescription = function()
     {
         return qsTr("Loads a unit to a transporters. This makes the unit untargetable for most effects. However the units gets lost when the transporter gets destroyed.");
-    };
+    };    
 }
 
 Constructor.prototype = ACTION;

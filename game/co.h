@@ -14,6 +14,7 @@
 #include "coreengine/scriptvariables.h"
 
 class Unit;
+using spUnit = oxygine::intrusive_ptr<Unit>;
 class Terrain;
 class Player;
 class Building;
@@ -509,7 +510,7 @@ public slots:
      * @brief createPowerScreen
      * @return
      */
-    GameAnimationPower* createPowerScreen(GameEnums::PowerMode powerMode);
+    GameAnimationPower* createPowerScreen(GameEnums::PowerMode powerMode, quint32 frameTime = 100);
     /**
      * @brief getIsCO0
      * @return
@@ -638,11 +639,11 @@ private:
     void loadResAnim(QString coid, QString file, QImage colorTable, QImage maskTable, bool useColorBox);
 private:
     Player* m_Owner;
-    QString coID;
-    qint32 powerStars{0};
-    qint32 superpowerStars{0};
-    double powerFilled{0.0};
-    Unit* m_pCOUnit{nullptr};
+    QString m_coID;
+    qint32 m_powerStars{0};
+    qint32 m_superpowerStars{0};
+    double m_powerFilled{0.0};
+    spUnit m_pCOUnit{nullptr};
     GameEnums::PowerMode m_PowerMode{GameEnums::PowerMode_Off};
     ScriptVariables m_Variables;
     qint32 m_powerUsed{0};

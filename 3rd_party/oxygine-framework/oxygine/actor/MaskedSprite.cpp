@@ -5,7 +5,7 @@
 
 namespace oxygine
 {
-    MaskedSprite::MaskedSprite() : _useRChannel(false)
+    MaskedSprite::MaskedSprite() : m_useRChannel(false)
     {
     }
 
@@ -15,23 +15,23 @@ namespace oxygine
 
     spSprite MaskedSprite::getMask() const
     {
-        return _mask;
+        return m_mask;
     }
 
     bool    MaskedSprite::getUseRChannel() const
     {
-        return _useRChannel;
+        return m_useRChannel;
     }
 
     void MaskedSprite::setMask(spSprite mask, bool useRChannel)
     {
-        _mask = mask;
-        _useRChannel = useRChannel;
+        m_mask = mask;
+        m_useRChannel = useRChannel;
     }
 
 
     void MaskedSprite::render(const RenderState& parentRS)
     {
-        _rdelegate->render(this, parentRS);
+        m_rdelegate->render(this, parentRS);
     }
 }

@@ -20,7 +20,6 @@ class Chat : public QObject, public oxygine::Actor
 public:
     explicit Chat(spNetworkInterface pInterface, QSize size, NetworkInterface::NetworkSerives serviceMode);
 
-    virtual void update(const oxygine::UpdateState& us) override;
     /**
      * @brief setVisible
      * @param vis
@@ -32,18 +31,18 @@ public slots:
     void dataRecieved(quint64, QByteArray data, NetworkInterface::NetworkSerives service);
     void sendData(QString message);
 private:
-    QVector<QString> messages;
+    void addMessage(QString message, bool local = false);
+
+private:
+    QVector<QString> m_messages;
     spNetworkInterface m_pInterface{nullptr};
     spPanel m_Panel;
     oxygine::spTextField m_Chat;
     spTextbox m_ChatInput;
     oxygine::spButton m_Send;
-
-    void addMessage(QString message, bool local = false);
-
     NetworkInterface::NetworkSerives m_serviceMode{NetworkInterface::NetworkSerives::GameChat};
 
-    static const qint32 bufferSize = 500;
+    static const qint32 m_bufferSize = 500;
 };
 
 #endif // CHAT_H

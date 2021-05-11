@@ -30,8 +30,8 @@ namespace oxygine
         public:
             DrawContext() {}
 
-            QColor color;
-            QColor primary;
+            QColor m_color;
+            QColor m_primary;
         };
 
         class Node;
@@ -43,7 +43,7 @@ namespace oxygine
             Node();
             virtual ~Node();
 
-            void appendNode(Node* tn);
+            void appendNode(spNode tn);
             virtual void resize(Aligner& rd);
             void finalPass(Aligner& rd);
 
@@ -53,17 +53,20 @@ namespace oxygine
 
             virtual void draw(DrawContext& dc);
 
-            virtual void xresize(Aligner& rd) {}
-            virtual void xfinalPass(Aligner& rd) {}
+            virtual void xresize(Aligner&) {}
+            virtual void xfinalPass(Aligner&) {}
 
             void updateMaterial(const STDMaterial& mat);
-            virtual void xupdateMaterial(const STDMaterial& mat) {}
+            virtual void xupdateMaterial(const STDMaterial&) {}
 
-
-            spNode _firstChild;
-            spNode _lastChild;
-            spNode _nextSibling;
+        public:
+            spNode m_firstChild;
+            spNode m_lastChild;
+            spNode m_nextSibling;
         };
+
+        class TextNode;
+        typedef oxygine::intrusive_ptr<TextNode> spTextNode;
 
         class TextNode: public Node
         {
@@ -81,6 +84,9 @@ namespace oxygine
             Symbol* getSymbol(int& pos) override;
         };
 
+        class DivNode;
+        using spDivNode = intrusive_ptr<DivNode>;
+
         class DivNode: public Node
         {
         public:
@@ -89,9 +95,13 @@ namespace oxygine
             void resize(Aligner& rd) override;
             void draw(DrawContext& dc) override;
 
-            QColor color;
-            unsigned int options;
+        public:
+            QColor m_color;
+            quint32 m_options;
         };
+
+        class BrNode;
+        using spBrNode = intrusive_ptr<BrNode>;
 
         class BrNode: public Node
         {

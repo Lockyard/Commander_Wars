@@ -31,6 +31,7 @@
 
 OptionMenue::OptionMenue()
 {
+    setObjectName("OptionMenue");
     Mainapp* pApp = Mainapp::getInstance();
     pApp->pauseRendering();
     this->moveToThread(pApp->getWorkerthread());
@@ -38,7 +39,7 @@ OptionMenue::OptionMenue()
 
     BackgroundManager* pBackgroundManager = BackgroundManager::getInstance();
     // load background
-    oxygine::spSprite sprite = new oxygine::Sprite();
+    oxygine::spSprite sprite = oxygine::spSprite::create();
     addChild(sprite);
     oxygine::ResAnim* pBackground = pBackgroundManager->getResAnim("optionmenu");
     sprite->setResAnim(pBackground);
@@ -52,7 +53,7 @@ OptionMenue::OptionMenue()
     pApp->getAudioThread()->playRandom();
 
 
-    oxygine::spButton pButtonExit = ObjectManager::createButton(QObject::tr("Exit"));
+    oxygine::spButton pButtonExit = ObjectManager::createButton(tr("Exit"));
     pButtonExit->attachTo(this);
     pButtonExit->setPosition(Settings::getWidth()  / 2.0f - pButtonExit->getWidth() / 2.0f,
                              Settings::getHeight() - pButtonExit->getHeight() - 10);
@@ -97,22 +98,22 @@ OptionMenue::OptionMenue()
 
     QSize size(Settings::getWidth() - 20,
                Settings::getHeight() - static_cast<qint32>(20 + pButtonMods->getHeight()) * 2);
-    m_pOptions = new  Panel(true,  size, size);
+    m_pOptions = spPanel::create(true,  size, size);
     m_pOptions->setPosition(10, 20 + pButtonMods->getHeight());
     addChild(m_pOptions);
 
-    m_pGameplayAndKeys = new  GameplayAndKeys(size.height());
+    m_pGameplayAndKeys = spGameplayAndKeys::create(size.height());
     m_pGameplayAndKeys->setPosition(10, 20 + pButtonMods->getHeight());
     addChild(m_pGameplayAndKeys);
 
     size.setWidth(Settings::getWidth() / 2 - 50);
-    m_pMods = new  Panel(true,  size - QSize(0, 50), size);
+    m_pMods = spPanel::create(true,  size - QSize(0, 50), size);
     m_pMods->setPosition(10, 20 + pButtonMods->getHeight() + 50);
     addChild(m_pMods);
-    m_pModDescription = new  Panel(true,  size - QSize(0, 40), size);
+    m_pModDescription = spPanel::create(true,  size - QSize(0, 40), size);
     m_pModDescription->setPosition(Settings::getWidth() / 2 + 10, 20 + pButtonMods->getHeight() + 50);
     addChild(m_pModDescription);
-    m_ModSelector = new oxygine::Actor();
+    m_ModSelector = oxygine::spActor::create();
     m_ModSelector->setPosition(10, 20 + pButtonMods->getHeight());
 
     addChild(m_ModSelector);
@@ -125,8 +126,7 @@ OptionMenue::~OptionMenue()
 }
 
 void OptionMenue::exitMenue()
-{
-    
+{    
     // save changed settings :)
     Settings::saveSettings();
     if (restartNeeded)
@@ -136,10 +136,9 @@ void OptionMenue::exitMenue()
     else
     {
         Console::print("Leaving Option Menue", Console::eDEBUG);
-        oxygine::getStage()->addChild(new Mainwindow());
+        oxygine::getStage()->addChild(spMainwindow::create());
         oxygine::Actor::detach();
-    }
-    
+    }    
 }
 
 
@@ -155,16 +154,14 @@ void OptionMenue::showGameplayAndKeys()
 }
 
 void OptionMenue::reloadSettings()
-{
-    
+{    
     Console::print("Leaving Option Menue", Console::eDEBUG);
 
-    OptionMenue* newMenu = new OptionMenue();
+    spOptionMenue newMenu = spOptionMenue::create();
     // carry over restart flag
     newMenu->restartNeeded = restartNeeded;
     oxygine::getStage()->addChild(newMenu);
-    oxygine::Actor::detach();
-    
+    oxygine::Actor::detach();    
 }
 
 void OptionMenue::showSettings()
@@ -311,25 +308,25 @@ void OptionMenue::showSettings()
     }
     qint32 sliderOffset = 400;
 
-    spLabel pTextfield = new Label(800);
+    spLabel pTextfield = spLabel::create(800);
     pTextfield->setStyle(style);
-    pTextfield->setHtmlText(QObject::tr("Screen Settings"));
+    pTextfield->setHtmlText(tr("Screen Settings"));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
     y += 40;
 
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
-    pTextfield->setHtmlText(QObject::tr("Screen Resolution: "));
+    pTextfield->setHtmlText(tr("Screen Resolution: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spDropDownmenu pScreenResolution = new DropDownmenu(400, displaySizes);
+    spDropDownmenu pScreenResolution = spDropDownmenu::create(400, displaySizes);
     pScreenResolution->setPosition(sliderOffset - 130, y);
     pScreenResolution->setCurrentItem(currentDisplayMode);
     pScreenResolution->setTooltipText(tr("Selects the screen resolution for the game"));
     m_pOptions->addItem(pScreenResolution);
-    connect(pScreenResolution.get(), &DropDownmenu::sigItemChanged, [=](qint32)
+    connect(pScreenResolution.get(), &DropDownmenu::sigItemChanged, this, [=](qint32)
     {
         QStringList itemData = pScreenResolution->getCurrentItemText().split(" x ");
         qint32 width = itemData[0].toInt();
@@ -340,13 +337,13 @@ void OptionMenue::showSettings()
     });
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Screen Mode: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
     QVector<QString> items = {tr("Window"), tr("Bordered"), tr("Fullscreen")};
-    spDropDownmenu pScreenModes = new DropDownmenu(400, items);
+    spDropDownmenu pScreenModes = spDropDownmenu::create(400, items);
     pScreenModes->setTooltipText(tr("Selects the screen mode for the game"));
     pScreenModes->setPosition(sliderOffset - 130, y);
     pScreenModes->setCurrentItem(pApp->getScreenMode());
@@ -354,12 +351,12 @@ void OptionMenue::showSettings()
     connect(pScreenModes.get(), &DropDownmenu::sigItemChanged, pApp, &Mainapp::changeScreenMode, Qt::QueuedConnection);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Brightness: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spSlider pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, -50, 50);
+    spSlider pSlider = spSlider::create(Settings::getWidth() - 20 - sliderOffset, -50, 50);
     pSlider->setTooltipText(tr("Selects the brightness for the game"));
     pSlider->setPosition(sliderOffset - 130, y);
     pSlider->setCurrentValue(Settings::getBrightness());
@@ -371,12 +368,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pSlider);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Gamma: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 1, 160, "");
+    pSlider = spSlider::create(Settings::getWidth() - 20 - sliderOffset, 1, 160, "");
     pSlider->setTooltipText(tr("Selects the gamma factor for the game"));
     pSlider->setPosition(sliderOffset - 130, y);
     pSlider->setCurrentValue(Settings::getGamma() * 30.0f);
@@ -388,12 +385,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pSlider);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Sprite Aliasing: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spCheckbox pCheckbox = new Checkbox();
+    spCheckbox pCheckbox = spCheckbox::create();
     pCheckbox->setTooltipText(tr("If checked ingame sprites will be aliased smoother."));
     pCheckbox->setChecked(Settings::getSpriteFilter() != GL_NEAREST);
     pCheckbox->setPosition(sliderOffset - 130, y);
@@ -415,7 +412,7 @@ void OptionMenue::showSettings()
 
     showSoundOptions(m_pOptions, sliderOffset, y);
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Language: "));
     pTextfield->setPosition(10, y);
@@ -444,7 +441,7 @@ void OptionMenue::showSettings()
             }
         }
     }
-    spDropDownmenu pLanguageMenu = new DropDownmenu(400, items);
+    spDropDownmenu pLanguageMenu = spDropDownmenu::create(400, items);
     pLanguageMenu->setTooltipText(tr("Selects the language for the game. Note: Not everything may be translated."));
     pLanguageMenu->setPosition(sliderOffset - 130, y);
     pLanguageMenu->setCurrentItem(current);
@@ -459,12 +456,12 @@ void OptionMenue::showSettings()
     });
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Auto Saving Time: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spTimeSpinBox autoSavingCycleTime = new TimeSpinBox(200);
+    spTimeSpinBox autoSavingCycleTime = spTimeSpinBox::create(200);
     autoSavingCycleTime->setTooltipText(tr("Selects the auto saving cycle in hours:minutes:seconds"));
     autoSavingCycleTime->setCurrentValue(std::chrono::duration_cast<std::chrono::milliseconds>(Settings::getAutoSavingCylceTime()).count());
     autoSavingCycleTime->setPosition(sliderOffset - 130, y);
@@ -475,12 +472,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(autoSavingCycleTime);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Auto Saving Cycle: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spSpinBox autoSavingCycle = new SpinBox(200, 0, std::numeric_limits<quint16>::max());
+    spSpinBox autoSavingCycle = spSpinBox::create(200, 0, std::numeric_limits<quint16>::max());
     autoSavingCycle->setTooltipText(tr("Selects the amount of auto save games that get cycled through while auto saving. A value 0 disables this feature."));
     autoSavingCycle->setCurrentValue(Settings::getAutoSavingCycle());
     autoSavingCycle->setPosition(sliderOffset - 130, y);
@@ -489,12 +486,12 @@ void OptionMenue::showSettings()
     y += 40;
 
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Record Games: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    pCheckbox = new Checkbox();
+    pCheckbox = spCheckbox::create();
     pCheckbox->setTooltipText(tr("If checked games will be recorded and you can rewatch them in the replay section."));
     pCheckbox->setChecked(Settings::getRecord());
     pCheckbox->setPosition(sliderOffset - 130, y);
@@ -502,22 +499,22 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pCheckbox);
     y += 40;
 
-    pTextfield = new Label(800);
+    pTextfield = spLabel::create(800);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Network Settings"));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Username: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spTextbox pTextbox = new Textbox(Settings::getWidth() - 20 - sliderOffset);
+    spTextbox pTextbox = spTextbox::create(Settings::getWidth() - 20 - sliderOffset);
     pTextbox->setTooltipText(tr("Selects your username shown at various places of the game"));
     pTextbox->setCurrentText(Settings::getUsername());
-    connect(pTextbox.get(), &Textbox::sigTextChanged, [=](QString value)
+    connect(pTextbox.get(), &Textbox::sigTextChanged, this, [=](QString value)
     {
         if (value.isEmpty())
         {
@@ -537,12 +534,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pTextbox);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Server Adress: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    pTextbox = new Textbox(Settings::getWidth() - 20 - sliderOffset);
+    pTextbox = spTextbox::create(Settings::getWidth() - 20 - sliderOffset);
     pTextbox->setTooltipText(tr("Selects the game server you wan't to connect to when playing a multiplayer game."));
     pTextbox->setCurrentText(Settings::getServerAdress());
     connect(pTextbox.get(), &Textbox::sigTextChanged, [=](QString value)
@@ -553,12 +550,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pTextbox);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Lobby port: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    spSpinBox portBox = new SpinBox(200, 0, std::numeric_limits<quint16>::max());
+    spSpinBox portBox = spSpinBox::create(200, 0, std::numeric_limits<quint16>::max());
     portBox->setTooltipText(tr("Selects the chat port for used to chat with the server"));
     portBox->setCurrentValue(Settings::getServerPort());
     portBox->setPosition(sliderOffset - 130, y);
@@ -569,12 +566,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(portBox);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Server: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    pCheckbox = new Checkbox();
+    pCheckbox = spCheckbox::create();
     pCheckbox->setTooltipText(tr("Enables this game as global server."));
     pCheckbox->setChecked(Settings::getServer());
     connect(pCheckbox.get(), &Checkbox::checkChanged, [=](bool value)
@@ -587,12 +584,12 @@ void OptionMenue::showSettings()
     m_pOptions->addItem(pCheckbox);
     y += 40;
 
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Game port: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
-    portBox = new SpinBox(200, 0, std::numeric_limits<quint16>::max());
+    portBox = spSpinBox::create(200, 0, std::numeric_limits<quint16>::max());
     portBox->setTooltipText(tr("Selects the game port for used to play the game with the server"));
     portBox->setCurrentValue(Settings::getGamePort());
     portBox->setPosition(sliderOffset - 130, y);
@@ -615,18 +612,18 @@ void OptionMenue::showSoundOptions(spPanel pOwner, qint32 sliderOffset, qint32 &
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = false;
 
-    spLabel pTextfield = new Label(sliderOffset - 10);
+    spLabel pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Audio Settings"));
     pTextfield->setPosition(10, y);
     pOwner->addItem(pTextfield);
     y += 40;
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Global Volume: "));
     pTextfield->setPosition(10, y);
     pOwner->addItem(pTextfield);
-    spSlider pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    spSlider pSlider = spSlider::create(Settings::getWidth() - 20 - sliderOffset, 0, 100);
     pSlider->setTooltipText(tr("Selects the global volume for the game"));
     pSlider->setPosition(sliderOffset - 130, y);
     pSlider->setCurrentValue(Settings::getTotalVolume());
@@ -638,12 +635,12 @@ void OptionMenue::showSoundOptions(spPanel pOwner, qint32 sliderOffset, qint32 &
     pOwner->addItem(pSlider);
 
     y += 40;
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Music Volume: "));
     pTextfield->setPosition(10, y);
     pOwner->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    pSlider = spSlider::create(Settings::getWidth() - 20 - sliderOffset, 0, 100);
     pSlider->setTooltipText(tr("Selects the music volume for the game"));
     pSlider->setPosition(sliderOffset - 130, y);
     pSlider->setCurrentValue(Settings::getMusicVolume());
@@ -655,12 +652,12 @@ void OptionMenue::showSoundOptions(spPanel pOwner, qint32 sliderOffset, qint32 &
     pOwner->addItem(pSlider);
 
     y += 40;
-    pTextfield = new Label(sliderOffset - 10);
+    pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
     pTextfield->setHtmlText(tr("Sound Volume: "));
     pTextfield->setPosition(10, y);
     pOwner->addItem(pTextfield);
-    pSlider = new Slider(Settings::getWidth() - 20 - sliderOffset, 0, 100);
+    pSlider = spSlider::create(Settings::getWidth() - 20 - sliderOffset, 0, 100);
     pSlider->setTooltipText(tr("Selects the sound volume for the game"));
     pSlider->setPosition(sliderOffset - 130, y);
     pSlider->setCurrentValue(Settings::getSoundVolume());
@@ -695,21 +692,21 @@ void OptionMenue::showMods()
     style.vAlign = oxygine::TextStyle::VALIGN_DEFAULT;
     style.hAlign = oxygine::TextStyle::HALIGN_LEFT;
     style.multiline = true;
-    m_ModDescriptionText = new oxygine::TextField();
+    m_ModDescriptionText = oxygine::spTextField::create();
     m_ModDescriptionText->setStyle(style);
     m_ModDescriptionText->setSize(m_pModDescription->getContentWidth() - 60, 500);
     m_pModDescription->addItem(m_ModDescriptionText);
 
-    spLabel pLabel = new Label(250);
+    spLabel pLabel = spLabel::create(250);
     style.multiline = false;
     pLabel->setStyle(style);
-    pLabel->setText(QObject::tr("Advance Wars Game:"));
+    pLabel->setText(tr("Advance Wars Game:"));
     m_ModSelector->addChild(pLabel);
-    QVector<QString> versions = {QObject::tr("Unkown"),
-                                 QObject::tr("Commander Wars"),
-                                 QObject::tr("Advance Wars DS"),
-                                 QObject::tr("Advance Wars DC")};
-    spDropDownmenu pModSelection = new DropDownmenu(300, versions);
+    QVector<QString> versions = {tr("Unkown"),
+                                 tr("Commander Wars"),
+                                 tr("Advance Wars DS"),
+                                 tr("Advance Wars DC")};
+    spDropDownmenu pModSelection = spDropDownmenu::create(300, versions);
     pModSelection->setTooltipText(tr("Select an Advance Wars Game to preselect all mods which are required to play like this Advance Wars Game"));
     pModSelection->setX(260);
     connect(pModSelection.get(), &DropDownmenu::sigItemChanged, this, &OptionMenue::selectMods, Qt::QueuedConnection);
@@ -734,18 +731,18 @@ void OptionMenue::showMods()
             Settings::getModInfos(folder, name, description, version,
                                   compatibleMods, incompatibleMods, requiredMods, isComsetic);
             oxygine::ResAnim* pAnim = pObjectManager->getResAnim("topbar+dropdown");
-            oxygine::spBox9Sprite pBox = new oxygine::Box9Sprite();
+            oxygine::spBox9Sprite pBox = oxygine::spBox9Sprite::create();
             pBox->setResAnim(pAnim);
             pBox->setVerticalMode(oxygine::Box9Sprite::STRETCHING);
             pBox->setHorizontalMode(oxygine::Box9Sprite::STRETCHING);
 
-            oxygine::spTextField pTextfield = new oxygine::TextField();
+            oxygine::spTextField pTextfield = oxygine::spTextField::create();
             pTextfield->setStyle(style);
             pTextfield->setHtmlText(name);
             pTextfield->setPosition(50, 5);
             pBox->addChild(pTextfield);
             qint32 curWidth = pTextfield->getTextRect().getWidth() + 30;
-            spCheckbox modCheck = new Checkbox();
+            spCheckbox modCheck = spCheckbox::create();
             m_ModCheckboxes.append(modCheck);
             modCheck->setPosition(10, 5);
             pBox->addChild(modCheck);
@@ -754,7 +751,7 @@ void OptionMenue::showMods()
             {
                 modCheck->setChecked(true);
             }
-            connect(modCheck.get(), &Checkbox::checkChanged, [=](bool checked)
+            connect(modCheck.get(), &Checkbox::checkChanged, this, [=](bool checked)
             {
                 if (checked)
                 {
@@ -812,7 +809,7 @@ void OptionMenue::showMods()
     }
     m_pMods->setContentWidth(width);
     m_pMods->setContentHeigth(50 + mods * 50);
-    
+    updateModCheckboxes();
 }
 
 void OptionMenue::selectMods(qint32 item)
@@ -915,7 +912,7 @@ void OptionMenue::updateModCheckboxes()
             Settings::getModInfos(mod, name, description, version,
                                   compatibleMods, incompatibleMods, requiredMods, isComsetic);
             bool enabled = true;
-            for (const auto & incompatibleMod : incompatibleMods)
+            for (const auto & incompatibleMod : qAsConst(incompatibleMods))
             {
                 if (mods.contains(incompatibleMod))
                 {
@@ -925,7 +922,7 @@ void OptionMenue::updateModCheckboxes()
             }
             if (enabled)
             {
-                for (const auto & requiredMod : requiredMods)
+                for (const auto & requiredMod : qAsConst(requiredMods))
                 {
                     if (!mods.contains(requiredMod))
                     {

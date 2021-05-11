@@ -14,16 +14,17 @@
 #include "game/building.h"
 #include "game/player.h"
 #include "game/unit.h"
+#include "game/gameanimation/gameanimation.h"
 
 #include "menue/editormenue.h"
 
-#include "coreengine/tweentogglevisibility.h"
-#include "coreengine/tweenaddcolorall.h"
+#include "coreengine/tweens/tweentogglevisibility.h"
 
 const float Unit::animationSpeed = 1.5f;
 
 Unit::Unit()
 {
+    setObjectName("Unit");
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
@@ -35,6 +36,7 @@ Unit::Unit(QString unitID, Player* pOwner, bool aquireId)
     : m_UnitID(unitID),
       m_pOwner(pOwner)
 {
+    setObjectName("Unit");
     setHeight(GameMap::getImageSize());
     setWidth(GameMap::getImageSize());
     Mainapp* pApp = Mainapp::getInstance();
@@ -43,9 +45,9 @@ Unit::Unit(QString unitID, Player* pOwner, bool aquireId)
     if (!m_UnitID.isEmpty())
     {
         initUnit();
-        setFuel(maxFuel);
-        setAmmo1(maxAmmo1);
-        setAmmo2(maxAmmo2);
+        setFuel(m_maxFuel);
+        setAmmo1(m_maxAmmo1);
+        setAmmo2(m_maxAmmo2);
         updateSprites(false);
         if (aquireId)
         {
@@ -59,6 +61,7 @@ Unit::~Unit()
     if (m_CORange.get() != nullptr)
     {
         m_CORange->removeChildren();
+        m_CORange->detach();
     }
 }
 
@@ -145,10 +148,7 @@ void Unit::setOwner(Player* pOwner)
         m_pOwner->getCO(1)->setCOUnit(nullptr);
         setUnitRank(getMaxUnitRang());
     }
-    if (m_CORange.get() != nullptr)
-    {
-        m_CORange->removeChildren();
-    }
+    showCORange();
     m_pOwner = pOwner;
     for (auto & loadedUnit : m_TransportUnits)
     {
@@ -167,30 +167,42 @@ void Unit::setTerrain(Terrain* pTerrain)
 }
 
 void Unit::addShineTween()
-{
-    
+{    
     removeShineTween();
-    m_ShineTween = oxygine::createTween(TweenAddColorAll(QColor(50, 50, 50, 0)), oxygine::timeMS(500), -1, true);
-    addTween(m_ShineTween);
-    
+    oxygine::spActor child = getFirstChild();
+    while (child.get() != nullptr)
+    {
+        oxygine::spVStyleActor pActor = oxygine::dynamic_pointer_cast<oxygine::VStyleActor>(child);
+        if (pActor.get() != nullptr)
+        {
+            oxygine::spTween shineTween = oxygine::createTween(oxygine::VStyleActor::TweenAddColor(QColor(50, 50, 50, 0)), oxygine::timeMS(500), -1, true);
+            pActor->addTween(shineTween);
+            m_ShineTweens.append(shineTween);
+        }
+        child = child->getNextSibling();
+    }
 }
 
 void Unit::removeShineTween()
 {
-    if (m_ShineTween.get() != nullptr)
+    QColor addColor(0, 0, 0, 0);
+    for (qint32 i = 0; i < m_ShineTweens.size(); ++i)
     {
-        m_ShineTween->remove();
-        m_ShineTween = nullptr;
-        QColor addColor(0, 0, 0, 0);
-        setAddColor(addColor);
-        oxygine::spVStyleActor child = static_cast<oxygine::VStyleActor*>(getFirstChild().get());
-        while (child)
+        if (m_ShineTweens[i].get() != nullptr)
         {
-            child->setAddColor(addColor);
-            child = static_cast<oxygine::VStyleActor*>(child->getNextSibling().get());
+            oxygine::spActor pActor = m_ShineTweens[i]->getClient();
+            if (pActor.get() != nullptr)
+            {
+                m_ShineTweens[i]->removeFromActor();
+                oxygine::spVStyleActor pVStyle = oxygine::dynamic_pointer_cast<oxygine::VStyleActor>(pActor);
+                if (pVStyle.get() != nullptr)
+                {
+                    pVStyle->setAddColor(addColor);
+                }
+            }
         }
-        
     }
+    m_ShineTweens.clear();
 }
 
 void Unit::loadSprite(QString spriteID, bool addPlayerColor, bool flipSprite)
@@ -211,14 +223,14 @@ void Unit::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode, bool flipS
     oxygine::ResAnim* pAnim = pUnitSpriteManager->getResAnim(spriteID);
     if (pAnim != nullptr)
     {
-        oxygine::spSprite pSprite = new oxygine::Sprite();
-        oxygine::spSprite pWaitSprite = new oxygine::Sprite();
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
+        oxygine::spSprite pWaitSprite = oxygine::spSprite::create();
         if (pAnim->getTotalFrames() > 1)
         {
-            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);
+            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);                        
             pSprite->addTween(tween);
 
-            oxygine::spTween tweenWait = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);
+            oxygine::spTween tweenWait = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);            
             pWaitSprite->addTween(tweenWait);
         }
         else
@@ -226,8 +238,6 @@ void Unit::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode, bool flipS
             pSprite->setResAnim(pAnim);
             pWaitSprite->setResAnim(pAnim);
         }
-        setSize(pAnim->getWidth(),
-                pAnim->getHeight());
         pSprite->setPriority(static_cast<short>(Priorities::Colored));
         pWaitSprite->setPriority(static_cast<short>(Priorities::Waiting));
         // repaint the unit?
@@ -265,6 +275,28 @@ void Unit::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode, bool flipS
     else
     {
         Console::print("Unable to load unit sprite: " + spriteID, Console::eERROR);
+    }
+}
+
+void Unit::syncAnimation(oxygine::timeMS syncTime)
+{
+    for (auto & sprite : m_pUnitSprites)
+    {
+        oxygine::spTween pTween = sprite->getFirstTween();
+        while (pTween.get() != nullptr)
+        {
+            pTween->setElapsed(syncTime);
+            pTween = pTween->getNextSibling();
+        }
+    }
+    for (auto & sprite : m_pUnitWaitSprites)
+    {
+        oxygine::spTween pTween = sprite->getFirstTween();
+        while (pTween.get() != nullptr)
+        {
+            pTween->setElapsed(syncTime);
+            pTween = pTween->getNextSibling();
+        }
     }
 }
 
@@ -349,10 +381,10 @@ void Unit::updateSprites(bool editor)
     args1 << obj1;
     pInterpreter->doFunction(m_UnitID, function1, args1);
 
-    setHp(hp);
-    setFuel(fuel);
-    setAmmo1(ammo1);
-    setAmmo2(ammo2);
+    setHp(m_hp);
+    setFuel(m_fuel);
+    setAmmo1(m_ammo1);
+    setAmmo2(m_ammo2);
     setUnitRank(m_UnitRank);
     if (!editor)
     {
@@ -445,7 +477,7 @@ void Unit::setUnitRank(const qint32 &UnitRank)
         QString function1 = "unloadIcons";
         QJSValue obj1 = pInterpreter->newQObject(this);
         args << obj1;
-        QJSValue ret = pInterpreter->doFunction("UNITRANKINGSYSTEM", function1, args);
+        pInterpreter->doFunction("UNITRANKINGSYSTEM", function1, args);
         loadIcon(getUnitRangIcon(), GameMap::getImageSize() / 2, GameMap::getImageSize() / 2);
     }
 }
@@ -484,8 +516,8 @@ qint32 Unit::getVision(QPoint position)
         }
     }
     rangeModifier += pMap->getTerrain(position.x(), position.y())->getBonusVision(this);
-    qint32 points = vision + rangeModifier;
-    if (vision >= 1 && points < 1)
+    qint32 points = m_vision + rangeModifier;
+    if (m_vision >= 1 && points < 1)
     {
         points = 1;
     }
@@ -498,12 +530,12 @@ qint32 Unit::getVision(QPoint position)
 
 void Unit::setVision(const qint32 &value)
 {
-    vision = value;
+    m_vision = value;
 }
 
 qint32 Unit::getBaseVision()
 {
-    return vision;
+    return m_vision;
 }
 
 qint32 Unit::getMaxRange(QPoint position)
@@ -541,7 +573,7 @@ qint32 Unit::getBonusMaxRange(QPoint position)
 
 qint32 Unit::getMaxRangeAtPosition(QPoint position)
 {
-    qint32 points = maxRange + getBonusMaxRange(position);
+    qint32 points = m_maxRange + getBonusMaxRange(position);
     qint32 min = getMinRange(position);
     if (points < min)
     {
@@ -552,30 +584,30 @@ qint32 Unit::getMaxRangeAtPosition(QPoint position)
 
 void Unit::setMaxRange(const qint32 &value)
 {
-    maxRange = value;
+    m_maxRange = value;
 }
 
 qint32 Unit::getBaseMaxRange()
 {
-    return maxRange;
+    return m_maxRange;
 }
 
 qint32 Unit::getBaseMinRange() const
 {
-    return minRange;
+    return m_minRange;
 }
 
 qint32 Unit::getMinRange(QPoint position)
 {
-    qint32 points = minRange + getBonusMinRange(position);
+    qint32 points = m_minRange + getBonusMinRange(position);
     qint32 maxBonus = getBonusMaxRange(position);
-    if (maxBonus > 0 && points > maxBonus + maxRange)
+    if (maxBonus > 0 && points > maxBonus + m_maxRange)
     {
-        points = maxBonus + maxRange;
+        points = maxBonus + m_maxRange;
     }
-    else if (points > maxRange)
+    else if (points > m_maxRange)
     {
-        points = maxRange;
+        points = m_maxRange;
     }
     if (points < 1)
     {
@@ -613,7 +645,7 @@ qint32 Unit::getBonusMinRange(QPoint position)
 
 void Unit::setMinRange(const qint32 &value)
 {
-    minRange = value;
+    m_minRange = value;
 }
 
 qint32 Unit::getCosts() const
@@ -720,7 +752,7 @@ bool Unit::canMoveOver(qint32 x, qint32 y)
 
 qint32 Unit::getUnitValue()
 {
-    return static_cast<qint32>(getCosts() * hp / Unit::MAX_UNIT_HP);
+    return static_cast<qint32>(getCosts() * m_hp / Unit::MAX_UNIT_HP);
 }
 
 bool Unit::canBeRepaired(QPoint position)
@@ -783,16 +815,16 @@ void Unit::addFirerangeBonus(qint32 value, qint32 duration)
 bool Unit::isEnvironmentAttackable(QString terrainID)
 {
     WeaponManager* pWeaponManager = WeaponManager::getInstance();
-    if (hasAmmo1() && !weapon1ID.isEmpty())
+    if (hasAmmo1() && !m_weapon1ID.isEmpty())
     {
-        if (pWeaponManager->getEnviromentDamage(weapon1ID, terrainID) > 0)
+        if (pWeaponManager->getEnviromentDamage(m_weapon1ID, terrainID) > 0)
         {
             return true;
         }
     }
-    if (hasAmmo2() && !weapon2ID.isEmpty())
+    if (hasAmmo2() && !m_weapon2ID.isEmpty())
     {
-        if (pWeaponManager->getEnviromentDamage(weapon2ID, terrainID) > 0)
+        if (pWeaponManager->getEnviromentDamage(m_weapon2ID, terrainID) > 0)
         {
             return true;
         }
@@ -812,7 +844,7 @@ bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint uni
     if (pDefender != nullptr &&
         pMap.get() != nullptr)
     {
-        if (m_pOwner->getFieldVisible(pDefender->getX(), pDefender->getY()) || ignoreOutOfVisionRange)
+        if (m_pOwner->getFieldVisible(pDefender->Unit::getX(), pDefender->Unit::getY()) || ignoreOutOfVisionRange)
         {
             if (!pDefender->isStealthed(m_pOwner, ignoreOutOfVisionRange))
             {
@@ -821,18 +853,18 @@ bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint uni
                 {
                     if (m_pOwner->isEnemyUnit(pDefender) == true)
                     {
-                        if (hasAmmo1() && !weapon1ID.isEmpty() &&
-                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(0, unitPos.x(), unitPos.y(), pDefender->getX(), pDefender->getY())))
+                        if (hasAmmo1() && !m_weapon1ID.isEmpty() &&
+                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(0, unitPos.x(), unitPos.y(), pDefender->Unit::getX(), pDefender->Unit::getY())))
                         {
-                            if (pWeaponManager->getBaseDamage(weapon1ID, pDefender) > 0)
+                            if (pWeaponManager->getBaseDamage(m_weapon1ID, pDefender) > 0)
                             {
                                 return true;
                             }
                         }
-                        if (hasAmmo2() && !weapon2ID.isEmpty() &&
-                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(1, unitPos.x(), unitPos.y(), pDefender->getX(), pDefender->getY())))
+                        if (hasAmmo2() && !m_weapon2ID.isEmpty() &&
+                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(1, unitPos.x(), unitPos.y(), pDefender->Unit::getX(), pDefender->Unit::getY())))
                         {
-                            if (pWeaponManager->getBaseDamage(weapon2ID, pDefender) > 0)
+                            if (pWeaponManager->getBaseDamage(m_weapon2ID, pDefender) > 0)
                             {
                                 return true;
                             }
@@ -987,7 +1019,7 @@ void Unit::loadUnit(Unit* pUnit)
 
 void Unit::loadSpawnedUnit(QString unitId)
 {
-    spUnit pUnit = new Unit(unitId, m_pOwner, true);
+    spUnit pUnit = spUnit::create(unitId, m_pOwner, true);
     if (canTransportUnit(pUnit.get()))
     {
         loadUnit(pUnit.get());
@@ -1005,7 +1037,7 @@ Unit* Unit::spawnUnit(QString unitID)
         {
             return nullptr;
         }
-        spUnit pUnit = new Unit(unitID, m_pOwner, true);
+        spUnit pUnit = spUnit::create(unitID, m_pOwner, true);
         m_TransportUnits.append(pUnit);
         updateIcons(pMap->getCurrentViewPlayer());
         return pUnit.get();
@@ -1251,7 +1283,7 @@ qint32 Unit::getTerrainDefense()
     spGameMap pMap = GameMap::getInstance();
     if (useTerrainDefense() && m_pTerrain != nullptr)
     {
-        return pMap->getTerrain(getX(), getY())->getDefense(this);
+        return pMap->getTerrain(Unit::getX(), Unit::getY())->getDefense(this);
     }
     return 0;
 }
@@ -1370,7 +1402,7 @@ qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosit
     }
     if (useTerrainDefense())
     {
-        bonus += getTerrainDefense() * 10;
+        bonus += getTerrainDefense() * pMap->getGameRules()->getTerrainDefense();
     }
     if (m_pTerrain != nullptr)
     {
@@ -1538,13 +1570,6 @@ qint32 Unit::getBonusLuck(QPoint position)
 
 void Unit::startOfTurn()
 {
-    m_cloaked--;
-    updateBonus(m_OffensiveBonus);
-    updateBonus(m_DefensiveBonus);
-    updateBonus(m_VisionBonus);
-    updateBonus(m_MovementBonus);
-    updateBonus(m_FirerangeBonus);
-
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "startOfTurn";
     QJSValueList args1;
@@ -1557,19 +1582,66 @@ void Unit::startOfTurn()
     }
 }
 
+void Unit::updateIconDuration(qint32 player)
+{
+    qint32 i = 0;
+    QStringList removeList;
+    QStringList existList;
+    while (i < m_IconDurations.size())
+    {
+        IconDuration & icon = m_IconDurations[i];
+        if (icon.player == player)
+        {
+            --icon.duration;
+            if (icon.duration <= 0)
+            {
+                removeList.append(icon.icon);
+                m_IconDurations.removeAt(i);
+            }
+            else
+            {
+                existList.append(icon.icon);
+                ++i;
+            }
+        }
+        else
+        {
+            existList.append(icon.icon);
+            ++i;
+        }
+    }
+    for (const auto & item : removeList)
+    {
+        if (!existList.contains(item))
+        {
+            unloadIcon(item);
+        }
+    }    
+}
+
+void Unit::updateUnitStatus()
+{
+    m_cloaked--;
+    updateBonus(m_OffensiveBonus);
+    updateBonus(m_DefensiveBonus);
+    updateBonus(m_VisionBonus);
+    updateBonus(m_MovementBonus);
+    updateBonus(m_FirerangeBonus);
+}
+
 qint32 Unit::getCapturePoints() const
 {
-    return capturePoints;
+    return m_capturePoints;
 }
 
 void Unit::setCapturePoints(const qint32 &value)
 {
-    capturePoints = value;
-    if (capturePoints < 0)
+    m_capturePoints = value;
+    if (m_capturePoints < 0)
     {
-        capturePoints = 0;
+        m_capturePoints = 0;
     }
-    if (capturePoints > 0)
+    if (m_capturePoints > 0)
     {
         loadIcon("capture", GameMap::getImageSize() / 2, GameMap::getImageSize() / 2);
     }
@@ -1581,15 +1653,15 @@ void Unit::setCapturePoints(const qint32 &value)
 
 qint32 Unit::getBaseMovementPoints() const
 {
-    return baseMovementPoints;
+    return m_baseMovementPoints;
 }
 
 void Unit::setBaseMovementPoints(const qint32 &value)
 {
-    baseMovementPoints = value;
+    m_baseMovementPoints = value;
 }
 
-qint32 Unit::getBaseMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY)
+qint32 Unit::getBaseMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY, bool trapChecking)
 {
     spGameMap pMap = GameMap::getInstance();
     Terrain* pCurTerrain = nullptr;
@@ -1601,12 +1673,12 @@ qint32 Unit::getBaseMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY)
     {
         pCurTerrain = pMap->getTerrain(x, y);
     }
-    return MovementTableManager::getInstance()->getBaseMovementPoints(m_MovementType, pMap->getTerrain(x, y), pCurTerrain, this);
+    return MovementTableManager::getInstance()->getBaseMovementPoints(m_MovementType, pMap->getTerrain(x, y), pCurTerrain, this, trapChecking);
 }
 
-qint32 Unit::getMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY)
+qint32 Unit::getMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY, bool trapChecking)
 {
-    qint32 baseCosts = getBaseMovementCosts(x, y, curX, curY);
+    qint32 baseCosts = getBaseMovementCosts(x, y, curX, curY, trapChecking);
     if (baseCosts == 0)
     {
         return baseCosts;
@@ -1654,34 +1726,36 @@ void Unit::initUnit()
     QJSValue obj1 = pInterpreter->newQObject(this);
     args1 << obj1;
     pInterpreter->doFunction(m_UnitID, function1, args1);
-    setFuel(fuel);
-    setAmmo1(ammo1);
-    setAmmo2(ammo2);
-    setHp(hp);
+    function1 = "initForMods";
+    pInterpreter->doFunction(m_UnitID, function1, args1);
+    setFuel(m_fuel);
+    setAmmo1(m_ammo1);
+    setAmmo2(m_ammo2);
+    setHp(m_hp);
 }
 
 qint32 Unit::getMaxFuel() const
 {
-    return maxFuel;
+    return m_maxFuel;
 }
 
 void Unit::setMaxFuel(const qint32 &value)
 {
-    maxFuel = value;
+    m_maxFuel = value;
 }
 
 qint32 Unit::getFuel() const
 {
-    return fuel;
+    return m_fuel;
 }
 
 void Unit::setFuel(const qint32 &value)
 {
-    if (maxFuel > 0)
+    if (m_maxFuel > 0)
     {
-        fuel = value;
+        m_fuel = value;
     }
-    if (maxFuel > 0 && static_cast<float>(fuel) / static_cast<float>(maxFuel) <= 1.0f / 3.0f)
+    if (m_maxFuel > 0 && static_cast<float>(m_fuel) / static_cast<float>(m_maxFuel) <= 1.0f / 3.0f)
     {
         loadIcon("fuel", GameMap::getImageSize() / 2, 0);
     }
@@ -1693,22 +1767,22 @@ void Unit::setFuel(const qint32 &value)
 
 qint32 Unit::getMaxAmmo2() const
 {
-    return maxAmmo2;
+    return m_maxAmmo2;
 }
 
 void Unit::setMaxAmmo2(const qint32 &value)
 {
-    maxAmmo2 = value;
+    m_maxAmmo2 = value;
 }
 
 qint32 Unit::getAmmo2() const
 {
-    return ammo2;
+    return m_ammo2;
 }
 
 bool Unit::hasAmmo2() const
 {
-    if ((maxAmmo2 < 0) || (ammo2 > 0))
+    if ((m_maxAmmo2 < 0) || (m_ammo2 > 0))
     {
         return true;
     }
@@ -1721,28 +1795,28 @@ bool Unit::hasAmmo2() const
 
 QString Unit::getWeapon2ID() const
 {
-    return weapon2ID;
+    return m_weapon2ID;
 }
 
 void Unit::setWeapon2ID(const QString &value)
 {
-    weapon2ID = value;
+    m_weapon2ID = value;
 }
 
 void Unit::setAmmo2(const qint32 &value)
 {
-    ammo2 = value;
-    if ((ammo2 < 0) && (maxAmmo2 > 0))
+    m_ammo2 = value;
+    if ((m_ammo2 < 0) && (m_maxAmmo2 > 0))
     {
-        ammo2 = 0;
+        m_ammo2 = 0;
     }
-    else  if (maxAmmo2 > 0 && ammo2 < 0)
+    else  if (m_maxAmmo2 > 0 && m_ammo2 < 0)
     {
-        ammo2 = 0;
+        m_ammo2 = 0;
     }
-    if (maxAmmo2 > 0 && static_cast<float>(ammo2) / static_cast<float>(maxAmmo2) <= 1.0f / 3.0f)
+    if (m_maxAmmo2 > 0 && static_cast<float>(m_ammo2) / static_cast<float>(m_maxAmmo2) <= 1.0f / 3.0f)
     {
-        if (weapon2ID.isEmpty())
+        if (m_weapon2ID.isEmpty())
         {
             loadIcon("material1", GameMap::getImageSize() / 2, 0);
         }
@@ -1760,52 +1834,52 @@ void Unit::setAmmo2(const qint32 &value)
 
 void Unit::reduceAmmo2(qint32 value)
 {
-    if (ammo2 >= 0)
+    if (m_ammo2 >= 0)
     {
-        setAmmo2(ammo2 - value);
+        setAmmo2(m_ammo2 - value);
     }
 }
 
 qint32 Unit::getMaxAmmo1() const
 {
-    return maxAmmo1;
+    return m_maxAmmo1;
 }
 
 void Unit::setMaxAmmo1(const qint32 &value)
 {
-    maxAmmo1 = value;
+    m_maxAmmo1 = value;
 }
 
 QString Unit::getWeapon1ID() const
 {
-    return weapon1ID;
+    return m_weapon1ID;
 }
 
 void Unit::setWeapon1ID(const QString &value)
 {
-    weapon1ID = value;
+    m_weapon1ID = value;
 }
 
 qint32 Unit::getAmmo1() const
 {
-    return ammo1;
+    return m_ammo1;
 }
 
 void Unit::setAmmo1(const qint32 &value)
 {
-    ammo1 = value;
-    if ((ammo1 < 0) && (maxAmmo1 > 0))
+    m_ammo1 = value;
+    if ((m_ammo1 < 0) && (m_maxAmmo1 > 0))
     {
-        ammo1 = 0;
+        m_ammo1 = 0;
     }
-    else if (maxAmmo1 > 0 && ammo1 < 0)
+    else if (m_maxAmmo1 > 0 && m_ammo1 < 0)
     {
-        ammo1 = 0;
+        m_ammo1 = 0;
     }
 
-    if (maxAmmo1 > 0 && static_cast<float>(ammo1) / static_cast<float>(maxAmmo1) <= 1.0f / 3.0f)
+    if (m_maxAmmo1 > 0 && static_cast<float>(m_ammo1) / static_cast<float>(m_maxAmmo1) <= 1.0f / 3.0f)
     {
-        if (weapon1ID.isEmpty())
+        if (m_weapon1ID.isEmpty())
         {
             loadIcon("material", GameMap::getImageSize() / 2, 0);
         }
@@ -1823,7 +1897,7 @@ void Unit::setAmmo1(const qint32 &value)
 
 bool Unit::hasAmmo1() const
 {
-    if ((maxAmmo1 < 0) || (ammo1 > 0))
+    if ((m_maxAmmo1 < 0) || (m_ammo1 > 0))
     {
         return true;
     }
@@ -1835,28 +1909,28 @@ bool Unit::hasAmmo1() const
 
 void Unit::reduceAmmo1(qint32 value)
 {
-    if (ammo1 >= 0)
+    if (m_ammo1 >= 0)
     {
-        setAmmo1(ammo1 - value);
+        setAmmo1(m_ammo1 - value);
     }
 }
 
 float Unit::getHp() const
 {
-    return hp;
+    return m_hp;
 }
 
 qint32 Unit::getHpRounded() const
 {
-    return GlobalUtils::roundUp(hp);
+    return GlobalUtils::roundUp(m_hp);
 }
 
 void Unit::setHp(const float &value)
 {
-    hp = value;
-    if (hp > MAX_UNIT_HP)
+    m_hp = value;
+    if (m_hp > MAX_UNIT_HP)
     {
-        hp = MAX_UNIT_HP;
+        m_hp = MAX_UNIT_HP;
     }
     spGameMap pMap = GameMap::getInstance();
     if (pMap.get() != nullptr)
@@ -1872,7 +1946,7 @@ bool Unit::getHpHidden(Player* pPlayer)
         CO* pCO = m_pOwner->getCO(0);
         if (pCO != nullptr)
         {
-            if (pCO->getHpHidden(this, QPoint(getX(), getY())))
+            if (pCO->getHpHidden(this, QPoint(Unit::getX(), Unit::getY())))
             {
                 return true;
             }
@@ -1880,7 +1954,7 @@ bool Unit::getHpHidden(Player* pPlayer)
         pCO = m_pOwner->getCO(1);
         if (pCO != nullptr)
         {
-            if (pCO->getHpHidden(this, QPoint(getX(), getY())))
+            if (pCO->getHpHidden(this, QPoint(Unit::getX(), Unit::getY())))
             {
                 return true;
             }
@@ -1897,7 +1971,7 @@ bool Unit::getPerfectHpView(Player* pPlayer)
         CO* pCO = pPlayer->getCO(0);
         if (pCO != nullptr)
         {
-            if (pCO->getPerfectHpView(this, QPoint(getX(), getY())))
+            if (pCO->getPerfectHpView(this, QPoint(Unit::getX(), Unit::getY())))
             {
                 return true;
             }
@@ -1905,7 +1979,7 @@ bool Unit::getPerfectHpView(Player* pPlayer)
         pCO = pPlayer->getCO(1);
         if (pCO != nullptr)
         {
-            if (pCO->getPerfectHpView(this, QPoint(getX(), getY())))
+            if (pCO->getPerfectHpView(this, QPoint(Unit::getX(), Unit::getY())))
             {
                 return true;
             }
@@ -1917,7 +1991,7 @@ bool Unit::getPerfectHpView(Player* pPlayer)
 
 void Unit::updateIcons(Player* pPlayer)
 {
-    qint32 hpValue = GlobalUtils::roundUp(hp);
+    qint32 hpValue = GlobalUtils::roundUp(m_hp);
     // unload the icons
     unloadIcon("1");
     unloadIcon("2");
@@ -2035,11 +2109,11 @@ qint32 Unit::getX() const
 {
     if (m_pTerrain != nullptr)
     {
-        return m_pTerrain->getX();
+        return m_pTerrain->Terrain::getX();
     }
     else
     {
-        return virtuellX;
+        return m_virtuellX;
     }
 }
 
@@ -2047,24 +2121,24 @@ qint32 Unit::getY() const
 {
     if (m_pTerrain != nullptr)
     {
-        return m_pTerrain->getY();
+        return m_pTerrain->Terrain::getY();
     }
     else
     {
-        return virtuellY;
+        return m_virtuellY;
     }
 }
 
 void Unit::refill(bool noMaterial)
 {
-    setFuel(maxFuel);
-    if (!(noMaterial && weapon1ID.isEmpty()))
+    setFuel(m_maxFuel);
+    if (!(noMaterial && m_weapon1ID.isEmpty()))
     {
-        setAmmo1(maxAmmo1);
+        setAmmo1(m_maxAmmo1);
     }
-    if (!(noMaterial && weapon2ID.isEmpty()))
+    if (!(noMaterial && m_weapon2ID.isEmpty()))
     {
-        setAmmo2(maxAmmo2);
+        setAmmo2(m_maxAmmo2);
     }
 }
 
@@ -2140,14 +2214,14 @@ qint32 Unit::getBonusMovementpoints(QPoint position)
 
 qint32 Unit::getMovementpoints(QPoint position)
 {
-    qint32 points = baseMovementPoints + getBonusMovementpoints(position);
+    qint32 points = m_baseMovementPoints + getBonusMovementpoints(position);
     if (points < 0)
     {
         points = 0;
     }
-    if (fuel < points)
+    if (m_fuel < points)
     {
-        return fuel;
+        return m_fuel;
     }
     return points;
 }
@@ -2241,7 +2315,7 @@ void Unit::moveUnitAction(GameAction* pAction)
     {
         fuelCost = 0;
     }
-    qint32 value = fuel - fuelCost;
+    qint32 value = m_fuel - fuelCost;
     if (value < 0)
     {
         value = 0;
@@ -2255,7 +2329,7 @@ void Unit::moveUnit(QVector<QPoint> movePath)
     
     if (movePath.size() < 1)
     {
-        movePath.append(QPoint(getX(), getY()));
+        movePath.append(QPoint(Unit::getX(), Unit::getY()));
     }
     // update vision based on the movepath of the unit
     spGameMap pMap = GameMap::getInstance();
@@ -2357,39 +2431,41 @@ void Unit::removeUnit(bool killed)
             m_TransportUnits[i]->removeUnit();
         }
     }
-    if (m_CORange.get() != nullptr)
-    {
-        m_CORange->detach();
-        m_CORange = nullptr;
-    }
+    createCORange(-1);
     if (m_pTerrain != nullptr)
     {
         m_pTerrain->setUnit(nullptr);
     }
-    
 }
 
-void Unit::killUnit()
-{
-    
+GameAnimation* Unit::killUnit()
+{    
+    GameAnimation* pRet = nullptr;
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "createExplosionAnimation";
     QJSValueList args1;
-    args1 << getX();
-    args1 << getY();
+    args1 << Unit::getX();
+    args1 << Unit::getY();
     QJSValue obj = pInterpreter->newQObject(this);
     args1 << obj;
     QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args1);
-
+    if (ret.isQObject())
+    {
+       pRet = dynamic_cast<GameAnimation*>(ret.toQObject());
+       pRet->writeDataInt32(getX());
+       pRet->writeDataInt32(getY());
+       pRet->setStartOfAnimationCall("UNIT", "onKilled");
+    }
     // record destruction of this unit
     GameRecorder* pRecorder = GameMap::getInstance()->getGameRecorder();
     if (pRecorder != nullptr)
     {
-        GameMap::getInstance()->getGameRecorder()->lostUnit(m_pOwner->getPlayerID());
+        if (!m_pOwner->getIsDefeated())
+        {
+            GameMap::getInstance()->getGameRecorder()->lostUnit(m_pOwner->getPlayerID(), m_UnitID);
+        }
     }
-    detach();
-    removeUnit();
-    
+    return pRet;
 }
 
 void Unit::increaseCapturePoints(QPoint position)
@@ -2406,13 +2482,24 @@ void Unit::increaseCapturePoints(QPoint position)
         modifier += pCO->getCaptureBonus(this, position);
     }
 
-    capturePoints += getHpRounded() + modifier;
+    m_capturePoints += getHpRounded() + modifier;
     // update icons
-    setCapturePoints(capturePoints);
+    setCapturePoints(m_capturePoints);
 }
 
-void Unit::loadIcon(QString iconID, qint32 x, qint32 y)
+void Unit::loadIcon(QString iconID, qint32 x, qint32 y, qint32 duration, qint32 player)
 {
+    if (duration >= 0 && player >= 0)
+    {
+        IconDuration info;
+        info.icon = iconID;
+        info.x = x;
+        info.y = y;
+        info.duration = duration;
+        info.player = player;
+        m_IconDurations.append(info);
+    }
+
     for (qint32 i = 0; i < m_pIconSprites.size(); i++)
     {
         if (m_pIconSprites[i]->getResAnim()->getName() == iconID)
@@ -2426,7 +2513,7 @@ void Unit::loadIcon(QString iconID, qint32 x, qint32 y)
     oxygine::ResAnim* pAnim = pUnitSpriteManager->getResAnim(iconID, oxygine::ep_ignore_error);
     if (pAnim != nullptr)
     {
-        oxygine::spSprite pSprite = new oxygine::Sprite();
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
         if (pAnim->getTotalFrames() > 1)
         {
             oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(pAnim->getTotalFrames() * GameMap::frameTime), -1);
@@ -2436,7 +2523,7 @@ void Unit::loadIcon(QString iconID, qint32 x, qint32 y)
         {
             pSprite->setResAnim(pAnim);
         }
-        pSprite->setScale((GameMap::getImageSize() / 2) / pAnim->getWidth() );
+        pSprite->setScale((GameMap::getImageSize() / 2) / pAnim->getWidth());
         pSprite->setPosition(x, y);
         pSprite->setPriority(static_cast<short>(Priorities::Icons));
 
@@ -2684,7 +2771,7 @@ void Unit::setMultiTurnPath(const QVector<QPoint> &MultiTurnPath)
 
 bool Unit::hasWeapons()
 {
-    if (!weapon1ID.isEmpty() || !weapon2ID.isEmpty())
+    if (!m_weapon1ID.isEmpty() || !m_weapon2ID.isEmpty())
     {
         return true;
     }
@@ -2704,7 +2791,7 @@ GameEnums::GameAi Unit::getAiMode() const
 void Unit::modifyUnit(qint32 hpChange, qint32 ammo1Change, qint32 ammo2Change, qint32 fuelChange)
 {
     setHp(getHp() + hpChange);
-    if (hp <= 0.0f)
+    if (m_hp <= 0.0f)
     {
         setHp(0.0001f);
     }
@@ -2775,9 +2862,10 @@ bool Unit::isStatusStealthed() const
     return (m_Hidden || (m_cloaked > 0));
 }
 
-bool Unit::isStatusStealthedAndInvisible(Player* pPlayer) const
+bool Unit::isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide) const
 {
-    if (isStatusStealthed() &&
+    terrainHide = hasTerrainHide(pPlayer);
+    if ((isStatusStealthed() || terrainHide) &&
         isStealthed(pPlayer))
     {
         return true;
@@ -2810,8 +2898,8 @@ void Unit::updateStealthIcon()
 
 bool Unit::hasTerrainHide(Player* pPlayer) const
 {
-    qint32 x = getX();
-    qint32 y = getY();
+    qint32 x = Unit::getX();
+    qint32 y = Unit::getY();
     bool visibleField = pPlayer->getFieldVisible(x, y);
     spGameMap pMap = GameMap::getInstance();
     return (m_pTerrain->getVisionHide(pPlayer) && useTerrainDefense() && !visibleField &&
@@ -2824,8 +2912,8 @@ bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 test
         pPlayer->checkAlliance(m_pOwner) == GameEnums::Alliance_Enemy)
     {
         spGameMap pMap = GameMap::getInstance();
-        qint32 x = getX();
-        qint32 y = getY();
+        qint32 x = Unit::getX();
+        qint32 y = Unit::getY();
         if (pMap->onMap(testX, testY))
         {
             x = testX;
@@ -2876,10 +2964,10 @@ void Unit::serializeObject(QDataStream& pStream) const
 {
     pStream << getVersion();
     pStream << m_UnitID;
-    pStream << hp;
-    pStream << ammo1;
-    pStream << ammo2;
-    pStream << fuel;
+    pStream << m_hp;
+    pStream << m_ammo1;
+    pStream << m_ammo2;
+    pStream << m_fuel;
     pStream << static_cast<qint32>(m_UnitRank);
     pStream << m_pOwner->getPlayerID();
     pStream << m_Moved;
@@ -2889,7 +2977,7 @@ void Unit::serializeObject(QDataStream& pStream) const
     {
         m_TransportUnits[i]->serializeObject(pStream);
     }
-    pStream << capturePoints;
+    pStream << m_capturePoints;
     pStream << m_Hidden;
     m_Variables.serializeObject(pStream);
     pStream << m_IgnoreUnitCollision;
@@ -2942,6 +3030,27 @@ void Unit::serializeObject(QDataStream& pStream) const
     {
         pStream << m_AiMovePath[i];
     }
+    size = m_IconDurations.size();
+    pStream << size;
+    for (qint32 i = 0; i < size; i++)
+    {
+        const IconDuration & iconInfo = m_IconDurations[i];
+        pStream << iconInfo.icon;
+        pStream << iconInfo.x;
+        pStream << iconInfo.y;
+        pStream << iconInfo.duration;
+        pStream << iconInfo.player;
+    }
+
+    pStream << m_weapon1ID;
+    pStream << m_weapon2ID;
+    pStream << m_maxAmmo1;
+    pStream << m_maxAmmo2;
+    pStream << m_vision;
+    pStream << m_minRange;
+    pStream << m_maxRange;
+    pStream << m_maxFuel;
+    pStream << m_baseMovementPoints;
 }
 
 void Unit::deserializeObject(QDataStream& pStream)
@@ -2951,6 +3060,13 @@ void Unit::deserializeObject(QDataStream& pStream)
 
 void Unit::deserializer(QDataStream& pStream, bool fast)
 {
+    GameMap* pMap = GameMap::getInstance();
+    bool savegame = false;
+    if (pMap != nullptr)
+    {
+        savegame = pMap->getSavegame();
+    }
+
     qint32 version = 0;
     pStream >> version;
     if (version > 10)
@@ -2966,7 +3082,7 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     qint32 bufAmmo1 = 0;
     qint32 bufAmmo2 = 0;
     qint32 bufFuel = 0;
-    pStream >> hp;
+    pStream >> m_hp;
     pStream >> bufAmmo1;
     pStream >> bufAmmo2;
     pStream >> bufFuel;
@@ -3002,10 +3118,7 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     {
         initUnit();
     }
-    setHp(hp);
-    setAmmo1(bufAmmo1);
-    setAmmo2(bufAmmo2);
-    setFuel(bufFuel);
+    setHp(m_hp);
     if (version > 1)
     {
         pStream >> m_Moved;
@@ -3014,7 +3127,7 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
         pStream >> units;
         for (qint32 i = 0; i < units; i++)
         {
-            m_TransportUnits.append(new Unit());
+            m_TransportUnits.append(spUnit::create());
             m_TransportUnits[m_TransportUnits.size() - 1]->deserializer(pStream, fast);
             if (!m_TransportUnits[m_TransportUnits.size() - 1]->isValid())
             {
@@ -3024,10 +3137,10 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     }
     if (version > 2)
     {
-        pStream >> capturePoints;
+        pStream >> m_capturePoints;
         if (!fast)
         {
-            setCapturePoints(capturePoints);
+            setCapturePoints(m_capturePoints);
         }
     }
     if (version > 3)
@@ -3044,7 +3157,15 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     }
     if (version > 5)
     {
-        pStream >> m_IgnoreUnitCollision;
+        if (savegame)
+        {
+            pStream >> m_IgnoreUnitCollision;
+        }
+        else
+        {
+            bool dummy;
+            pStream >> dummy;
+        }
     }
     if (version > 6)
     {
@@ -3151,11 +3272,61 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
             m_AiMovePath.append(point);
         }
     }
+    if (version > 16)
+    {
+        qint32 size = 0;
+        pStream >> size;
+        for (qint32 i = 0; i < size; i++)
+        {
+            IconDuration iconInfo;
+            pStream >> iconInfo.icon;
+            pStream >> iconInfo.x;
+            pStream >> iconInfo.y;
+            pStream >> iconInfo.duration;
+            pStream >> iconInfo.player;
+            if (!fast)
+            {
+                loadIcon(iconInfo.icon, iconInfo.x, iconInfo.y,
+                         iconInfo.duration, iconInfo.player);
+            }
+        }
+    }
+    if (version > 17)
+    {
+        if (savegame)
+        {
+            pStream >> m_weapon1ID;
+            pStream >> m_weapon2ID;
+            pStream >> m_maxAmmo1;
+            pStream >> m_maxAmmo2;
+            pStream >> m_vision;
+            pStream >> m_minRange;
+            pStream >> m_maxRange;
+            pStream >> m_maxFuel;
+            pStream >> m_baseMovementPoints;
+        }
+        else
+        {
+            QString dummy;
+            pStream >> dummy;
+            pStream >> dummy;
+            qint32 dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+            pStream >> dummy2;
+        }
+    }
+    setAmmo1(bufAmmo1);
+    setAmmo2(bufAmmo2);
+    setFuel(bufFuel);
 }
 
 void Unit::showCORange()
-{
-    
+{    
     if (m_UnitRank == GameEnums::UnitRank_CO0)
     {
         createCORange(m_pOwner->getCO(0)->getCORange());
@@ -3166,29 +3337,32 @@ void Unit::showCORange()
     }
     else
     {
-        // do nothing
-    }
-    
+        createCORange(-1);
+    }    
 }
 
 void Unit::createCORange(qint32 coRange)
 {
-    spGameMap pMap = GameMap::getInstance();
     if (m_CORange.get() == nullptr)
     {
-        m_CORange = new oxygine::Actor();
+        m_CORange = oxygine::spActor::create();
+    }
+    else
+    {
+        m_CORange->detach();
     }
     m_CORange->removeChildren();
     m_CORange->setPriority(static_cast<qint32>(Mainapp::ZOrder::CORange));
-    if (m_pTerrain != nullptr && coRange >= 0)
+    spGameMap pMap = GameMap::getInstance();
+    if (m_pTerrain != nullptr && coRange >= 0 && pMap.get())
     {
         QColor color = m_pOwner->getColor();
         CreateOutline::addCursorRangeOutline(m_CORange, "co+range+marker", coRange, color);
-        //        QColor playerColor = color;
-        //        QColor inversColor = playerColor;
-        //        oxygine::Sprite::TweenColor tweenColor(inversColor);
-        //        oxygine::spTween tween = oxygine::createTween(tweenColor, oxygine::timeMS(500),  -1, true);
-        m_CORange->setPosition(GameMap::getImageSize() * getX(), GameMap::getImageSize() * getY());
+        m_CORange->setPosition(GameMap::getImageSize() * Unit::getX(), GameMap::getImageSize() * Unit::getY());
         pMap->addChild(m_CORange);
+    }
+    else
+    {
+        m_CORange = nullptr;
     }
 }

@@ -45,7 +45,7 @@ var Constructor = function()
                         animation.writeDataInt32(unit.getY());
                         animation.writeDataInt32(3);
                         animation.setEndOfAnimationCall("ANIMATION", "postAnimationHeal");
-
+                        animation.setSound("power0.wav");
                         if (animations.length < 5)
                         {
                             animation.addSprite("power0", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5, globals.randInt(0, 400));
@@ -107,13 +107,14 @@ var Constructor = function()
                     var unitY = y + point.y;
                     unit = map.getTerrain(unitX, unitY).getUnit();
                     if ((unit !== null) &&
-                        (unit.getOwner() === player))
+                            (unit.getOwner() === player))
                     {
                         animation = GameAnimationFactory.createAnimation(unit.getX(), unit.getY());
                         animation.writeDataInt32(unitX);
                         animation.writeDataInt32(unitY);
                         animation.writeDataInt32(3);
                         animation.setEndOfAnimationCall("ANIMATION", "postAnimationHeal");
+                        animation.setSound("power4.wav");
                         if (animations.length < 5)
                         {
                             animation.addSprite("power4", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5, globals.randInt(0, 400));
@@ -166,6 +167,7 @@ var Constructor = function()
                                 animation.writeDataInt32(unit.getY());
                                 animation.writeDataInt32(3);
                                 animation.setEndOfAnimationCall("ANIMATION", "postAnimationDamage");
+                                animation.setSound("power4.wav");
                                 if (animations.length < 5)
                                 {
                                     animation.addSprite("power4", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5, globals.randInt(0, 400));
@@ -280,43 +282,48 @@ var Constructor = function()
 
     this.startOfTurn = function(co)
     {
-        var buildings = co.getOwner().getBuildings();
-        var fields = globals.getCircle(1, 1);
-        var viewplayer = map.getCurrentViewPlayer();
-        for (var i2 = 0; i2 < buildings.size(); i2++)
+        var player = co.getOwner();
+        if (!player.getIsDefeated())
         {
-            var building = buildings.at(i2);
-            var id = building.getBuildingID();
-            if (!id.startsWith("TEMPORARY_"))
+            var buildings = co.getOwner().getBuildings();
+            var fields = globals.getCircle(1, 1);
+            var viewplayer = map.getCurrentViewPlayer();
+            for (var i2 = 0; i2 < buildings.size(); i2++)
             {
-                var x = building.getX();
-                var y = building.getY();
-                var animation = null;
-                for (var i = 0; i < fields.size(); i++)
+                var building = buildings.at(i2);
+                var id = building.getBuildingID();
+                if (!id.startsWith("TEMPORARY_"))
                 {
-                    var point = fields.at(i);
-                    if (map.onMap(x + point.x, y + point.y))
+                    var x = building.getX();
+                    var y = building.getY();
+                    var animation = null;
+                    for (var i = 0; i < fields.size(); i++)
                     {
-                        var unitX = x + point.x;
-                        var unitY = y + point.y;
-                        var unit = map.getTerrain(unitX, unitY).getUnit();
-                        if ((unit !== null) &&
-                            (unit.getOwner() === co.getOwner()))
+                        var point = fields.at(i);
+                        if (map.onMap(x + point.x, y + point.y))
                         {
-                            UNIT.repairUnit(unit, 1);
-                            animation = GameAnimationFactory.createAnimation(unitX, unitY);
-                            animation.addSprite("power0", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5);
-                            if (!viewplayer.getFieldVisible(unitX, unitY))
+                            var unitX = x + point.x;
+                            var unitY = y + point.y;
+                            var unit = map.getTerrain(unitX, unitY).getUnit();
+                            if ((unit !== null) &&
+                                    (unit.getOwner() === co.getOwner()))
                             {
-                                animation.setVisible(false);
+                                UNIT.repairUnit(unit, 1);
+                                animation = GameAnimationFactory.createAnimation(unitX, unitY);
+                                animation.addSprite("power0", -map.getImageSize() * 1.27, -map.getImageSize() * 1.27, 0, 1.5);
+                                animation.setSound("power0.wav");
+                                if (!viewplayer.getFieldVisible(unitX, unitY))
+                                {
+                                    animation.setVisible(false);
+                                }
                             }
                         }
                     }
                 }
             }
+            fields.remove();
+            buildings.remove();
         }
-        fields.remove();
-        buildings.remove();
     };
 
     this.getRepairBonus = function(co, unit, posX, posY)

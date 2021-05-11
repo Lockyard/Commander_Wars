@@ -6,13 +6,14 @@ AchievementManager::AchievementManager()
     : RessourceManagement<AchievementManager>("/images/achievements/res.xml",
                                               "/scripts/achievements")
 {
+    setObjectName("AchievementManager");
 }
 
 void AchievementManager::loadAll()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     RessourceManagement<AchievementManager>::loadAll();
-    for (auto achievement : m_loadedRessources)
+    for (const auto & achievement : qAsConst(m_loadedRessources))
     {
         pInterpreter->doFunction(achievement, "registerAchievements");
     }
@@ -25,7 +26,7 @@ void AchievementManager::onVictory(qint32 team, bool humanWin)
     QJSValueList args;
     args << team;
     args << humanWin;
-    for (auto achievement : m_loadedRessources)
+    for (const auto & achievement : qAsConst(m_loadedRessources))
     {
         pInterpreter->doFunction(achievement, "onVictory", args);
     }

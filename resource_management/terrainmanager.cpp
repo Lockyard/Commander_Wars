@@ -4,6 +4,7 @@ TerrainManager::TerrainManager()
     : RessourceManagement<TerrainManager>("/images/terrain/res.xml",
                                              "/scripts/terrain")
 {
+    setObjectName("TerrainManager");
 }
 
 qint32 TerrainManager::getTerrainGroup(qint32 i)
@@ -56,7 +57,7 @@ QStringList TerrainManager::getTerrainsSorted()
     QString function1 = "getTerrainGroupSort";
     QJSValue ret = pInterpreter->doFunction("TERRAIN", function1);
     auto list = ret.toVariant().toList();
-    for (auto terrainType : list)
+    for (const auto & terrainType : qAsConst(list))
     {
         qint32 value = terrainType.toInt();
         if (!terrainGroups.contains(value))

@@ -4,9 +4,12 @@
 
 
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
-#include <QObject>
+#include "menue/basemenu.h"
 
-class COStyleMenu : public QObject, public oxygine::Actor
+class COStyleMenu;
+using spCOStyleMenu = oxygine::intrusive_ptr<COStyleMenu>;
+
+class COStyleMenu : public Basemenu
 {
     Q_OBJECT
 public:

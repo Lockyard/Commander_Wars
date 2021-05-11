@@ -52,8 +52,16 @@ var Constructor = function()
         map.replaceTerrainOnly("PLAINS_DESTROYED", x, y);
         map.getTerrain(x, y).loadSprites();
         var animation = GameAnimationFactory.createAnimation(x, y);
-        animation.addSprite("explosion+land", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5);
-        audio.playSound("explosion+land.wav");
+        animation.addSprite("explosion+land", -map.getImageSize() / 2, -map.getImageSize(), 0, 1.5, 100);
+        animation.addScreenshake(30, 0.95, 1000, 200);
+        animation.addSound("crystal_explode_2.wav");
+        animation.addSound("crystal_explode_2.wav", 1, "resources/sounds/", 100);
+        animation.addSound("crystal_explode.wav", 1 , "resources/sounds/", 200);
+    };
+
+    this.getHealSound = function()
+    {
+        return "crystal_heal.wav";
     };
 
     this.getDescription = function()
