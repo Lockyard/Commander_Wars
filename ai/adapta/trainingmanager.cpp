@@ -314,7 +314,7 @@ void TrainingManager::evaluateFitnessOfCurrentWV() {
     m_evolutionManager.getPopulation()[m_currWVIndex].setFitness(fitness);
     Console::print("Vector " + QString::number(m_currWVIndex+1) + "/" +
                    QString::number(m_evolutionManager.getPopulationSize()) +
-                   " got fitness of " + QString::number(fitness, 'f', 8) + "\n" +
+                   " got fitness of " + QString::number(fitness, 'f', 8) + " (gen: " + QString::number(m_evolutionManager.getGeneration()) + ")\n" +
                    m_evolutionManager.getPopulation()[m_currWVIndex].toQString(), Console::eDEBUG);
     m_partialFitnesses.clear();
 }
