@@ -178,7 +178,7 @@ var UNIT =
     },
 
     // unit boosts
-    postBattleActions : function(unit, damage, otherUnit, gotAttacked)
+    postBattleActions : function(unit, damage, otherUnit, gotAttacked, weapon)
     {
         // unit the unit getting postBattleAction applied
         // damage taken (if gotAttacked = true) or dealt (if gotAttacked = false)
@@ -247,15 +247,42 @@ var UNIT =
         return tr("Ground");
     },
 
+    unitTypeSortList : [GameEnums.UnitType_Infantry,
+                        GameEnums.UnitType_Ground,
+                        GameEnums.UnitType_Hovercraft,
+                        GameEnums.UnitType_Air,
+                        GameEnums.UnitType_Naval],
+
     getUnitTypeSort : function()
     {
-        return [GameEnums.UnitType_Infantry,
-                GameEnums.UnitType_Ground,
-                GameEnums.UnitType_Hovercraft,
-                GameEnums.UnitType_Air,
-                GameEnums.UnitType_Naval];
+        return UNIT.unitTypeSortList;
     },
 
+    unitInfantrySortList : ["INFANTRY", "MECH", "MOTORBIKE", "SNIPER"],
+    unitHovercraftSortList : ["ARTILLERYCRAFT", "HOVERCRAFT", "HOVERFLAK", "HEAVY_HOVERCRAFT"],
+    unitAirSortList : ["T_HELI", "K_HELI", "DUSTER", "TRANSPORTPLANE", "BOMBER", "FIGHTER", "STEALTHBOMBER", "BLACK_BOMB"],
+    unitGroundSortList : ["RECON", "APC", "FLARE", "ARTILLERY", "LIGHT_TANK", "FLAK", "ANTITANKCANNON", "HEAVY_TANK", "NEOTANK", "MISSILE", "ROCKETTHROWER", "MEGATANK", "PIPERUNNER"],
+    unitNavalSortList : ["CANNONBOAT", "BLACK_BOAT", "LANDER", "CRUISER", "SUBMARINE", "DESTROYER", "BATTLESHIP", "AIRCRAFTCARRIER"],
+    getUnitTypeSort1 : function()
+    {
+        return UNIT.unitGroundSortList;
+    },
+    getUnitTypeSort2 : function()
+    {
+        return UNIT.unitHovercraftSortList;
+    },
+    getUnitTypeSort4 : function()
+    {
+        return UNIT.unitInfantrySortList;
+    },
+    getUnitTypeSort8 : function()
+    {
+        return UNIT.unitAirSortList;
+    },
+    getUnitTypeSort16 : function()
+    {
+        return UNIT.unitNavalSortList;
+    },
     getTypeOfWeapon1 : function()
     {
         // changes for which ranges the ammo can be used
