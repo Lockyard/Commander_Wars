@@ -9,19 +9,6 @@
 
 namespace evofunc {
 
-    //todo dt
-    void debugPrintPopulationAndFitnesses(QVector<WeightVector>& population, QVector<float>& customFitnesses, float totalFitness) {
-        QString res = "Selection started. Population-custom fitnesses:\n";
-        for(qint32 i=0; i < population.size(); i++) {
-            res+= "("+ QString::number(i) + ")" + population[i].toQString() + "(F:" + QString::number(population[i].getFitness()) +
-                    ", CF:" + QString::number(customFitnesses.at(i)) + ", %:" + QString::number(customFitnesses.at(i)/totalFitness*100) + ")\n";
-        }
-        res+="(total fitness:" + QString::number(totalFitness) + ")\n";
-
-        Console::print(res, Console::eDEBUG);
-    }
-
-
     WeightVector splitMiddleCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2) {
         WeightVector res = WeightVector(weightVector_1);
         qint32 minSize = weightVector_1.size() < weightVector_2.size() ? weightVector_1.size() : weightVector_2.size();
@@ -92,8 +79,6 @@ namespace evofunc {
         customFitnesses = generateCustomWeightedFitnesses(population);
         totalFitness = std::accumulate(customFitnesses.begin(), customFitnesses.end(), 0.0f);
 
-        debugPrintPopulationAndFitnesses(population, customFitnesses, totalFitness);
-
         QRandomGenerator random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
         double randomTarget = 0;
         qint32 firstParentIndex = -1;
@@ -127,8 +112,7 @@ namespace evofunc {
                 }
             }
 
-            Console::print("Adapta selection of parents " + QString::number(firstParentIndex) + " and " +
-                           QString::number(secondParentIndex), Console::eDEBUG);
+            //Console::print("Adapta selection of parents " + QString::number(firstParentIndex) + " and " + QString::number(secondParentIndex), Console::eDEBUG);
             parentsPair.first = &(population[firstParentIndex]);
             parentsPair.second = &(population[secondParentIndex]);
 

@@ -27,11 +27,6 @@ public:
     void saveState(QString iniFilename);
 
     /**
-     * @brief Set up stuff, notifying that it's a start of a new match which has to be followed by this TM
-     */
-    void setupForMatch();
-
-    /**
      * @brief get the vector to be used by the trainee on this round
      */
     WeightVector getAssignedWeightVector();
@@ -49,6 +44,11 @@ public slots:
      * @brief catch when there's a victory to evaluate current trainee's performance
      */
     void onVictory();
+
+    void setMatchNumberTarget(qint32 targetMatches);
+
+    void setTrainingPlayerIndex(qint32 trainingPlayerIndex);
+
 
 private:
     explicit TrainingManager(QObject *parent = nullptr);
@@ -87,7 +87,7 @@ private:
     qint32 m_maxGenerationCount;
     qint32 m_totalGenCount;
 
-    bool m_isEvoManagerInitialized;
+    bool m_isTrainingManagerInitialized;
 
     /**
       @brief if this is <= 0, use the weight vector length found in ini file, if > 0 use this length instead.
@@ -99,6 +99,10 @@ private:
     static bool s_isInstanceInitialized;
 
     void initializeEvolutionManager();
+    /**
+     * @brief set the reference of this training manager to the init.js file
+     */
+    void initializeInitJsLink();
     void advanceMatchCount();
     /**
      * @brief evaluate and add the partial fitness based on trainee performances for this match

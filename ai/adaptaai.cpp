@@ -8,12 +8,9 @@ AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn
 {
     readIni("mockup");
 
-
     MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
     pMin->readIni("resources/aidata/adapta/MINextermination.ini");
     TrainingManager::instance().requestWVLength(pMin->getRequiredWeightVectorLength());
-    TrainingManager::instance().setupForMatch();
-    TrainingManager* pTM = &TrainingManager::instance();
     WeightVector wv = TrainingManager::instance().getAssignedWeightVector();
     Console::print("wv is of size " + QString::number(wv.size()) + " (requested: " +
                    QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
@@ -59,7 +56,7 @@ void AdaptaAI::process() {
     if(selectedModuleIndex != -1) {
         pUsedUnit = m_modules[selectedModuleIndex]->getHighestBidUnit();
         m_modules[selectedModuleIndex]->processHighestBidUnit();
-        //notify all other modules that that unit was used
+        //notify all other modules that this unit was used
         for(qint32 i=0; i < m_modules.size(); i++) {
             if(i!=selectedModuleIndex)
                 m_modules[i]->notifyUnitUsed(pUsedUnit);

@@ -224,7 +224,6 @@ TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta), m_adaAI(), m_MIN
     m_influenceMap(), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;
-    TrainingManager::instance().setupForMatch();
     TrainingManager::instance().getAssignedWeightVector();
 }
 
