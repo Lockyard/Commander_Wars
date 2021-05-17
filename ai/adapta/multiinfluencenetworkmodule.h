@@ -153,6 +153,14 @@ private:
     std::map<QString, qint32> m_unitIDToMIndexMap;
 
     DamageChart m_damageChart;
+    //values parametrized used in functions
+    //note: 1 step indicates tiles reachable in 1 turn
+    //when propagating, how much each step tile is multiplied wrt the previous one
+    float m_stepMultiplier{0.5f};
+    //how many steps are computed for direct units
+    float m_stepsForDirectUnits{2};
+    //how many steps are computed for indirect units
+    float m_stepsForIndirectUnits{1};
     //how much is valued each star of defense in the STD_MAPDEFENSE maps, if any. Plus other values for these maps
     float m_weightPerStar{10};
     float m_friendlyBuildingMultiplier{1.5f};

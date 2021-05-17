@@ -89,6 +89,7 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
             m_globalCustomInfluenceMapsUnitWeights2D.resize(m_globalCustomMapsAmount * m_fullUnitAmount); //GK * M
             m_allGlobalInfluenceMapWeightsForUnit2D.resize(globalInfMaps.size() * m_unitAmount); //G * N
         }
+        settings.endGroup();
 
         //calculate how long the weightVector should be
         qint32 weightsPerUnit = 0;
@@ -97,6 +98,16 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
         //N*(S + K*(M+1) + G) + GK*M
         m_requiredVectorLength = m_unitAmount * weightsPerUnit + m_globalCustomMapsAmount*m_fullUnitAmount;
 
+        settings.beginGroup("FunctionParameters");
+        m_stepMultiplier = settings.value("StepMultiplier", .5f).toDouble(&ok);
+        if(!ok)
+            m_stepMultiplier = .5f;
+        m_stepsForDirectUnits = settings.value("StepsForDirectUnits", 2).toInt(&ok);
+        if(!ok)
+            m_stepsForDirectUnits = 2;
+        m_stepsForIndirectUnits = settings.value("StepsForIndirectUnits", 1).toInt(&ok);
+        if(!ok)
+            m_stepsForIndirectUnits = 1;
         m_weightPerStar = settings.value("WeightPerStar", 10).toDouble(&ok);
         if(!ok)
             m_weightPerStar = 10;
@@ -529,8 +540,10 @@ void MultiInfluenceNetworkModule::computeGlobalInfluenceMap(InfluenceMap &influe
 
 void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum,
                                                            bool isCustom, quint32 customNum) {
-    influenceMap.reset();
+
     if(isCustom) {
+        influenceMap.reset();
+
         spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
         spQmlVectorUnit pUnits = m_pPlayer->getUnits();
 
@@ -540,30 +553,34 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
         case adaenums::iMapType::CUSTOM_1:
             for(qint32 i=0; i < pUnits->size(); i++) {
                 Unit* pUnit = pUnits->at(i);
-                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), 0.5f, 3, 2);
+                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             for(qint32 i=0; i < pEnemies->size(); i++) {
                 Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), 0.5f, 3, 2);
+                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
             //custom allies and custom enemies together are more powerful than a custom 1 (however they are also more complex and slower to converge)
         case adaenums::iMapType::CUSTOM_ALLIES:
             for(qint32 i=0; i < pUnits->size(); i++) {
                 Unit* pUnit = pUnits->at(i);
-                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), 0.5f, 3, 2);
+                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         case adaenums::iMapType::CUSTOM_ENEMIES:
             for(qint32 i=0; i < pEnemies->size(); i++) {
                 Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), 0.5f, 3, 2);
+                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         default:
             break;
         }
-    } else {
+    }
+    //if is standard
+    else if(adaenums::isStdType(influenceMap.getType())){
+        influenceMap.reset();
+
         spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
         spQmlVectorUnit pUnits = m_pPlayer->getUnits();
         switch(influenceMap.getType()) {
@@ -571,7 +588,7 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
         case adaenums::iMapType::STD_ATTACK:
             for(qint32 i=0; i < pEnemies->size(); i++) {
                 Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -m_damageChart.getBaseDmgWithAmmo(pEnemy, m_unitListFull.indexOf(pEnemy->getUnitID()), m_nToMIndexes[unitNum]), .5f, 3, 2);
+                influenceMap.addUnitAtkInfluence(pEnemy, -m_damageChart.getBaseDmgWithAmmo(pEnemy, m_unitListFull.indexOf(pEnemy->getUnitID()), m_nToMIndexes[unitNum]), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         //std damage creates a map where the type of unit given does the most damage
@@ -591,10 +608,22 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             }
         }
             break;
+        default:
+            break;
+        }
+    }
+    //if is a once map, compute it only if not already done
+    else {
+        if(influenceMap.isComputed())
+            return;
+
+        switch(influenceMap.getType()) {
         //mapdefense adds on each tile the defense gained by this unit's map (if the unit can go over that tile)
-        case adaenums::iMapType::STD_MAPDEFENSE: {
+        case adaenums::iMapType::ONCE_MAPDEFENSE: {
+            influenceMap.reset();
             spUnit unit = new Unit(m_unitList[unitNum], m_pPlayer, false);
             influenceMap.addMapDefenseInfluence(m_pPlayer, unit.get(), m_weightPerStar, m_friendlyBuildingMultiplier, m_friendlyFactoryMultiplier);
+            influenceMap.setComputed(true);
         }
             break;
         default:

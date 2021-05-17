@@ -13,8 +13,8 @@ iMapType getInfluenceMapTypeFromString(QString name, iMapType defaultType) {
         return iMapType::STD_DAMAGE;
     if(name == "STD_VALUE")
         return iMapType::STD_VALUE;
-    if(name == "STD_MAPDEFENSE")
-        return iMapType::STD_MAPDEFENSE;
+    if(name == "ONCE_MAPDEFENSE")
+        return iMapType::ONCE_MAPDEFENSE;
     if(name == "CUSTOM_1")
         return iMapType::CUSTOM_1;
     if(name == "CUSTOM_ALLIES")
@@ -44,8 +44,8 @@ QString iMapTypeToQString(iMapType type) {
         return "STD_DAMAGE";
     case STD_VALUE:
         return "STD_VALUE";
-    case STD_MAPDEFENSE:
-        return "STD_MAPDEFENSE";
+    case ONCE_MAPDEFENSE:
+        return "ONCE_MAPDEFENSE";
     case CUSTOM_1:
         return "CUSTOM_1";
     case CUSTOM_ALLIES:

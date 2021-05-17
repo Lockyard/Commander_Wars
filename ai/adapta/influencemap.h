@@ -153,6 +153,19 @@ public:
         m_weight = weight;
     }
 
+    /**
+     * @brief get if this map has been computed or not. it has no effects per se on methods, but can be used as a marker
+     */
+    inline bool isComputed() const {
+        return m_isComputed;
+    }
+
+    /**
+     * @brief set if this map has been computed or not. it has no effects per se on methods, but can be used as a marker
+     */
+    inline void setComputed(bool isComputed) {
+        m_isComputed = isComputed;
+    }
 
 private:
     /**
@@ -163,6 +176,7 @@ private:
     qint32 m_mapHeight{0};
     std::vector<float> m_influenceMap2D;
 
+
     constexpr static const QColor M_POSITIVE_COLOR{QColorConstants::Blue};
     constexpr static const QColor M_NEGATIVE_COLOR{QColorConstants::Red};
     static const char M_ALPHA_SHOW{127}; //127/255 = 0.5 alpha
@@ -170,6 +184,7 @@ private:
     bool isInfoTilesMapInitialized{false};
 
     adaenums::iMapType m_type;
+    bool m_isComputed{false};
 
     /**
      * @brief m_infoTilesVector a vector containing sprites and stuff to show graphical info on each tile, if show is called

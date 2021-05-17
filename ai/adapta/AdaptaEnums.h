@@ -11,13 +11,17 @@ namespace adaenums {
  * Custom type means that the weights assigned to each unit are custom, but the propagation function depends on the custom type.
  * Standard type means that the weights and the function depend on the type. Basically a STD_XXX type defines a heuristic
  * influence map (which can still be weighted)
+ * ONCE_XXX types are types which are ok if just evaluated once and don't need to be reevaluated each turn
  */
 enum iMapType {
     NONE = 0,
     STD_ATTACK, //the influence of attack all units have
     STD_DAMAGE, //the influence of potential damage done to all enemy units in field
     STD_VALUE, //the general influence based on units' values
-    STD_MAPDEFENSE, //the influence given by each single tile's terrain/building (local to each tile, not propagated)
+
+    //ONCE_MAPDEFENSE MUST BE THE FIRST ONCE TYPE!
+    ONCE_MAPDEFENSE, //the influence given by each single tile's terrain/building (local to each tile, not propagated)
+
     //CUSTOM 1 MUST BE THE FIRST CUSTOM TYPE
     CUSTOM_1, //custom 1 uses attack type propagation, but gives custom weights.
     CUSTOM_ALLIES, //custom allies propagates positive weights only for allies
@@ -47,6 +51,14 @@ enum evalType {
 
 inline bool isCustomType(iMapType type) {
     return type >= CUSTOM_1;
+}
+
+inline bool isOnceType(iMapType type) {
+    return type < CUSTOM_1 && type >= ONCE_MAPDEFENSE;
+}
+
+inline bool isStdType(iMapType type) {
+    return type < ONCE_MAPDEFENSE;
 }
 
 /**
