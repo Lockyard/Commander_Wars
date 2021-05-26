@@ -3,9 +3,8 @@
 #include "ai/coreai.h"
 #include <QSettings>
 #include "game/gamemap.h"
-#include "ai/utils/AiUtilsFunctions.h"
+#include "ai/utils/aiutils.h"
 #include "coreengine/console.h"
-
 
 
 
@@ -28,7 +27,9 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
         m_unitAmount = m_unitList.size();//N
         m_unitOutputMaps.resize(m_unitAmount);
 
+
         m_unitCount.resize(m_unitList.size());
+        m_isMapNComputed.resize(m_unitAmount, false);
 
         m_unitListFull = settings.value("UnitListFull").toStringList();
         if(m_unitList.size() == 0)
@@ -44,6 +45,13 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
         }
 
         m_fullUnitAmount = m_unitListFull.size(); //M
+        //now initialize mapping for unitID -> N and M
+        for(qint32 i=0; i < m_unitAmount; i++) {
+            m_unitIDToN.insert({m_unitList[i], i});
+        }
+        for(qint32 i=0; i < m_fullUnitAmount; i++) {
+            m_unitIDToM.insert({m_unitListFull[i], i});
+        }
 
         QStringList unitInfMaps = settings.value("UnitInfluenceMaps", "NONE").toStringList();
 
@@ -89,6 +97,9 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
             m_globalCustomInfluenceMapsUnitWeights2D.resize(m_globalCustomMapsAmount * m_fullUnitAmount); //GK * M
             m_allGlobalInfluenceMapWeightsForUnit2D.resize(globalInfMaps.size() * m_unitAmount); //G * N
         }
+
+        m_fastMode = settings.value("FastMode", true).toBool();
+
         settings.endGroup();
 
         //calculate how long the weightVector should be
@@ -129,56 +140,48 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
  * @brief processStartOfTurn calculate bids for this turn and process stuff for the start of turn
  */
 void MultiInfluenceNetworkModule::processStartOfTurn() {
+    Console::print("MIN module processStartOfTurn()", Console::eDEBUG);
     //if not initialized, initialize the types vectors
     initializeWithPlayerPtr();
-    //do unit count at start of turn
-    for(qint32 i=0; i < m_unitList.size(); i++) {
+    //do unit count at start of turn and mark all maps as not computed
+    for(qint32 i=0; i < m_unitAmount; i++) {
         m_unitCount[i] = m_pPlayer->getUnitCount(m_unitList[i]);
+        m_isMapNComputed[i] = false;
     }
-    //and unit init
-    spQmlVectorUnit spUnits = m_pPlayer->getUnits();
+    //and unitData init
     spQmlVectorUnit spEnemies = m_pPlayer->getEnemyUnits();
-    initUnitData(m_armyUnitData, spUnits.get());
-    initUnitData(m_enemyUnitData, spEnemies.get());
+    spQmlVectorUnit spUnits = m_pPlayer->getUnits();
+    initUnitData(m_armyUnitData, spUnits.get(), false);
+    initUnitData(m_enemyUnitData, spEnemies.get(), true);
+    m_armyUnitDataKillCount = 0;
+    m_enemyUnitDataKillCount = 0;
 
     //compute global influence maps
-    quint32 k = 0; //k counts the number of the current custom map
+    quint32 gk = 0; //gk counts the number of the current global custom map
     for(quint32 i=0; i<m_globalInfluenceMaps.size(); i++) {
         if(adaenums::isCustomType(m_globalInfluenceMaps[i].getType())) {
-            computeGlobalInfluenceMap(m_globalInfluenceMaps[i], true, k);
-            k++;
+            computeGlobalInfluenceMap(m_globalInfluenceMaps[i], true, gk);
+            gk++;
         } else {
             computeGlobalInfluenceMap(m_globalInfluenceMaps[i], false);
         }
     }
 
-    //for each unit which this player have at least count > 0, compute the standard influence maps, if any
-    for(quint32 n=0; n < m_unitCount.size(); n++) {
-        Console::print("Maps of unit " + m_unitList[n] + ":", Console::eDEBUG);
-        //if there is at least 1 unit of a type, compute its influence maps
-        if(m_unitCount[n] > 0) {
-            k=0; //reset k
-            m_unitOutputMaps[n].reset(); //reset output map to 0
-            //compute each local map and add it to the output, weighted
-            for(qint32 l=0; l < m_localMapsPerUnit; l++) {
-                InfluenceMap &infMap = influenceMapOfUnit(n, l);
-                if(adaenums::isCustomType(infMap.getType())) {
-                    computeLocalInfluenceMap(infMap, n, true, k);
-                    k++;
-                } else {
-                    computeLocalInfluenceMap(infMap, n, false);
-                }
-                m_unitOutputMaps[n].weightedAddMap(infMap);
-                Console::print(infMap.toQStringFull(2), Console::eDEBUG);
-            }
-            //add also each global map, weighted. Here global maps are already computed
-            for(quint32 g=0; g < m_globalInfluenceMaps.size(); g++) {
-                m_unitOutputMaps[n].weightedAddMap(m_globalInfluenceMaps[g], glbMapWeightForUnit(n, g));
-            }
-            Console::print(">>Final Map:\n" + m_unitOutputMaps[n].toQString(2), Console::eDEBUG);
-        } //here the output map is done, for unit n
+    //if fast mode is on, skip the computation of all local maps here and don't generate bids
+    //else compute all maps here and generate bids
+    if(!m_fastMode) {
+        //for each unit which this player have at least count > 0, compute the standard influence maps, if any
+        for(quint32 n=0; n < m_unitCount.size(); n++) {
+            Console::print("Maps of unit " + m_unitList[n] + ":", Console::eDEBUG);
+            //if there is at least 1 unit of a type, compute its influence maps
+            if(m_unitCount[n] > 0) {
+                computeOutputMapForUnit(n, true, spUnits, spEnemies);
+                Console::print(">>Final Map:\n" + m_unitOutputMaps[n].toQString(2), Console::eDEBUG);
+            } //here the output map is done, for unit n
+        }
+        //now all maps are computed
+        generateBids(spUnits, true);
     }
-    //now all maps are computed
 }
 
 /**
@@ -189,7 +192,7 @@ bool MultiInfluenceNetworkModule::processHighestBidUnit() {
     //todo do bid system, for now is just process any usable unit
     spQmlVectorUnit pUnits = m_pPlayer->getUnits();
     for(qint32 i=0; i < pUnits->size(); i++) {
-        if(!(pUnits->at(i)->getHasMoved()) && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+        if(!(pUnits->at(i)->getHasMoved()) && m_unitIDToN.find(pUnits->at(i)->getUnitID()) != m_unitIDToN.end()) {
             return processUnit(pUnits->at(i));
         }
     }
@@ -197,9 +200,27 @@ bool MultiInfluenceNetworkModule::processHighestBidUnit() {
 }
 
 bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
+    Console::print("MIN, Processing unit [" + pUnit->getUnitID() + ", (" + QString::number(pUnit->getX()) + ", " +
+                   QString::number(pUnit->getY())+ ")]", Console::eDEBUG);
     if(pUnit->getHasMoved())
         return false;
-    InfluenceMap &finalMap = m_unitOutputMaps[m_unitList.indexOf(pUnit->getUnitID())];
+
+    spQmlVectorUnit spEnemies = m_pPlayer->getEnemyUnits();
+    spQmlVectorUnit spUnits = m_pPlayer->getUnits();
+
+    updateAllUnitsDataReferences(spUnits, spEnemies);
+
+    qint32 n = m_unitIDToN.find(pUnit->getUnitID())->second;
+    //if map of unit of type N has already been computed, update the map wrt changes happened since it was computed
+    if(m_isMapNComputed[n]) {
+        updateMapsChangesForUnit(n);
+        computeOutputMapForUnit(n, false);
+    }
+    //else just compute the output map of processed unit for first time this turn
+    else {
+        computeOutputMapForUnit(n, true, spUnits, spEnemies);
+    }
+    InfluenceMap &finalMap = m_unitOutputMaps[n];
     //if is indirect, boost the weight on its tile if there are targets
     if(pUnit->getBaseMinRange() > 1 ) {
         QVector3D bestTarget = findNearestHighestDmg(pUnit->getPosition(), pUnit);
@@ -212,13 +233,8 @@ bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
     Console::print("Final Map influence for unit [" + pUnit->getUnitID() + ", (" + QString::number(pUnit->getX()) + ", " +
                    QString::number(pUnit->getY()) + ")]:\n" + finalMap.toQString(), Console::eDEBUG);
 
-    UnitPathFindingSystem* pPfs;
-    for(quint32 i=0; i < m_armyUnitData.size(); i++) {
-        if(m_armyUnitData[i].m_pUnit == pUnit) {
-            pPfs = m_armyUnitData[i].m_pPfs.get();
-            break;
-        }
-    }
+    UnitPathFindingSystem* pPfs = nullptr;
+    pPfs = m_armyUnitData.find(pUnit->getUniqueID())->second.pPfs.get();
     pPfs->setStartPoint(pUnit->getX(), pUnit->getY());
     pPfs->setMovepoints(pUnit->getMovementpoints(pUnit->getPosition()));
     pPfs->setIgnoreEnemies(false);
@@ -231,9 +247,7 @@ bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
     //check in each point, sorted by best influence, if the unit can perform an attack action or a wait action, if it can't,
     //try next point
     for(qint32 i=0; i < points.size(); i++) {
-        Console::print("Best point N°" + QString::number(i+1) + ": (x: " + QString::number(points[i].x()) + ", y: " +
-                       QString::number(points[i].y()) +", val: " +
-                       QString::number(finalMap.getInfluenceValueAt(points[i].x(), points[i].y())) + ")", Console::eDEBUG);
+        //Console::print("Best point N°" + QString::number(i+1) + ": (x: " + QString::number(points[i].x()) + ", y: " + QString::number(points[i].y()) +", val: " + QString::number(finalMap.getInfluenceValueAt(points[i].x(), points[i].y())) + ")", Console::eDEBUG);
         QVector3D bestTarget = findNearestHighestDmg(points[i], pUnit);
 
         //if found something to attack, do action, go to point and attack
@@ -247,11 +261,12 @@ bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
             if (pAction->isFinalStep() && pAction->canBePerformed())
             {
                 emit m_pAdapta->performAction(pAction);
+                //Console::print("Unit " + pUnit->getUnitID() + " (" + QString::number(pUnit->getX()) + ", " + QString::number(pUnit->getY()) + ") attacked at (" + QString::number(bestTarget.x()) + ", " + QString::number(bestTarget.y()) + ")", Console::eDEBUG);
                 return true;
             }
         }
         //Here an attackable unit was not found. If the next point, if any, has same influence, go on and try that point.
-        else if(i< points.size() - 1 &&
+        else if(i < points.size() - 1 &&
                 finalMap.getInfluenceValueAt(points[i].x(), points[i].y()) == finalMap.getInfluenceValueAt(points[i+1].x(), points[i+1].y())) {
             continue;
         }
@@ -265,9 +280,22 @@ bool MultiInfluenceNetworkModule::processUnit(Unit* pUnit) {
             if(pAction->canBePerformed()) {
                 emit m_pAdapta->performAction(pAction);
                 return true;
+            } else {
+                Console::print("Action wait couldn't have been performed!", Console::eDEBUG);
             }
         }
     }
+    //before not doing anything, try to wait on the spot
+    spGameAction pAction = new GameAction(CoreAI::ACTION_WAIT);
+    pAction->setTarget(pUnit->getPosition());
+    QVector<QPoint> path = pPfs->getPath(static_cast<qint32>(pUnit->getX()), static_cast<qint32>(pUnit->getY()));
+    pAction->setMovepath(path, pPfs->getCosts(path));
+
+    if(pAction->canBePerformed()) {
+        emit m_pAdapta->performAction(pAction);
+        return true;
+    }
+
     return false;
 }
 
@@ -279,7 +307,7 @@ void MultiInfluenceNetworkModule::notifyUnitUsed(Unit* pUnit) {
 
 float MultiInfluenceNetworkModule::getBidFor(Unit* pUnit) {
     //todo change bid system, for now is just > 0 if the unit can be used, 0 otherwise
-    if(!pUnit->getHasMoved() && m_unitList.contains(pUnit->getUnitID())) {
+    if(!pUnit->getHasMoved() && m_unitIDToN.find(pUnit->getUnitID()) != m_unitIDToN.end()) {
         return m_moduleWeight;
     }
     else {
@@ -299,7 +327,7 @@ float MultiInfluenceNetworkModule::getHighestBid(bool weighted/*=true*/) {
     bool availableUnits = false;
     spQmlVectorUnit pUnits = m_pPlayer->getUnits();
     for(qint32 i=0; i < pUnits->size(); i++) {
-        if(!(pUnits->at(i)->getHasMoved()) && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+        if(!(pUnits->at(i)->getHasMoved()) && m_unitIDToN.find(pUnits->at(i)->getUnitID()) != m_unitIDToN.end()) {
             availableUnits = true;
             break;
         }
@@ -315,7 +343,7 @@ Unit* MultiInfluenceNetworkModule::getHighestBidUnit() {
     //todo change bid system
     spQmlVectorUnit pUnits = m_pPlayer->getUnits();
     for(qint32 i=0; i<pUnits->size(); i++) {
-        if(!pUnits->at(i)->getHasMoved() && m_unitList.contains(pUnits->at(i)->getUnitID())) {
+        if(!pUnits->at(i)->getHasMoved() && m_unitIDToN.find(pUnits->at(i)->getUnitID()) != m_unitIDToN.end()) {
             return pUnits->at(i);
         }
     }
@@ -505,9 +533,21 @@ void MultiInfluenceNetworkModule::initializeWithPlayerPtr() {
     m_unitTypesVector.reserve(m_unitAmount);
     for(qint32 i=0; i < m_unitAmount; i++) {
         m_unitTypesVector.push_back(new Unit(m_unitList[i], m_pPlayer, false));
-        UnitData data;
-        data.m_pUnit = m_unitTypesVector[i].get();
-        data.m_pPfs = new UnitPathFindingSystem(data.m_pUnit);
+    }
+    m_armyUnitTypesVector.reserve(m_fullUnitAmount);
+    for(qint32 i=0; i < m_fullUnitAmount; i++) {
+        m_armyUnitTypesVector.push_back(new Unit(m_unitListFull[i], m_pPlayer, false));
+    }
+    m_enemyUnitTypesVector.reserve(m_fullUnitAmount);
+    Player* pOpponent = nullptr;
+    for(qint32 i=0; i < GameMap::getInstance()->getPlayerCount(); i++) {
+        if(GameMap::getInstance()->getPlayer(i)->getTeam() != m_pPlayer->getTeam()) {
+            pOpponent = GameMap::getInstance()->getPlayer(i);
+            break;
+        }
+    }
+    for(qint32 i=0; i < m_fullUnitAmount; i++) {
+        m_enemyUnitTypesVector.push_back(new Unit(m_unitListFull[i], pOpponent, false));
     }
 
     //initialize damage chart
@@ -518,15 +558,290 @@ void MultiInfluenceNetworkModule::initializeWithPlayerPtr() {
 }
 
 
-void MultiInfluenceNetworkModule::initUnitData(std::vector<UnitData> &unitDataVector, QmlVectorUnit* pUnits) {
-    unitDataVector.clear();
+void MultiInfluenceNetworkModule::generateBids(spQmlVectorUnit spUnits, bool useMapInfo) {
+    m_unitsBids.clear();
+    m_unitsBids.reserve(spUnits->size());
+    for(qint32 i=0; i<spUnits->size(); i++) {
+        m_unitsBids.append(QPair(spUnits->at(i), 1.0f));
+    }
+    //todo calculate a reasonable bid if not in fast mode
+    if(useMapInfo) {}
+}
+
+
+void MultiInfluenceNetworkModule::initUnitData(std::map<qint32, UnitData> &unitDataSet, QmlVectorUnit* pUnits, bool isEnemy) {
+    unitDataSet.clear();
     for(qint32 i=0; i < pUnits->size(); i++) {
         UnitData data;
-        data.m_pUnit = pUnits->at(i);
-        data.m_pPfs = new UnitPathFindingSystem(data.m_pUnit);
-        unitDataVector.push_back(data);
+        data.pUnit = pUnits->at(i);
+        data.unitID = data.pUnit->getUnitID();
+        data.pPfs = new UnitPathFindingSystem(data.pUnit);
+
+        UnitStatus status;
+        status.hp = data.pUnit->getHp();
+        status.posX = data.pUnit->getX();
+        status.posY = data.pUnit->getY();
+
+        data.statusForUnit.resize(m_unitAmount, status);
+        data.isEnemy = isEnemy;
+        data.isKilled = false;
+        unitDataSet.insert({data.pUnit->getUniqueID(), data});
     }
 }
+
+void MultiInfluenceNetworkModule::addUnitData(std::map<qint32, UnitData> &unitDataSet, Unit *pUnit, bool isEnemy) {
+    UnitData data;
+    data.pUnit = pUnit;
+    data.unitID = pUnit->getUnitID();
+    data.pPfs = new UnitPathFindingSystem(data.pUnit);
+
+    UnitStatus status;
+    status.hp = data.pUnit->getHp();
+    status.posX = data.pUnit->getX();
+    status.posY = data.pUnit->getY();
+
+    data.statusForUnit.resize(m_unitAmount, status);
+    data.isEnemy = isEnemy;
+    data.isKilled = false;
+    unitDataSet.insert({data.pUnit->getUniqueID(), data});
+}
+
+void MultiInfluenceNetworkModule::updateAllUnitsDataReferences(spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies) {
+    std::set<qint32> armyValidIDs;
+    std::set<qint32> enemyValidIDs;
+    //add new unit data if any
+    for(qint32 i=0; i < spUnits->size(); i++) {
+        auto it = m_armyUnitData.find(spUnits->at(i)->getUniqueID());
+        //if didn't find anything, add the new UnitData
+        if(it == m_armyUnitData.end())  {
+            addUnitData(m_armyUnitData, spUnits->at(i), false);
+        }
+        armyValidIDs.insert(spUnits->at(i)->getUniqueID());
+    }
+    //add new enemy data if any
+    for(qint32 i=0; i < spEnemies->size(); i++) {
+        auto it = m_enemyUnitData.find(spEnemies->at(i)->getUniqueID());
+        //if didn't find anything, add the new UnitData
+        if(it == m_enemyUnitData.end())  {
+            addUnitData(m_enemyUnitData, spEnemies->at(i), false);
+        }
+        enemyValidIDs.insert(spEnemies->at(i)->getUniqueID());
+    }
+
+    //if there is some old unitData no more in game and not marked as killed, mark it as killed
+    if(m_armyUnitData.size() - m_armyUnitDataKillCount > armyValidIDs.size()) {
+        for(auto it = m_armyUnitData.begin(); it != m_armyUnitData.end(); ++it) {
+            if(armyValidIDs.find(it->first) == armyValidIDs.end() && !it->second.isKilled) {
+                it->second.isKilled = true;
+                m_armyUnitDataKillCount++;
+            }
+        }
+    }
+
+    //if there is some old unitData for enemies no more in game and not marked as killed, mark it as killed
+    if(m_enemyUnitData.size() - m_enemyUnitDataKillCount > enemyValidIDs.size()) {
+        for(auto it = m_enemyUnitData.begin(); it != m_enemyUnitData.end(); ++it) {
+            if(enemyValidIDs.find(it->first) == enemyValidIDs.end() && !it->second.isKilled) {
+                it->second.isKilled = true;
+                m_enemyUnitDataKillCount++;
+            }
+        }
+    }
+}
+
+void MultiInfluenceNetworkModule::updateMapsChangesForUnit(qint32 unitNum) {
+
+    for(auto it = m_armyUnitData.begin(); it != m_armyUnitData.end(); ++it) {
+        if(isUnitDataChangedForUnit(it->second, unitNum)) {
+            correctInfluenceMapsForUnit(it->second, unitNum);
+            //after updating maps, update also the unit data for this unit type
+            updateUnitDataForUnit(it->second, unitNum);
+        }
+    }
+    //update all enemy units in same way
+    for(auto it = m_enemyUnitData.begin(); it != m_enemyUnitData.end(); ++it) {
+        if(isUnitDataChangedForUnit(it->second, unitNum)) {
+            correctInfluenceMapsForUnit(it->second, unitNum);
+            //after updating maps, update also the unit data for this unit type
+            updateUnitDataForUnit(it->second, unitNum);
+        }
+    }
+}
+
+void MultiInfluenceNetworkModule::updateAllUnitDataForUnit(qint32 unitNum) {
+    for(auto it = m_armyUnitData.begin(); it != m_armyUnitData.end(); ++it) {
+        updateUnitDataForUnit(it->second, unitNum);
+    }
+    for(auto it = m_enemyUnitData.begin(); it != m_enemyUnitData.end(); ++it) {
+        updateUnitDataForUnit(it->second, unitNum);
+    }
+}
+
+
+void MultiInfluenceNetworkModule::correctInfluenceMapsForUnit(UnitData &changedData, qint32 n) {
+    qint32 k=0;
+    //compute each local map and add it to the output, weighted
+    for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+        InfluenceMap &infMap = influenceMapOfUnit(n, l);
+        if(adaenums::isCustomType(infMap.getType())) {
+            correctLocalInfluenceMap(infMap, changedData, n, true, k);
+            k++;
+        } else {
+            correctLocalInfluenceMap(infMap, changedData, n, false);
+        }
+    }
+}
+
+
+void MultiInfluenceNetworkModule::correctLocalInfluenceMap(InfluenceMap &influenceMap, UnitData &changedData, quint32 unitNum, bool isCustom, quint32 customNum) {
+    auto it = m_unitIDToM.find(changedData.unitID);
+    if(it == m_unitIDToM.end()) { //if the unit has an ID not supported by this MIN, ignore it
+        return;
+    }
+    qint32 m = it->second;
+
+    if(isCustom) {
+        switch(influenceMap.getType()) {
+        //custom 1 adds influence for each unit in game, positive for allies and negative for enemies.
+        //the influence is propagated with the attack area
+        case adaenums::iMapType::CUSTOM_1:
+        {
+            float sign = 1.0f;
+            //if is enemy, influences are negative
+            if(changedData.isEnemy) {
+                sign = -1.0f;
+            }
+            //if a unit data is changed and is killed, just remove its old influence
+            if(changedData.isKilled) {
+                Unit* pUnit = changedData.isEnemy ? m_enemyUnitTypesVector[m].get() : m_armyUnitTypesVector[m].get();
+                influenceMap.addUnitAtkInfluence(pUnit, changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                 -sign * customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            }
+            //if position changed, subtract its old influence and add new influence
+            else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                influenceMap.addUnitAtkInfluence(changedData.pUnit, changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                 -sign * customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                influenceMap.addUnitAtkInfluence(changedData.pUnit, sign * customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            }
+            //if position is same, then only hp changed, remove an influence proportional to hp lost
+            else {
+                float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                influenceMap.addUnitAtkInfluence(changedData.pUnit, - sign * customInfluenceMapUnitWeight(unitNum, customNum, m) * hpLostDifferenceRatio, m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            }
+        }
+            break;
+        case adaenums::iMapType::CUSTOM_ALLIES:
+            if(!changedData.isEnemy) {
+                //if a unit data is changed and is killed, just remove its old influence
+                if(changedData.isKilled) {
+                    influenceMap.addUnitAtkInfluence(m_armyUnitTypesVector[m].get(), changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     - customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position changed, compute and add its inverse old influence and add new influence
+                else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     -customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position is same, then only hp changed, remove an influence proportional to hp lost
+                else {
+                    float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, -customInfluenceMapUnitWeight(unitNum, customNum, m) * hpLostDifferenceRatio, m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+            }
+                    break;
+        case adaenums::iMapType::CUSTOM_ENEMIES:
+            if(changedData.isEnemy) {
+                if(changedData.isKilled) {
+                    influenceMap.addUnitAtkInfluence(m_enemyUnitTypesVector[m].get(), changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position changed, compute and add its inverse old influence and add new influence
+                else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, -customInfluenceMapUnitWeight(unitNum, customNum, m) * aiutils::unitHpRatio(changedData.pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position is same, then only hp changed, remove an influence proportional to hp lost
+                else {
+                    float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m) * hpLostDifferenceRatio, m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+            }
+            break;
+        default:
+            break;
+        }
+    } else if(adaenums::isStdType(influenceMap.getType())) {
+        switch(influenceMap.getType()) {
+        //std attack adds for each enemy unit its influence (negative, since it represent in general a bad tile) of attack against the type of unit determined by unitNum
+        case adaenums::iMapType::STD_ATTACK:
+        {
+            if(changedData.isEnemy) {
+                if(changedData.isKilled) {
+                    influenceMap.addUnitAtkInfluence(m_enemyUnitTypesVector[m].get(), changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     m_damageChart.getBaseDmgWithAmmo(changedData.pUnit, m, m_nToMIndexes[unitNum]) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position changed, compute and add its inverse old influence and add new influence
+                else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY,
+                                                     m_damageChart.getBaseDmgWithAmmo(changedData.pUnit, m, m_nToMIndexes[unitNum]) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, -m_damageChart.getBaseDmgWithAmmo(changedData.pUnit, m, m_nToMIndexes[unitNum]) * aiutils::unitHpRatio(changedData.pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+                //if position is same, then only hp changed, remove an influence proportional to hp lost
+                else {
+                    float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                    influenceMap.addUnitAtkInfluence(changedData.pUnit, m_damageChart.getBaseDmgWithAmmo(changedData.pUnit, m, m_nToMIndexes[unitNum]) * hpLostDifferenceRatio, m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+                }
+            }
+        }
+            break;
+        //std damage creates a map where the type of unit given does the most damage
+        case adaenums::iMapType::STD_DAMAGE: {
+            if(changedData.isEnemy) {
+                Unit* pUnit = m_unitTypesVector[unitNum].get();
+                //direct
+                if(pUnit->getBaseMinRange() > 1) {
+                    if(changedData.isKilled) {
+                        influenceMap.addUnitDirectDmgValueInfluence(pUnit, QPoint(changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp));
+                    }
+                    //if position changed, compute and add its inverse old influence and add new influence
+                    else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                        influenceMap.addUnitDirectDmgValueInfluence(pUnit, QPoint(changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp));
+                        influenceMap.addUnitDirectDmgValueInfluence(pUnit, changedData.pUnit->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.pUnit->getHp()));
+                    }
+                    //if position is same, then only hp changed, remove an influence proportional to hp lost
+                    else {
+                        float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                        influenceMap.addUnitDirectDmgValueInfluence(pUnit, changedData.pUnit->getPosition(), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * hpLostDifferenceRatio);
+                    }
+                }
+                //indirect
+                else {
+                    if(changedData.isKilled) {
+                        influenceMap.addUnitIndirectDmgValueInfluence(pUnit, QPoint(changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp));
+                    }
+                    //if position changed, compute and add its inverse old influence and add new influence
+                    else if(isUnitDataPositionChangedForUnit(changedData, unitNum)) {
+                        influenceMap.addUnitIndirectDmgValueInfluence(pUnit, QPoint(changedData.statusForUnit[unitNum].posX, changedData.statusForUnit[unitNum].posY), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.statusForUnit[unitNum].hp));
+                        influenceMap.addUnitIndirectDmgValueInfluence(pUnit, changedData.pUnit->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * aiutils::unitHpRatio(changedData.pUnit->getHp()));
+                    }
+                    //if position is same, then only hp changed, remove an influence proportional to hp lost
+                    else {
+                        float hpLostDifferenceRatio = aiutils::unitHpRatio((changedData.statusForUnit[unitNum].hp - changedData.pUnit->getHp()));
+                        influenceMap.addUnitIndirectDmgValueInfluence(pUnit, changedData.pUnit->getPosition(), -m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m) * hpLostDifferenceRatio);
+                    }
+                }
+            }
+        }
+            break;
+        default:
+            break;
+        }
+    }
+    //if it's not custom nor standard, it's a once map, so don't recompute it
+}
+
 
 void MultiInfluenceNetworkModule::computeGlobalInfluenceMap(InfluenceMap &influenceMap, bool isCustom, quint32 customNum) {
     influenceMap.reset();
@@ -538,39 +853,53 @@ void MultiInfluenceNetworkModule::computeGlobalInfluenceMap(InfluenceMap &influe
     }
 }
 
-void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum,
-                                                           bool isCustom, quint32 customNum) {
+
+void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum, spQmlVectorUnit spUnits,
+                                                           spQmlVectorUnit spEnemies, bool isCustom, quint32 customNum) {
 
     if(isCustom) {
         influenceMap.reset();
-
-        spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
-        spQmlVectorUnit pUnits = m_pPlayer->getUnits();
 
         switch(influenceMap.getType()) {
         //custom 1 adds influence for each unit in game, positive for allies and negative for enemies.
         //the influence is propagated with the attack area
         case adaenums::iMapType::CUSTOM_1:
-            for(qint32 i=0; i < pUnits->size(); i++) {
-                Unit* pUnit = pUnits->at(i);
-                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            for(qint32 i=0; i < spUnits->size(); i++) {
+                Unit* pUnit = spUnits->at(i);
+                auto it = m_unitIDToM.find(pUnit->getUnitID());
+                if(it == m_unitIDToM.end()) {
+                    continue;//if is a type of unit not supported by this MIN, skip its influence
+                }
+                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, it->second) * aiutils::unitHpRatio(pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
-            for(qint32 i=0; i < pEnemies->size(); i++) {
-                Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            for(qint32 i=0; i < spEnemies->size(); i++) {
+                Unit* pEnemy = spEnemies->at(i);
+                auto it = m_unitIDToM.find(pEnemy->getUnitID());
+                if(it == m_unitIDToM.end()) {
+                    continue;//if is a type of unit not supported by this MIN, skip its influence
+                }
+                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, it->second) * aiutils::unitHpRatio(pEnemy->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
             //custom allies and custom enemies together are more powerful than a custom 1 (however they are also more complex and slower to converge)
         case adaenums::iMapType::CUSTOM_ALLIES:
-            for(qint32 i=0; i < pUnits->size(); i++) {
-                Unit* pUnit = pUnits->at(i);
-                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pUnit->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            for(qint32 i=0; i < spUnits->size(); i++) {
+                Unit* pUnit = spUnits->at(i);
+                auto it = m_unitIDToM.find(pUnit->getUnitID());
+                if(it == m_unitIDToM.end()) {
+                    continue;//if is a type of unit not supported by this MIN, skip its influence
+                }
+                influenceMap.addUnitAtkInfluence(pUnit, customInfluenceMapUnitWeight(unitNum, customNum, it->second) * aiutils::unitHpRatio(pUnit->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         case adaenums::iMapType::CUSTOM_ENEMIES:
-            for(qint32 i=0; i < pEnemies->size(); i++) {
-                Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, m_unitListFull.indexOf(pEnemy->getUnitID())), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            for(qint32 i=0; i < spEnemies->size(); i++) {
+                Unit* pEnemy = spEnemies->at(i);
+                auto it = m_unitIDToM.find(pEnemy->getUnitID());
+                if(it == m_unitIDToM.end()) {
+                    continue;//if is a type of unit not supported by this MIN, skip its influence
+                }
+                influenceMap.addUnitAtkInfluence(pEnemy, -customInfluenceMapUnitWeight(unitNum, customNum, it->second) * aiutils::unitHpRatio(pEnemy->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         default:
@@ -581,14 +910,16 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
     else if(adaenums::isStdType(influenceMap.getType())){
         influenceMap.reset();
 
-        spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
-        spQmlVectorUnit pUnits = m_pPlayer->getUnits();
         switch(influenceMap.getType()) {
         //std attack adds for each enemy unit its influence (negative, since it represent in general a bad tile) of attack against the type of unit determined by unitNum
         case adaenums::iMapType::STD_ATTACK:
-            for(qint32 i=0; i < pEnemies->size(); i++) {
-                Unit* pEnemy = pEnemies->at(i);
-                influenceMap.addUnitAtkInfluence(pEnemy, -m_damageChart.getBaseDmgWithAmmo(pEnemy, m_unitListFull.indexOf(pEnemy->getUnitID()), m_nToMIndexes[unitNum]), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
+            for(qint32 i=0; i < spEnemies->size(); i++) {
+                Unit* pEnemy = spEnemies->at(i);
+                auto it = m_unitIDToM.find(pEnemy->getUnitID());
+                if(it == m_unitIDToM.end()) {
+                    continue;//if is a type of unit not supported by this MIN, skip its influence
+                }
+                influenceMap.addUnitAtkInfluence(pEnemy, -m_damageChart.getBaseDmgWithAmmo(pEnemy, it->second, m_nToMIndexes[unitNum]) * aiutils::unitHpRatio(pEnemy->getHp()), m_stepMultiplier, m_stepsForDirectUnits, m_stepsForIndirectUnits);
             }
             break;
         //std damage creates a map where the type of unit given does the most damage
@@ -596,14 +927,24 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             Unit* pUnit = m_unitTypesVector[unitNum].get();
             //direct
             if(pUnit->getBaseMinRange() > 1) {
-                for(qint32 i=0; i<pEnemies->size(); i++) {
-                    influenceMap.addUnitDirectDmgValueInfluence(pUnit, pEnemies->at(i)->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m_unitListFull.indexOf(pEnemies->at(i)->getUnitID())));
+                for(qint32 i=0; i < spEnemies->size(); i++) {
+                    Unit* pEnemy = spEnemies->at(i);
+                    auto it = m_unitIDToM.find(pEnemy->getUnitID());
+                    if(it == m_unitIDToM.end()) {
+                        continue;//if is a type of unit not supported by this MIN, skip its influence
+                    }
+                    influenceMap.addUnitDirectDmgValueInfluence(pUnit, pEnemy->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], it->second) * aiutils::unitHpRatio(spEnemies->at(i)->getHp()));
                 }
             }
             //indirect
             else {
-                for(qint32 i=0; i<pEnemies->size(); i++) {
-                    influenceMap.addUnitIndirectDmgValueInfluence(pUnit, pEnemies->at(i)->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], m_unitListFull.indexOf(pEnemies->at(i)->getUnitID())));
+                for(qint32 i=0; i < spEnemies->size(); i++) {
+                    Unit* pEnemy = spEnemies->at(i);
+                    auto it = m_unitIDToM.find(pEnemy->getUnitID());
+                    if(it == m_unitIDToM.end()) {
+                        continue;//if is a type of unit not supported by this MIN, skip its influence
+                    }
+                    influenceMap.addUnitIndirectDmgValueInfluence(pUnit, pEnemy->getPosition(), m_damageChart.getBaseDmg(m_nToMIndexes[unitNum], it->second) * aiutils::unitHpRatio(spEnemies->at(i)->getHp()));
                 }
             }
         }
@@ -630,6 +971,42 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             break;
         }
     }
+}
+
+void MultiInfluenceNetworkModule::computeInfluenceMapsForUnit(qint32 n, spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies) {
+    qint32 k=0;
+
+    //compute each local map and add it to the output, weighted
+    for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+        InfluenceMap &infMap = influenceMapOfUnit(n, l);
+        if(adaenums::isCustomType(infMap.getType())) {
+            computeLocalInfluenceMap(infMap, n, spUnits, spEnemies, true, k);
+            k++;
+        } else {
+            computeLocalInfluenceMap(infMap, n, spUnits, spEnemies, false);
+        }
+        Console::print(infMap.toQStringFull(2), Console::eDEBUG);
+    }
+
+    //update the unitData of this unit to now
+    updateAllUnitDataForUnit(n);
+}
+
+
+void MultiInfluenceNetworkModule::computeOutputMapForUnit(qint32 n, bool computeAll, spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies) {
+    m_unitOutputMaps[n].reset(); //reset output map to 0
+    if(computeAll)
+        computeInfluenceMapsForUnit(n, spUnits, spEnemies);
+
+    for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+        m_unitOutputMaps[n].weightedAddMap(influenceMapOfUnit(n, l));
+    }
+    //add also each global map, weighted. Here global maps are already computed
+    for(quint32 g=0; g < m_globalInfluenceMaps.size(); g++) {
+        m_unitOutputMaps[n].weightedAddMap(m_globalInfluenceMaps[g], glbMapWeightForUnit(n, g));
+    }
+
+    m_isMapNComputed[n] = true;
 }
 
 

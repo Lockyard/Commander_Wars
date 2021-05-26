@@ -118,7 +118,7 @@ float calculateFitnessVictoryCountOnlyPartial(qint32 playerIndex) {
 float calculateFitnessPlayerValuePredeployedPartial(qint32 playerIndex) {
     GameMap* pMap = GameMap::getInstance();
     //todo remove this! Is to check how the error happens
-    if(pMap ==nullptr)
+    if(pMap == nullptr)
         return 0.0f;
     qint32 winnerTeam = pMap->getWinnerTeam();
     //evaluate if winner team and player index are valid
@@ -133,13 +133,14 @@ float calculateFitnessPlayerValuePredeployedPartial(qint32 playerIndex) {
 
         //if the trainee won
         if(pMap->getPlayer(playerIndex)->getTeam() == winnerTeam) {
-            float playerStrengthStart = pDayRecordBegin->getPlayerRecord(playerIndex)->getPlayerStrength();
-            float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(playerIndex)->getPlayerStrength();
+            //to calculate strength remove income since we only want army strength
+            float playerStrengthStart = pDayRecordBegin->getPlayerRecord(playerIndex)->getPlayerStrength() - pDayRecordBegin->getPlayerRecord(playerIndex)->getIncome();
+            float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(playerIndex)->getPlayerStrength() - pDayRecordEnd->getPlayerRecord(playerIndex)->getIncome();
             if(playerStrengthStart == 0) {
                 Console::print("Trainee has a strength of 0 at start of game! Can't evaluate properly! Evaluating with safe value!", Console::eWARNING);
                 return calculateFitnessVictoryCountOnlyPartial(playerIndex)*.2f; //return +/- 0.2 to be safe
             } else {
-                return playerStrengthFinal/playerStrengthStart;
+                return qMin(playerStrengthFinal/playerStrengthStart, 1.0f);
             }
         }
         //if an opponent won
@@ -147,13 +148,13 @@ float calculateFitnessPlayerValuePredeployedPartial(qint32 playerIndex) {
             for (qint32 i = 0; i < pMap->getPlayerCount(); i++)
             {
                 if(pMap->getPlayer(i)->getTeam() == winnerTeam) {
-                    float playerStrengthStart = pDayRecordBegin->getPlayerRecord(i)->getPlayerStrength();
-                    float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(i)->getPlayerStrength();
+                    float playerStrengthStart = pDayRecordBegin->getPlayerRecord(i)->getPlayerStrength() - pDayRecordBegin->getPlayerRecord(i)->getIncome();
+                    float playerStrengthFinal = pDayRecordEnd->getPlayerRecord(i)->getPlayerStrength() - pDayRecordEnd->getPlayerRecord(i)->getIncome();
                     if(playerStrengthStart == 0) {
                         Console::print("Player #" + QString::number(i) + " has a strength of 0 at start of game! Can't evaluate properly! Evaluating with safe value!", Console::eWARNING);
                         return calculateFitnessVictoryCountOnlyPartial(playerIndex)*.2f; //return +/- 0.2 to be safe
                     } else {
-                        return -playerStrengthFinal/playerStrengthStart;
+                        return qMax(-playerStrengthFinal/playerStrengthStart, -1.0f);
                     }
                 }
             }

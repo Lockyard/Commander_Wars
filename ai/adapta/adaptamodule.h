@@ -4,6 +4,7 @@
 #include <QObject>
 #include "game/player.h"
 #include "ai/genetic/weightvector.h"
+#include "game/unitpathfindingsystem.h"
 
 class AdaptaModule;
 typedef oxygine::intrusive_ptr<AdaptaModule> spAdaptaModule;
@@ -75,12 +76,13 @@ protected:
     //how much this module's bids are weighted by the adapta AI. default is 1 so that no modifications are done to the bids
     float m_moduleWeight = 1.0f;
 
-    //here are kept all units and then bids for each unit, on a given turn
-    //these 2 vectors must be kept on same size. They are not a vector of pairs to be faster, although a bit less clean
-    spQmlVectorUnit m_units;
-    QVector<float> m_unitsBids;
+    //here are kept all units and bids for each unit
+    QVector<QPair<Unit*, float>> m_unitsBids;
+    bool m_isUnitBidsSorted{false};
 
     Player* m_pPlayer;
+
+    void sortUnitBids();
 };
 
 #endif // ADAPTAMODULE_H

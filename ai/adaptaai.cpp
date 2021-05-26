@@ -3,6 +3,7 @@
 #include "adapta/multiinfluencenetworkmodule.h"
 #include "coreengine/console.h"
 #include "ai/adapta/trainingmanager.h"
+#include "ai/utils/aiutils.h"
 
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
@@ -27,9 +28,11 @@ void AdaptaAI::readIni(QString name) {
 void AdaptaAI::process() {
 
     spQmlVectorUnit pUnits = m_pPlayer->getUnits();
+    spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
 
     if(m_isFirstProcessOfTurn) {
         m_isFirstProcessOfTurn = false;
+
         // remove island maps of the last turn
         m_IslandMaps.clear();
 
@@ -44,6 +47,7 @@ void AdaptaAI::process() {
     Unit* pUsedUnit;
     float highestBid = 0;
     qint32 selectedModuleIndex = -1;
+    m_lastSelectedModuleIndex = -1;
     //for each active unit, sorted by highest bid (?), select the module who bid the most and make it do its action
     //(each unit with a bid of 0 by every module is selected to do action wait)
     for(qint32 i = 0; i < m_modules.size(); i++) {
@@ -54,12 +58,12 @@ void AdaptaAI::process() {
     }
     //select the highest bid unit and make that module use that unit
     if(selectedModuleIndex != -1) {
+        m_lastSelectedModuleIndex = selectedModuleIndex;
         pUsedUnit = m_modules[selectedModuleIndex]->getHighestBidUnit();
-        m_modules[selectedModuleIndex]->processHighestBidUnit();
-        //notify all other modules that this unit was used
-        for(qint32 i=0; i < m_modules.size(); i++) {
-            if(i!=selectedModuleIndex)
-                m_modules[i]->notifyUnitUsed(pUsedUnit);
+        if(!m_modules[selectedModuleIndex]->processHighestBidUnit()) {
+            Console::print("Module didn't actually perform any action! Finishing turn to avoid livelock", Console::eWARNING);
+            finishTurn();
+            return;
         }
     }
     //when no module makes a bid, all units are used, so bid for building stuff and build until there is money
@@ -100,3 +104,5 @@ void AdaptaAI::finishTurn()
     m_isFirstProcessOfTurn = true;
     CoreAI::finishTurn();
 }
+
+

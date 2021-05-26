@@ -71,12 +71,16 @@ private:
     //save population each time a new best fit vector appears?
     bool m_saveOnNewBestFit;
     float m_currBestSavedFitness;
+    //stop training when target fitness is reached, if requested so
+    bool m_stopAtTargetFitness;
+    float m_targetFitness;
     //save population each N generations have passed since the last save (which can occur before if the previous bool is set to true)
     //<= 0 to never save automatically after N generations
     qint32 m_genNumberTargetSave;
     qint32 m_currGenNumberCount;
     //save parameters for best records of all time
     qint32 m_bestRecordsToSave;
+    bool m_instantSaveOnNewBest;
 
 
     //counters for matches and vectors, to know which vector at each match should be used and when it's going to be evaluated

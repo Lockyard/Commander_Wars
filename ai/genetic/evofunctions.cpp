@@ -70,14 +70,22 @@ namespace evofunc {
     }
 
 
-    QVector<QPair<WeightVector*, WeightVector*>> adaptaSelection(QVector<WeightVector>& population, qint32 couplesToReturn) {
+    QVector<QPair<WeightVector*, WeightVector*>> adaptaSelection(QVector<WeightVector>& population, qint32 couplesToReturn, float minFitness, float maxFitness) {
         QVector<float> customFitnesses(population.size());
         float totalFitness(0.0f);
         QVector<QPair<WeightVector*, WeightVector*>> selectedCouples;
         selectedCouples.reserve(couplesToReturn);
 
-        customFitnesses = generateCustomWeightedFitnesses(population);
+        customFitnesses = generateCustomWeightedFitnesses(population, minFitness, maxFitness);
         totalFitness = std::accumulate(customFitnesses.begin(), customFitnesses.end(), 0.0f);
+
+        //log chances of being selected
+        if(Console::getLogLevel() <= Console::eDEBUG && totalFitness != 0.0f) {
+            for(qint32 i=0; i<customFitnesses.size(); i++) {
+                Console::print("Vector " + QString::number(i) + " has " + QString::number(customFitnesses[i]/totalFitness*100.0f, 'f', 3) +
+                               "% chance of being chosen", Console::eDEBUG);
+            }
+        }
 
         QRandomGenerator random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
         double randomTarget = 0;
@@ -123,12 +131,25 @@ namespace evofunc {
     }
 
 
-    QVector<float> generateCustomWeightedFitnesses(QVector<WeightVector>& population) {
-        QVector<float> customFitnesses(population.size());
-        //generate custom positive fitnesses from the original fitnesses, which go from to -10 to 10
+    QVector<float> generateCustomWeightedFitnesses(QVector<WeightVector>& population, float minFitness, float maxFitness) {
+        if(population.isEmpty())
+            return QVector<float>();
+
+        QVector<float> customFitnesses(population.size(), 1.0f);
+        float fitnessMultiplier;
+        //if min and max fitnesses are the same doesn't make sense, but return all equal custom fitnesses to have equal chance of being selected
+        if(maxFitness == minFitness) {
+            Console::print("While generating custom weights, min and max fitnesses are the same! Can't select properly!", Console::eWARNING);
+            return customFitnesses;
+        }
+        //normal case
+        else
+            fitnessMultiplier = 1.0f/(maxFitness - minFitness);
+
+        //generate custom positive fitnesses from the original fitnesses, which go from minFitness to MaxFitness
         for(qint32 i=0; i < population.size(); i++) {
             float fitness = population.at(i).getFitness();
-            fitness = (fitness + 10.0f)*0.1f;
+            fitness = qMin(maxFitness - minFitness, qMax(0.0f, fitness - minFitness))*fitnessMultiplier;
             fitness = static_cast<float>(qPow(fitness, 4));
             customFitnesses[i] = fitness;
         }

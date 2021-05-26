@@ -7,6 +7,7 @@
 #include "ai/utils/damagechart.h"
 #include "ai/adaptaai.h"
 #include "game/unitpathfindingsystem.h"
+#include <set>
 #include <QVector>
 
 class MultiInfluenceNetworkModule;
@@ -20,10 +21,34 @@ typedef oxygine::intrusive_ptr<MultiInfluenceNetworkModule> spMultiInfluenceNetw
 class MultiInfluenceNetworkModule : public AdaptaModule
 {
 public:
+    struct UnitStatus {
+        float hp;
+        qint32 posX;
+        qint32 posY;
+    };
+
     struct UnitData {
-        Unit* m_pUnit;
-        spUnitPathFindingSystem m_pPfs;
-        float m_bid; //bid for this unit
+        Unit* pUnit;
+        QString unitID;
+        spUnitPathFindingSystem pPfs;
+        float bid; //bid for this unit
+        //the last status unit N has seen for this unit
+        std::vector<UnitStatus> statusForUnit;
+        bool isEnemy;
+        bool isKilled;
+
+        /*
+        inline bool operator<(const UnitData &other) const {
+            return uniqueID < other.uniqueID;
+        }
+
+        inline bool operator==(const UnitData &other) const {
+            return uniqueID == other.uniqueID;
+        }
+
+        inline bool operator>(const UnitData &other) const {
+            return uniqueID > other.uniqueID;
+        }//*/
     };
 
     MultiInfluenceNetworkModule() = default;
@@ -102,13 +127,22 @@ private:
     //I guess)
     QStringList m_unitList;
     QStringList m_unitListFull;
+    //these 2 map a unit ID to the corresponding position in the above m_unitList and m_unitListFull. Since they are maps, it's
+    //faster than an QStringList.indexOf()
+    std::map<QString, qint32> m_unitIDToN;
+    std::map<QString, qint32> m_unitIDToM;
 
     //this is long N (like m_unitList) and contains at each position in parallel an instantiation of a unit with that ID
     //this unit is not in game but is used to retrieve the unit type's properties
     std::vector<spUnit> m_unitTypesVector;
+    //these are long M and contain M fake units of a player and the opponent respectively
+    std::vector<spUnit> m_armyUnitTypesVector;
+    std::vector<spUnit> m_enemyUnitTypesVector;
     bool m_arePlayerPtrStuffInitialized{false};
 
     std::vector<qint32> m_unitCount;
+    //has the influence map of unit n been computed, for this turn?
+    std::vector<bool> m_isMapNComputed;
 
     //[n0_l0, n0_l1,.., n0_lL, n1_l0,.., nN,lL]
     std::vector<InfluenceMap> m_unitInfluenceMaps;
@@ -118,8 +152,10 @@ private:
     float m_minMapWeight{-1.0};
     float m_maxMapWeight{1.0};
 
-    std::vector<UnitData> m_armyUnitData;
-    std::vector<UnitData> m_enemyUnitData;
+    std::map<qint32, UnitData> m_armyUnitData;
+    std::map<qint32, UnitData> m_enemyUnitData;
+    qint32 m_armyUnitDataKillCount;
+    qint32 m_enemyUnitDataKillCount;
 
     //weightvector and stuff to sort better the weights loaded from it
     /**
@@ -153,6 +189,12 @@ private:
     std::map<QString, qint32> m_unitIDToMIndexMap;
 
     DamageChart m_damageChart;
+
+    //fast mode doesn't compute maps at the start of turn for every unit, but only when required by a unit.
+    //this means that it can't generate bids based on the maps, but has to use another heuristic
+    bool m_fastMode{true};
+
+
     //values parametrized used in functions
     //note: 1 step indicates tiles reachable in 1 turn
     //when propagating, how much each step tile is multiplied wrt the previous one
@@ -179,13 +221,85 @@ private:
      */
     void initializeWithPlayerPtr();
 
-    void initUnitData(std::vector<UnitData> &unitDataVector, QmlVectorUnit* pUnits);
+    void generateBids(spQmlVectorUnit pUnits, bool useMapInfo);
+
+    void initUnitData(std::map<qint32, UnitData> &unitDataSet, QmlVectorUnit* pUnits, bool isEnemy);
+
+    void addUnitData(std::map<qint32, UnitData> &unitDataSet, Unit* pUnit, bool isEnemy);
+
+    /**
+     * @brief sync the references of army and enemy Unit data with the given, (most recent) units in game
+     */
+    void updateAllUnitsDataReferences(spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies);
+    /**
+     * @brief check for all changes in UnitData since last process of this module for unit #unitNum (n)
+     * if any, correct the output map of that unit type
+     */
+    void updateMapsChangesForUnit(qint32 unitNum);
+
+    /**
+     * @brief update all UnitData relative to unit of type #unitNum to the current map situation
+     */
+    void updateAllUnitDataForUnit(qint32 unitNum);
+    /**
+     * @brief update the content of the specified unit data with the actual values, for unit #unitNum (n)
+     */
+    inline void updateUnitDataForUnit(UnitData &data, qint32 unitNum) {
+        if(data.isKilled) {
+            data.statusForUnit[unitNum].hp = 0;
+            data.statusForUnit[unitNum].posX = -1;
+            data.statusForUnit[unitNum].posY = -1;
+        } else {
+            data.statusForUnit[unitNum].hp = data.pUnit->getHp();
+            data.statusForUnit[unitNum].posX = data.pUnit->getX();
+            data.statusForUnit[unitNum].posY = data.pUnit->getY();
+        }
+    }
+
+
+    /**
+     * @brief return true if UnitData is changed
+     */
+    inline bool isUnitDataChangedForUnit(const UnitData &data, qint32 unitNum) {
+        if(data.isKilled)
+            return data.statusForUnit[unitNum].hp != 0 || data.statusForUnit[unitNum].posX != -1 ||
+                    data.statusForUnit[unitNum].posY != -1;
+        else
+            return data.pUnit->getHp() != data.statusForUnit[unitNum].hp || data.pUnit->getX() != data.statusForUnit[unitNum].posX ||
+                    data.pUnit->getY() != data.statusForUnit[unitNum].posY;
+    }
+
+    inline bool isUnitDataPositionChangedForUnit(const UnitData &data, qint32 unitNum) {
+        if(data.isKilled)
+            return data.statusForUnit[unitNum].posX != -1 || data.statusForUnit[unitNum].posY != -1;
+        else
+            return  data.pUnit->getX() != data.statusForUnit[unitNum].posX ||
+                    data.pUnit->getY() != data.statusForUnit[unitNum].posY;
+    }
+
+    /**
+     * @brief correct the influence maps of unit #unitNum (n). This doesn't recompute the output map
+     */
+    void correctInfluenceMapsForUnit(UnitData &changedData, qint32 unitNum);
+
+    /**
+     * @brief correct influence map given wrt to the new data of a unit which is changed
+     */
+    void correctLocalInfluenceMap(InfluenceMap &influenceMap, UnitData &changedData, quint32 unitNum, bool isCustom=false, quint32 customNum=0);
 
     void computeGlobalInfluenceMap(InfluenceMap &influenceMap, bool isCustom=false, quint32 customNum=0);
     /**
      * @brief compute the local influence map &influenceMap of unit #unitNum (n), and if isCustom, the #customNum (k)
      */
-    void computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum, bool isCustom=false, quint32 customNum=0);
+    void computeLocalInfluenceMap(InfluenceMap &influenceMap, quint32 unitNum, spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies, bool isCustom=false, quint32 customNum=0);
+
+    void computeInfluenceMapsForUnit(qint32 unitNum, spQmlVectorUnit spUnits, spQmlVectorUnit spEnemies);
+
+    /**
+     * @brief compute the output map from 0 for unit #unitNum (n). By default it just compute the output, but if specified
+     * it computes all maps from 0
+     */
+    void computeOutputMapForUnit(qint32 unitNum, bool computeAll = false, spQmlVectorUnit spUnits = nullptr, spQmlVectorUnit spEnemies = nullptr);
 
     /**
      * @brief find the point where a unit, considering its ammos, deals more damage, in std fund damage
@@ -228,6 +342,16 @@ private:
         return m_unitInfluenceMaps[unitNumber*m_localMapsPerUnit + localMapNumber];
     }
 
+    inline QString toQStringChangedDataForUnit(UnitData &data, qint32 unitNum) {
+        if(data.isKilled) {
+            return "[" + data.unitID + " (dead), hp: " + QString::number(data.statusForUnit[unitNum].hp) + ", (" + QString::number(data.statusForUnit[unitNum].posX) +
+                    ", " + QString::number(data.statusForUnit[unitNum].posY) + ")] -> [hp:0, (-1, -1)]";
+        } else {
+            return "[" + data.pUnit->getUnitID() + ", hp: " + QString::number(data.statusForUnit[unitNum].hp) + ", (" + QString::number(data.statusForUnit[unitNum].posX) +
+                    ", " + QString::number(data.statusForUnit[unitNum].posY) + ")] -> [hp: " + QString::number(data.pUnit->getHp()) +
+                    ", (" + QString::number(data.pUnit->getX()) + ", " + QString::number(data.pUnit->getY()) + ")]";
+        }
+    }
 
 };
 

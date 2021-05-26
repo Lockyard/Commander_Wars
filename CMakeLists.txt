@@ -394,6 +394,7 @@ set(${PROJECT_NAME}_SRCS
         ai/heavyai.cpp
         ai/influencefrontmap.cpp
         ai/utils/damagechart.cpp
+        ai/utils/aiutils.cpp
         ai/genetic/weightvector.cpp
         ai/genetic/evofunctions.cpp
         ai/genetic/evolutionmanager.cpp

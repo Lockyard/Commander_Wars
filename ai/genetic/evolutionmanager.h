@@ -167,11 +167,21 @@ public:
      * @param elitesToSave
      */
     void setEliteRecordsNumber(qint32 elitesToSave);
+
+    bool loadEliteRecords(QString filename);
     /**
      * @brief updateEliteRecords update the elite records with vectors from the current population if (different) new fit ones exist
      * @return true if an update was done. False if nothing changed in the records
      */
     bool updateEliteRecords();
+
+    /**
+     * @brief insertNewEliteRecord removes the last occurrence of the elite record vector and insert in the right position
+     * the new one
+     * @param newWV
+     * @return true if the vector was inserted since better than at least one of the records
+     */
+    bool insertNewEliteRecordIfBetter(const WeightVector &newWV);
 
     bool saveEliteRecords(QString filename);
 
@@ -180,6 +190,12 @@ public:
     QString toQStringEliteRecords();
 
     void writePopulationToJson(QVector<WeightVector> &populationToWrite, QJsonArray &populationArray);
+    float getMinFitness() const;
+    void setMinFitness(float minFitness);
+
+    float getMaxFitness() const;
+    void setMaxFitness(float maxFitness);
+
 private:
 
     static const qint32 infinite;
@@ -196,6 +212,8 @@ private:
     qint32 m_generationNumber{0};
     float m_minWeight{0};
     float m_maxWeight{1};
+    float m_minFitness{-10};
+    float m_maxFitness{10};
     float m_mutationProbability;
 
     bool m_isPopulationSorted{false};
@@ -212,13 +230,7 @@ private:
     qint32 m_eliteRecordSize{0};
     float m_eliteRecordMinFitness = infinite;
 
-    /**
-     * @brief insertNewEliteRecord removes the last occurrence of the elite record vector and insert in the right position
-     * the new one
-     * @param newWV
-     * @return true if the vector was inserted since better than at least one of the records
-     */
-    bool insertNewEliteRecordIfBetter(const WeightVector &newWV);
+
 
 };
 

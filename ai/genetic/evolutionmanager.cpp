@@ -256,7 +256,7 @@ bool EvolutionManager::performOneEvolutionStep() {
 
     //take all other pairs of parents according to selection
     QVector<QPair<WeightVector*, WeightVector*>> parentsCouples =
-            evofunc::adaptaSelection(m_population, m_populationSize - m_elitismDegree - m_randomismDegree);
+            evofunc::adaptaSelection(m_population, m_populationSize - m_elitismDegree - m_randomismDegree, m_minFitness, m_maxFitness);
 
 
     //crossover each couple and generate a new child
@@ -305,8 +305,41 @@ void EvolutionManager::setEliteRecordsNumber(qint32 elitesToSave) {
         m_eliteRecords.remove(elitesToSave, m_eliteRecords.size() - elitesToSave);
         m_eliteRecordMinFitness = m_eliteRecords[elitesToSave-1].getFitness();
     } else {
+        if(m_eliteRecords.size() == 0) {
+            m_eliteRecordMinFitness = std::numeric_limits<qint32>::min();
+        } else {
+            m_eliteRecordMinFitness = m_eliteRecords.last().getFitness();
+        }
         m_eliteRecords.reserve(elitesToSave);
+
     }
+}
+
+
+bool EvolutionManager::loadEliteRecords(QString filename) {
+    QFile loadFile(filename);
+    if (!loadFile.open(QIODevice::ReadOnly)) {
+           Console::print("Couldn't open save file of elite records '" + filename + "'!", Console::eWARNING);
+           return false;
+    }
+    QByteArray saveData = loadFile.readAll();
+    QJsonDocument loadDoc(QJsonDocument::fromJson(saveData));
+    if(loadDoc.isNull()) {
+        Console::print("Elite records file '" + filename +  "' for evolution manager was not loaded correctly!", Console::eWARNING);
+        return false;
+    }
+
+    //load and append new vectors built on json data
+    if(loadDoc.isArray()) {
+        QJsonArray eliteRecordsArray = loadDoc.array();
+        for(qint32 wvIndex = 0; wvIndex < eliteRecordsArray.size() && wvIndex < m_eliteRecordSize; wvIndex++) {
+            QJsonObject wvObject = eliteRecordsArray[wvIndex].toObject();
+            m_eliteRecords.append(WeightVector::generateFromJson(wvObject));
+        }
+    }
+    Console::print("Loaded elite records: " + toQStringEliteRecords(), Console::eINFO);
+    m_eliteRecordMinFitness = m_eliteRecords.last().getFitness();
+    return true;
 }
 
 
@@ -315,25 +348,7 @@ bool EvolutionManager::updateEliteRecords() {
     if(m_eliteRecordSize == 0)
         return false;
     bool isRecordsChanged = false;
-    //if is not even fully filled yet, fill it with only new vectors until reaches target or curr population is over
-    if(m_eliteRecords.size() < m_eliteRecordSize) {
-        for(qint32 i=0; i < m_population.size() && m_eliteRecords.size() < m_eliteRecordSize; i++) {
-            //if the records don't contain this vector
-            if(!m_eliteRecords.contains(m_population[i])) {
-                //append a copy
-                m_eliteRecords.append(m_population[i]);
-                //update eventually the minimum recorded elite fitness
-                if(m_population[i].getFitness() < m_eliteRecordMinFitness)
-                    m_eliteRecordMinFitness = m_population[i].getFitness();
-                isRecordsChanged = true;
-            }
-        }
-        //sort since it's not sorted
-        sortPopulationByFitness(m_eliteRecords);
-
-    }
-    //if it's filled already*, add new vectors only if they are more fit than the current minimum among the elite records
-    //* if it's not
+    //for each vector in population, insert it in elite records if better
     for(qint32 i=0; i < m_population.size(); i++) {
         //if better, insert it and notify that the records changed
         if(insertNewEliteRecordIfBetter(m_population[i]))
@@ -342,6 +357,34 @@ bool EvolutionManager::updateEliteRecords() {
 
     return isRecordsChanged;
 }
+
+bool EvolutionManager::insertNewEliteRecordIfBetter(const WeightVector &newWV) {
+    //if size is 0 then is set to not update elite records
+    if(m_eliteRecordSize == 0)
+        return false;
+
+    //if the records don't contain this vector and the vector has a fitness better than the minimum of the elite ones
+    //or the elite records vector is not full yet, add it
+    if(!m_eliteRecords.contains(newWV) &&
+            (newWV.getFitness() > m_eliteRecordMinFitness || m_eliteRecords.size() < m_eliteRecordSize)
+            ) {
+        //remove last record if the list of elite records is at max capacity
+        if(m_eliteRecords.size() == m_eliteRecordSize)
+            m_eliteRecords.removeLast();
+        //find the index of the first vector less fit than the new one, then insert it
+        qint32 insertIndex =
+                m_eliteRecords.indexOf(*std::upper_bound(m_eliteRecords.begin(), m_eliteRecords.end(), newWV,
+                                       [](WeightVector wv1, WeightVector wv2) -> bool { return WeightVector::isMoreFitThan(wv1, wv2); }));
+        if(insertIndex != -1)
+            m_eliteRecords.insert(insertIndex, newWV);
+        else
+            m_eliteRecords.append(newWV);
+        m_eliteRecordMinFitness = m_eliteRecords.last().getFitness();
+        return true;
+    } else
+        return false;
+}
+
 
 
 bool EvolutionManager::saveEliteRecords(QString filename) {
@@ -390,25 +433,28 @@ void EvolutionManager::writePopulationToJson(QVector<WeightVector> &populationTo
     }
 }
 
-
-bool EvolutionManager::insertNewEliteRecordIfBetter(const WeightVector &newWV) {
-    //if the records don't contain this vector and the vector has a fitness better than the minimum of the elite ones
-    if(newWV.getFitness() > m_eliteRecordMinFitness && !m_eliteRecords.contains(newWV)) {
-        //remove last record
-        m_eliteRecords.removeLast();
-        //find the index of the first vector less fit than the new one, then insert it
-        qint32 insertIndex =
-                m_eliteRecords.indexOf(*std::upper_bound(m_eliteRecords.begin(), m_eliteRecords.end(), newWV,
-                                       [](WeightVector wv1, WeightVector wv2) -> bool { return WeightVector::isMoreFitThan(wv1, wv2); }));
-        if(insertIndex != -1)
-            m_eliteRecords.insert(insertIndex, newWV);
-        else
-            m_eliteRecords.append(newWV);
-        m_eliteRecordMinFitness = m_eliteRecords.last().getFitness();
-        return true;
-    } else
-        return false;
+float EvolutionManager::getMinFitness() const
+{
+    return m_minFitness;
 }
+
+void EvolutionManager::setMinFitness(float minFitness)
+{
+    m_minFitness = minFitness;
+}
+
+float EvolutionManager::getMaxFitness() const
+{
+    return m_maxFitness;
+}
+
+void EvolutionManager::setMaxFitness(float maxFitness)
+{
+    m_maxFitness = maxFitness;
+}
+
+
+
 
 
 

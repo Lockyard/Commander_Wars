@@ -15,13 +15,13 @@ public:
     /*//
     ConvolutionalNNModule(Player* pPlayer, AdaptaAI* ai);
 
-    //Methods to be overridden. I wanted to make this class abstract, but it breaks QVectors, so this is it
+    //
     virtual void readIni(QString name) override;
 
     virtual void processStartOfTurn() override;
 
-    virtual bool processHighestBidUnit() override;
-    virtual bool processUnit(Unit* pUnit) override;
+    virtual spQmlVectorUnit processHighestBidUnit() override;
+    virtual spQmlVectorUnit processUnit(Unit* pUnit) override;
     virtual void notifyUnitUsed(Unit* pUnit) override;
 
     virtual float getBidFor(Unit* pUnit) override;

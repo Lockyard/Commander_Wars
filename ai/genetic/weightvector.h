@@ -90,6 +90,7 @@ public:
     }
 
     QString toQString();
+    QString toQStringFull();
 
     void writeToJson(QJsonObject &json) const;
     void readFromJson(const QJsonObject &json);

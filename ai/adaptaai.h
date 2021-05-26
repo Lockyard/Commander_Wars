@@ -27,14 +27,14 @@ public:
 protected:
     virtual void finishTurn() override;
 
-
-
 private:
     //all loaded modules of the adapta
     QVector<spAdaptaModule> m_modules;
     QVector<BuildingModule*> m_buildingModules;
 
     QVector<float> m_unitBidVector;
+
+    qint32 m_lastSelectedModuleIndex;
 
     bool m_isFirstProcessOfTurn;
     bool m_ignoreBids;

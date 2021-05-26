@@ -44,9 +44,17 @@ public:
      * this DOES NOT CHECK IF THE UNIT HAS AMMO since the given influence is custom anyway. So check it before calling it if
      * is important
      * set steps = -2 to add an influence value for all tiles reachable by that unit
-     * steps for indirect can be set to differentiate indirect units, since they are heavier to compute. the default set it equal to steps
+     * steps for indirect can be set to differentiate indirect units, since they are heavier to compute. the default (-3) sets it equal to steps
+     * To use a virtual position, call the overloaded method
      */
-    void addUnitAtkInfluence(Unit* pUnit,float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3);
+    void addUnitAtkInfluence(Unit* pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3, qint32 unitX = -1, qint32 unitY = -1);
+
+    /**
+     * @brief check the overloaded method for doc
+     */
+    inline void addUnitAtkInfluence(Unit* pUnit, qint32 virtualX, qint32 virtualY, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect = -3) {
+        addUnitAtkInfluence(pUnit, attackWeight, stepMultiplier, steps, stepsForIndirect, virtualX, virtualY);
+    }
 
     void addUnitValueInfluence(Unit* pUnit, QPoint startingPoint, bool ignoreEnemies, float unitWeight);
 
@@ -107,6 +115,11 @@ public:
     void sortNodePointsByInfluence(QVector<QPoint> & nodePoints);
 
     /**
+     * @brief true if this inf map has a map equal to otherMap. An epsilon of tolerance can be specified
+     */
+    bool equalsMap(InfluenceMap &otherMap, float epsilon = 0.0f);
+
+    /**
      * @brief show shows graphically the influence map by coloring tiles
      */
     void showColoredTiles();
@@ -131,6 +144,8 @@ public:
     inline void setInfluenceValueAt(float value, qint32 x, qint32 y) {
         m_influenceMap2D[y*m_mapWidth + x] = value;
     }
+
+
 
 
     QString toQString(qint32 precision = 3);

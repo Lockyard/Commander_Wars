@@ -28,11 +28,16 @@ void TrainingManager::loadIni(QString filename) {
         m_matchNumberTarget = settings.value("MatchNumberTarget", 10).toInt(&ok);
         if(!ok)
             m_matchNumberTarget = 10;
-        m_partialFitnesses.reserve(m_matchNumberTarget);
+        if(m_matchNumberTarget > 0)
+            m_partialFitnesses.reserve(m_matchNumberTarget);
         m_populationFileName = settings.value("PopulationFileName", "resources/aidata/adapta/population.json").toString();
         m_maxGenerationCount = settings.value("MaxGenerationCount", 1000).toInt(&ok);
         if(!ok)
             m_maxGenerationCount = 1000;
+        m_stopAtTargetFitness = settings.value("StopAtTargetFitness", false).toBool();
+        m_targetFitness = settings.value("TargetFitness", 0).toDouble(&ok);
+        if(!ok)
+            m_targetFitness = 0;
         m_evaluationType = adaenums::getEvalTypeFromString(settings.value("EvaluationType", "VICTORY_COUNT_ONLY").toString());
         m_trainingPlayerIndex = settings.value("TrainingPlayer", 0).toInt(&ok);
         if(!ok) {
@@ -44,6 +49,7 @@ void TrainingManager::loadIni(QString filename) {
 
         settings.beginGroup("SaveInfo");
         m_saveOnNewBestFit = settings.value("SaveOnNewBestFit", true).toBool();
+        m_instantSaveOnNewBest = settings.value("InstantSaveOnNewBest", false).toBool();
         m_genNumberTargetSave = settings.value("GenerationNumberTargetSave", -1).toInt(&ok);
         if(!ok)
             m_genNumberTargetSave = 10;
@@ -82,7 +88,6 @@ void TrainingManager::saveState(QString iniFilename) {
     QString saveNamePrefix;
     QString saveNameExtension;
     QString saveNameMostRecent;
-    QString saveNameBestRecords;
     saveIndex = settings.value("NextSaveIndex", 0).toInt(&ok);
     if(!ok)
         saveIndex = 0;
@@ -98,11 +103,12 @@ void TrainingManager::saveState(QString iniFilename) {
     //save a population file in the correct backup file...
     m_populationFileName = saveNamePrefix + QString::number(saveIndex) + saveNameExtension;
     m_evolutionManager.savePopulationToJsonFile(m_populationFileName);
-    settings.setValue("NextSaveIndex", saveIndex+1);
+    //update save index
+    saveIndex = saveIndex+1 == maxSaveIndex ? 0 : saveIndex+1;
+    settings.setValue("NextSaveIndex", saveIndex);
     settings.endGroup();
     //...and save also a copy on the file holding the most recent save
     m_evolutionManager.savePopulationToJsonFile(saveNameMostRecent);
-    //Also save
 
 
     //update the file name to be load to the last one
@@ -114,7 +120,7 @@ void TrainingManager::saveState(QString iniFilename) {
     settings.beginGroup("CurrentState");
     settings.setValue("CurrWVIndex", m_currWVIndex);
     settings.setValue("CurrWVMatchNumber", m_currWVMatchNumber);
-    settings.setValue("CurrBestSavedFitness", m_currBestSavedFitness);
+    settings.setValue("CurrBestSavedFitness", static_cast<double>(m_currBestSavedFitness));
     settings.endGroup();
 
     //save the ini file. doc says it not really necessary but just in case
@@ -149,6 +155,10 @@ void TrainingManager::stopTraining() {
         args << value;
         pInterpreter->doFunction(object, func, args);
     }
+    Console::print("Training stopped!", Console::eINFO);
+    for(qint32 i=0; i < 20; i++) {
+        Console::print("--flushing log--", Console::eINFO);
+    }
 }
 
 
@@ -158,6 +168,8 @@ void TrainingManager::requestWVLength(qint32 requestedWVLength) {
 
 void TrainingManager::setMatchNumberTarget(qint32 targetMatches) {
     m_matchNumberTarget = targetMatches;
+    if(m_matchNumberTarget > 0)
+        m_partialFitnesses.reserve(m_matchNumberTarget);
 }
 
 void TrainingManager::setTrainingPlayerIndex(qint32 trainingPlayerIndex) {
@@ -184,13 +196,15 @@ void TrainingManager::initializeEvolutionManager() {
         QSettings settings(m_iniFileName, QSettings::IniFormat);
         bool ok = false;
         bool loadPopulation = false;
+        bool loadBestRecords = false;
 
         //load stuff for the evolution manager
         settings.beginGroup("EvolutionManager");
 
         loadPopulation = settings.value("LoadPopulation", false).toBool();
+        loadBestRecords = settings.value("LoadBestRecords", false).toBool();
         qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation, crossoverType, mutationType;
-        float minWeight, maxWeight;
+        float minWeight, maxWeight, minFitness, maxFitness;
         populationSize = settings.value("PopulationSize", 10).toInt(&ok);
         if(!ok)
             populationSize = 10;
@@ -217,6 +231,12 @@ void TrainingManager::initializeEvolutionManager() {
         maxWeight = static_cast<float>(settings.value("MaxWeight", 10.0).toDouble(&ok));
         if(!ok)
             maxWeight = 10.0f;
+        minFitness = static_cast<float>(settings.value("MinFitness", -10.0).toDouble(&ok));
+        if(!ok)
+            minFitness = -10.0f;
+        maxFitness = static_cast<float>(settings.value("MaxFitness", 10.0).toDouble(&ok));
+        if(!ok)
+            maxFitness = 10.0f;
         settings.endGroup();
         crossoverType = settings.value("CrossoverFunctionType", 2).toInt(&ok);
         if(!ok)
@@ -230,19 +250,38 @@ void TrainingManager::initializeEvolutionManager() {
                                       randomismDegree, evoenums::CrossoverType(crossoverType));
         m_evolutionManager.setMutationFunction(evofunc::getMutationFunctionFromType(evoenums::MutationType(mutationType)));
         m_evolutionManager.setGeneration(generation);
+        m_evolutionManager.setMinFitness(minFitness);
+        m_evolutionManager.setMaxFitness(maxFitness);
 
         m_evolutionManager.setEliteRecordsNumber(m_bestRecordsToSave);
+
 
         bool loadOk = false;
         //load population if requested
         if(loadPopulation) {
             loadOk = m_evolutionManager.loadPopulationFromJsonFile(m_populationFileName);
+            //if current Index is already at the population size, that means to instantly save it
+            if (m_currWVIndex >= m_evolutionManager.getPopulation().size()) {
+                m_evolutionManager.performOneEvolutionStep();
+                Console::print("Training manager evolved population (gen " +
+                               QString::number(m_evolutionManager.getGeneration()) + "):\n" +
+                               m_evolutionManager.toQStringPopulation(), Console::eDEBUG);
+                //the first new WV to be examined is the first after the elite vectors, which were already tested
+                m_currWVIndex = m_evolutionManager.getElitismDegree();
+                m_currWVMatchNumber = 0;
+            }
         }
         //create random if requested or if load failed
         if(!loadPopulation || !loadOk) {
             Console::print("Creating random population", Console::eDEBUG);
             m_evolutionManager.createRandomPopulation();
+            m_currWVIndex = 0;
+            m_currWVMatchNumber = 0;
         }
+        if(loadBestRecords) {
+            m_evolutionManager.loadEliteRecords(m_saveNameBestRecords);
+        }
+
     } else {
         Console::print("Training manager couldn't load ini file (" + m_iniFileName + ")! Default population created!", Console::eWARNING);
         m_matchNumberTarget = 10;
@@ -282,8 +321,14 @@ void TrainingManager::advanceMatchCount() {
     if(m_currWVMatchNumber == m_matchNumberTarget) {
         //current Weight Vector has finished its testing, calculate its real fitness
         evaluateFitnessOfCurrentWV();
-        m_currWVMatchNumber = 0;
 
+        //if instant save is on, save this vector among the all-time bests if is fit enough
+        if(m_instantSaveOnNewBest) {
+            m_evolutionManager.insertNewEliteRecordIfBetter(m_evolutionManager.getPopulation()[m_currWVIndex]);
+            m_evolutionManager.saveEliteRecords(m_saveNameBestRecords);
+        }
+
+        m_currWVMatchNumber = 0;
         //start testing the new weight vector
         m_currWVIndex++;
         //if there are no new WVs to test for this generation then evolve population
@@ -311,7 +356,9 @@ void TrainingManager::evaluatePartialFitnessOfThisMatch() {
     float partialFitness = adaenums::calculatePartialFitnessFromType(m_evaluationType, m_trainingPlayerIndex);
     m_partialFitnesses.push_back(partialFitness);
     Console::print("Current trainee got a partial fitness of " + QString::number(partialFitness) +
-                   " for this match", Console::eDEBUG);
+                   " for this match", Console::eINFO);
+    if(partialFitness > 0)
+        Console::print("Current trainee won this match!", Console::eINFO);
 }
 
 void TrainingManager::evaluateFitnessOfCurrentWV() {
@@ -320,7 +367,7 @@ void TrainingManager::evaluateFitnessOfCurrentWV() {
     Console::print("Vector " + QString::number(m_currWVIndex+1) + "/" +
                    QString::number(m_evolutionManager.getPopulationSize()) +
                    " got fitness of " + QString::number(fitness, 'f', 8) + " (gen: " + QString::number(m_evolutionManager.getGeneration()) + ")\n" +
-                   m_evolutionManager.getPopulation()[m_currWVIndex].toQString(), Console::eDEBUG);
+                   m_evolutionManager.getPopulation()[m_currWVIndex].toQString(), Console::eINFO);
     m_partialFitnesses.clear();
 }
 
@@ -328,8 +375,10 @@ void TrainingManager::evaluateFitnessOfCurrentWV() {
 void TrainingManager::saveIfProgress() {
     m_currGenNumberCount++;
     m_totalGenCount++;
-    //if we reached the target generations of evolutions, save and stop training
-    if(m_totalGenCount >= m_maxGenerationCount) {
+    //if we reached the target generations of evolutions, or if the current best fitness is at least the target one,
+    //save and stop training
+    if(m_totalGenCount >= m_maxGenerationCount ||
+            (m_stopAtTargetFitness && m_evolutionManager.getNthBestWeightVector(0).getFitness() >= m_targetFitness)) {
         saveState(m_iniFileName);
         stopTraining();
     }
@@ -338,17 +387,20 @@ void TrainingManager::saveIfProgress() {
         m_currBestSavedFitness = m_evolutionManager.getNthBestWeightVector(0).getFitness();
         m_currGenNumberCount = 0;
         saveState(m_iniFileName);
-        //else save if the defined number of generations has passed (if option enabled)
-    } else if(m_genNumberTargetSave > 0 && m_currGenNumberCount >= m_genNumberTargetSave) {
+    }
+    //else save if the defined number of generations has passed (if option enabled)
+    else if(m_genNumberTargetSave > 0 && m_currGenNumberCount >= m_genNumberTargetSave) {
         m_currGenNumberCount = 0;
         saveState(m_iniFileName);
     }
-    //this is separate, but save also the best records if option is enabled and there are new ones
-    if(m_bestRecordsToSave > 0) {
+    //this is separate, but save also the best records if option is enabled, if there are new ones and if the instant save
+    //it's not enabled, since otherwise they were already saved at this point
+    if(!m_instantSaveOnNewBest && m_bestRecordsToSave > 0) {
         //if the update actually inserts new records, save them
         if(m_evolutionManager.updateEliteRecords()) {
             Console::print("New elite records, saving them in '" + m_saveNameBestRecords + "'", Console::eDEBUG);
             m_evolutionManager.saveEliteRecords(m_saveNameBestRecords);
         }
     }
+
 }

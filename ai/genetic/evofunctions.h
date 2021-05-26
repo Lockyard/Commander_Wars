@@ -38,7 +38,7 @@ namespace evofunc {
      * @param population
      * @return the pair of selected weight vectors
      */
-    QVector<QPair<WeightVector*, WeightVector*>> adaptaSelection(QVector<WeightVector>& population, qint32 couplesToReturn);
+    QVector<QPair<WeightVector*, WeightVector*>> adaptaSelection(QVector<WeightVector>& population, qint32 couplesToReturn, float minFitness, float maxFitness);
 
     /**
      * @brief generateCustomWeightedFitnesses generate a vector of custom fitnesses based on real fitnesses
@@ -46,7 +46,7 @@ namespace evofunc {
      * @param population
      * @return
      */
-    QVector<float> generateCustomWeightedFitnesses(QVector<WeightVector>& population);
+    QVector<float> generateCustomWeightedFitnesses(QVector<WeightVector>& population, float minFitness, float maxFitness);
 }
 
 

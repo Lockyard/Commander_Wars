@@ -55,6 +55,17 @@ QString WeightVector::toQString() {
     return ret;
 }
 
+
+QString WeightVector::toQStringFull() {
+    QString ret = "(fitness: " + QString::number(m_fitness) +") [";
+    for(quint32 i = 0; i < m_weights.size()-1; i++) {
+        ret += QString::number(m_weights[i], 'f', 3) + ", ";
+    }
+    ret += QString::number(m_weights[m_weights.size()-1], 'f', 3) + "]";
+    return ret;
+}
+
+
 void WeightVector::writeToJson(QJsonObject &json) const {
     json["fitness"] = m_fitness;
     QJsonArray weightsArray;

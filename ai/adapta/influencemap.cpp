@@ -47,8 +47,8 @@ InfluenceMap::InfluenceMap(const InfluenceMap &other) {
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
     spGameMap pMap = GameMap::getInstance();
-    m_mapWidth = pMap->getMapWidth();
-    m_mapHeight = pMap->getMapHeight();
+    m_mapWidth = other.m_mapWidth;
+    m_mapHeight = other.m_mapHeight;
 
     m_influenceMap2D.reserve(m_mapWidth * m_mapHeight);
 
@@ -65,8 +65,8 @@ InfluenceMap::InfluenceMap(InfluenceMap &&other) {
     this->moveToThread(pApp->getWorkerthread());
     Interpreter::setCppOwnerShip(this);
     spGameMap pMap = GameMap::getInstance();
-    m_mapWidth = pMap->getMapWidth();
-    m_mapHeight = pMap->getMapHeight();
+    m_mapWidth = other.m_mapWidth;
+    m_mapHeight = other.m_mapHeight;
 
     m_influenceMap2D.reserve(m_mapWidth * m_mapHeight);
 
@@ -100,11 +100,20 @@ void InfluenceMap::reset() {
 }
 
 
-void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect) {
+void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float stepMultiplier, qint32 steps, qint32 stepsForIndirect, qint32 unitX, qint32 unitY) {
     qint32 movePoints = pUnit->getMovementpoints(pUnit->getPosition());
     if(stepsForIndirect == -3)
         stepsForIndirect = steps;
-    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pUnit, GameMap::getInstance()->getCurrentPlayer());
+    spUnitPathFindingSystem spPfs = new UnitPathFindingSystem(pUnit, pUnit->getOwner());
+
+    //if requested, leave the requested virtual position
+    if(unitX < 0)
+        unitX = pUnit->getX();
+    if(unitY < 0)
+        unitY = pUnit->getY();
+
+    //Console::print("Adding atk influence (val: " + QString::number(attackWeight, 'f', 3) +  ") of [" + pUnit->getUnitID() + " (" + QString::number(unitX) + ", " + QString::number(unitY) + ")]", Console::eINFO);
+
     //if is an indirect unit
     if(pUnit->getBaseMaxRange() > 1) {
 
@@ -115,6 +124,8 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
 
         if(movePoints != 0) {
             spPfs->setIgnoreEnemies(false);
+            //set virtual start point if any or normal start point
+            spPfs->setStartPoint(unitX, unitY);
             //double the move points of the unit. used to calculate the influence on 2 steps
             spPfs->setMovepoints(movePoints*stepsForIndirect);
             spPfs->explore();
@@ -136,14 +147,15 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         }
         //if movePoints == 0, the unit cannot move, just mark its tile as 0, and leave the others to infinite
         else {
-            stepTilesMap2D[pUnit->getY()*m_mapWidth + pUnit->getX()] = 0;
+            stepTilesMap2D[unitY*m_mapWidth + unitX] = 0;
         }
 
         //mark the attack map based on how many turn it takes to being able to attack a cell
         for(qint32 y=0; y < m_mapHeight; y++) {
             for(qint32 x=0; x < m_mapWidth; x++) {
                 if(stepTilesMap2D[y*m_mapWidth + x] < PathFindingSystem::infinite) {
-                    markAttackArea(pUnit->getMinRange(pUnit->getPosition()), pUnit->getMaxRange(pUnit->getPosition()), x, y, atkTilesMap2D, stepTilesMap2D[y*m_mapWidth + x]);
+                    QPoint unitPos(unitX, unitY);
+                    markAttackArea(pUnit->getMinRange(unitPos), pUnit->getMaxRange(unitPos), x, y, atkTilesMap2D, stepTilesMap2D[y*m_mapWidth + x]);
                 }
             }
         }
@@ -170,6 +182,8 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
 
         if(movePoints != 0) {
             spPfs->setIgnoreEnemies(false);
+            //set virtual start point if any or normal start point
+            spPfs->setStartPoint(unitX, unitY);
             //double the move points of the unit. used to calculate the influence on 2 steps
             spPfs->setMovepoints(movePoints*steps);
             spPfs->explore();
@@ -185,7 +199,7 @@ void InfluenceMap::addUnitAtkInfluence(Unit *pUnit, float attackWeight, float st
         }
         //if movePoints == 0, the unit cannot move, just mark its tile as 0, and leave the others to infinite
         else {
-            stepTilesMap2D[pUnit->getY()*m_mapWidth + pUnit->getX()] = 0;
+            stepTilesMap2D[unitY*m_mapWidth + unitX] = 0;
         }
 
         qint32 currStepVal, currNearStepVal;
@@ -507,6 +521,16 @@ void InfluenceMap::sortNodePointsByInfluence(QVector<QPoint> & nodePoints) {
     });
 }
 
+
+bool InfluenceMap::equalsMap(InfluenceMap &otherMap, float epsilon) {
+    if(m_influenceMap2D.size() != otherMap.m_influenceMap2D.size())
+        return false;
+    for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
+        if(qAbs(m_influenceMap2D[i] - otherMap.m_influenceMap2D[i]) > epsilon)
+            return false;
+    }
+    return true;
+}
 
 
 void InfluenceMap::showColoredTiles() {
