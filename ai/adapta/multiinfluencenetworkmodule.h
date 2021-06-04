@@ -63,6 +63,8 @@ public:
 
     virtual void readIni(QString filename) override;
 
+    bool loadVectorFromFile(QString file);
+
     /**
      * @brief processStartOfTurn calculate bids for this turn and process stuff for the start of turn
      */
@@ -118,6 +120,16 @@ public:
 
     AdaptaAI *getPAdapta() const;
     void setPAdapta(AdaptaAI *pAdapta);
+
+    /**
+     * @brief generateTransferLearningMask returns 2 vectors, which represent the weights to be transferred from an origin MIN
+     * module to a target one. For instance if the first has weights for INFANTRY and LIGHT_TANK only, and the second has also
+     * ARTILLERY weights, it will be generated a vector suitable for the second one which has 3 units, but weights of INFANTRY and
+     * LIGHT_TANK will be set based on the first one.
+     * The vector of bools tells which weights have to be transferred, the float vector contains the weights
+     */
+    static std::pair<std::vector<bool>, std::vector<float>> generateTransferLearningMask(MultiInfluenceNetworkModule &originMIN,
+                                                                                         MultiInfluenceNetworkModule &targetMIN);
 
 private:
     AdaptaAI* m_pAdapta;
@@ -352,6 +364,98 @@ private:
                     ", (" + QString::number(data.pUnit->getX()) + ", " + QString::number(data.pUnit->getY()) + ")]";
         }
     }
+
+    /**
+     * @brief N * K * M = offset in the weightvector where global maps' units weights start
+     */
+    inline qint32 globalMapsUnitWeightsOffset() {
+        return m_unitAmount * m_customMapsPerUnit * m_fullUnitAmount;
+    }
+
+    /**
+     * @brief (N*K*M) + M * GK = offset in the weight vector where the maps weights begin
+     */
+    inline qint32 mapWeightsOffset() {
+        return globalMapsUnitWeightsOffset() + (m_fullUnitAmount * m_globalCustomMapsAmount);
+    }
+
+    /**
+     * @brief (mapWeightsPerUnit
+     * @return (S + K + G) = how many map weights there are in the vector for each unit
+     */
+    inline qint32 mapWeightsPerUnit() {
+        return m_stdMapsPerUnit + m_customMapsPerUnit + m_globalMapsAmount;
+    }
+
+    /**
+     * @brief index of the Weight Vector of std map's weight number s of unit n
+     */
+    inline qint32 wvIndexOfStdMapWeightOfUnit(qint32 n, qint32 s) {
+        return mapWeightsOffset() + (n*mapWeightsPerUnit()) + s;
+    }
+
+    /**
+     * @brief index of the Weight Vector of custom map's weight number k of unit n
+     */
+    inline qint32 wvIndexOfCustomMapWeightOfUnit(qint32 n, qint32 k) {
+        return mapWeightsOffset() + (n*mapWeightsPerUnit()) + m_stdMapsPerUnit + k;
+    }
+
+    /**
+     * @brief index of the Weight Vector of global map's weight number g for unit n
+     */
+    inline qint32 wvIndexOfGlobalMapWeightForUnit(qint32 n, qint32 g) {
+        return mapWeightsOffset() + (n*mapWeightsPerUnit()) + m_stdMapsPerUnit + m_customMapsPerUnit + g;
+    }
+
+    /**
+     * @brief index of the Weight Vector of global custom map gk's weight of unit m
+     */
+    inline qint32 wvIndexOfGlobalCustomInfluenceMapUnitWeight(qint32 gk, qint32 m) {
+        return globalMapsUnitWeightsOffset() + gk * m_fullUnitAmount + m;
+    }
+
+    /**
+     * @brief Get, for unit #usedUnitNumber (n/N), for its personal custom map #customMapNumber (k/K), the weight, for this
+     * custom map, of a target unit #targetUnitNumber (m/M)
+     */
+    inline qint32 wvIndexCustomInfluenceMapUnitWeight(qint32 usedUnitNumber, qint32 customMapNumber, qint32 targetUnitNumber) {
+        return usedUnitNumber * m_customWeightsPerUnitAmount + customMapNumber * m_fullUnitAmount + targetUnitNumber;
+    }
+
+
+    /**
+     * @brief get the k value (local custom map number k) of the #typeNumber custom map of type type.
+     * For instance CUSTOM_ALLIES and typeNumber = 2 will return the k relative to the 2nd map of type CUSTOM_ALLIES in the
+     * list of local custom influence maps of unit n. -1 if there's no such map
+     */
+    qint32 indexOfCustomMapWeightOfTypeAndNumberOfUnit(qint32 n, adaenums::iMapType type, qint32 typeNumber);
+
+
+    /**
+     * @brief get the s value (local std map number s) of the #typeNumber custom map of type type.
+     * For instance STD_DAMAGE and typeNumber = 2 will return the s relative to the 2nd map of type STD_DAMAGE in the
+     * list of local standard influence maps of unit n. -1 if there's no such map
+     */
+    qint32 indexOfStdMapWeightOfTypeAndNumberOfUnit(qint32 n, adaenums::iMapType type, qint32 typeNumber);
+
+
+    /**
+     * @brief get the g value (global map number g) of the #typeNumber map of type type.
+     * For instance STD_DAMAGE and typeNumber = 2 will return the g relative to the 2nd map of type STD_DAMAGE in the
+     * list of global influence maps of unit n. -1 if there's no such map
+     */
+    qint32 indexOfGlobalMapWeightOfTypeAndNumber(adaenums::iMapType type, qint32 typeNumber);
+
+
+    /**
+     * @brief get the gk value (global custom map number gk) of the #typeNumber map of type type.
+     * For instance CUSTOM_1 and typeNumber = 2 will return the gk relative to the 2nd map of type CUSTOM_1 in the
+     * list of global custom influence maps of unit n. -1 if there's no such map
+     */
+    qint32 indexOfGlobalCustomMapWeightOfTypeAndNumber(adaenums::iMapType type, qint32 typeNumber);
+
+
 
 };
 

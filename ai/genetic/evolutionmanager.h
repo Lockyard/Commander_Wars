@@ -21,6 +21,9 @@ public:
     void initialize(qint32 populationSize, qint32 weightVectorLength, float minWeight, float maxWeight, qint32 elitismDegree,
                     qint32 randomismDegree, evoenums::CrossoverType crossoverType);
 
+    void initialize(qint32 populationSize, qint32 weightVectorLength, std::vector<bool> fixedWeightMask, std::vector<float> minWeightMask,
+                    std::vector<float> maxWeightMask, qint32 elitismDegree, qint32 randomismDegree, evoenums::CrossoverType crossoverType);
+
 
     bool loadPopulationFromJsonFile(QString filename);
     bool savePopulationToJsonFile(QString filename);
@@ -33,6 +36,8 @@ public:
      * @param maxWeight
      */
     void createRandomPopulation(qint32 weightVectorLength, qint32 populationSize, float minWeight, float maxWeight);
+
+    void createRandomPopulation(qint32 weightVectorLength, qint32 populationSize, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask);
 
     /**
      * @brief createRandomPopulation create a new population with specified parameters. Population parameters are assumed
@@ -110,22 +115,7 @@ public:
     /**
      * @brief setMutationFunction the mutation func used to mutate a weights Vector
      */
-    void setMutationFunction(void (*mutationFunction) (WeightVector& weightVector, float minWeight, float maxWeight, float probability));
-
-    /**
-     * @brief canStartEvolutionProcess
-     * @return true if this evo manager can start the auto evolving process
-     */
-    bool canStartEvolution();
-
-    /**
-     * @brief startEvolution start the evolving process. This works only if everything is set up (all functions and parameters).
-     * Call canStartEvolution() first to check if it can start
-     * @param fitnessTreshold
-     * @param maximizeFitness
-     * @param maxGenerations
-     */
-    void startEvolution(float fitnessTreshold, bool maximizeFitness, qint32 maxGenerations = infinite);
+    void setMutationFunction(void (*mutationFunction) (WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask, float probability));
 
     /**
      * @brief canPerformOneEvolutionStep see performOneEvolutionStep
@@ -196,6 +186,16 @@ public:
     float getMaxFitness() const;
     void setMaxFitness(float maxFitness);
 
+    /**
+     * @brief apply a vector mask of weights to each weight vector in the population. The useWeightMask indicates which positions
+     * have to be overwritten with values of the weightsMask (any position true will be overwritten).
+     * @param setFixedMask if true, the fixed mask will be overwritten with the given useWeightsMask, meaning that the passed
+     * weights will not change during evolution
+     */
+    void applyWeightMaskToPopulation(std::vector<bool> useWeightsMask, std::vector<float> weightsMask, bool setFixedMask);
+
+    void setFixedWeightMask(std::vector<bool> fixedWeightMask);
+
 private:
 
     static const qint32 infinite;
@@ -204,24 +204,29 @@ private:
      * @brief m_population all vectors of weights representing the current population
      */
     QVector<WeightVector> m_population;
+    /**
+     * @brief true on positions which CANNOT change and must be fixed, false otherwise. Tells which positions of the vectors
+     * have values which actually evolve.
+     */
+    std::vector<bool> m_fixedWeightMask;
+    std::vector<float> m_minWeightMask;
+    std::vector<float> m_maxWeightMask;
 
     qint32 m_populationSize;
     qint32 m_weightVectorLength;
     qint32 m_elitismDegree{1};
     qint32 m_randomismDegree{0};
     qint32 m_generationNumber{0};
-    float m_minWeight{0};
-    float m_maxWeight{1};
     float m_minFitness{-10};
     float m_maxFitness{10};
-    float m_mutationProbability;
+    float m_mutationProbability{0.05f};
 
     bool m_isPopulationSorted{false};
     bool m_fitnessToMaximize{true};
 
     float (*m_fitnessFunction)(WeightVector weightVector) {nullptr};
     WeightVector (*m_crossoverFunction) (WeightVector weightVector_1, WeightVector weightVector_2);
-    void (*m_mutationFunction) (WeightVector& weightVector, float minWeight, float maxWeight, float probability);
+    void (*m_mutationFunction) (WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask, float probability);
     QPair<WeightVector, WeightVector> (*m_selectionFunction) (QVector<WeightVector>& population);
 
 

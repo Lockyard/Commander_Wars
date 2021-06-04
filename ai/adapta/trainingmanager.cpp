@@ -197,6 +197,8 @@ void TrainingManager::initializeEvolutionManager() {
         bool ok = false;
         bool loadPopulation = false;
         bool loadBestRecords = false;
+        bool doTransferLearning = false;
+        bool fixTransferredWeights = false;
 
         //load stuff for the evolution manager
         settings.beginGroup("EvolutionManager");
@@ -205,6 +207,7 @@ void TrainingManager::initializeEvolutionManager() {
         loadBestRecords = settings.value("LoadBestRecords", false).toBool();
         qint32 populationSize, weightVectorLength, elitismDegree, randomismDegree, generation, crossoverType, mutationType;
         float minWeight, maxWeight, minFitness, maxFitness;
+        QString transferLearningType, TLOriginFile, TLTargetFile;
         populationSize = settings.value("PopulationSize", 10).toInt(&ok);
         if(!ok)
             populationSize = 10;
@@ -237,16 +240,30 @@ void TrainingManager::initializeEvolutionManager() {
         maxFitness = static_cast<float>(settings.value("MaxFitness", 10.0).toDouble(&ok));
         if(!ok)
             maxFitness = 10.0f;
-        settings.endGroup();
         crossoverType = settings.value("CrossoverFunctionType", 2).toInt(&ok);
         if(!ok)
             crossoverType = 2;
         mutationType = settings.value("MutationFunctionType", 0).toInt(&ok);
         if(!ok)
             mutationType = 0;
+        settings.endGroup();
 
+        settings.beginGroup("TransferLearning");
+        doTransferLearning = settings.value("DoTransferLearning", false).toBool();
+        transferLearningType = settings.value("TransferLearningType", "NONE").toString();
+        TLOriginFile = settings.value("TLOriginFile", "").toString();
+        TLTargetFile = settings.value("TLTargetFile", "").toString();
+        fixTransferredWeights = settings.value("FixTransferredWeights", false).toBool();
+        settings.endGroup();
 
-        m_evolutionManager.initialize(populationSize, weightVectorLength, minWeight, maxWeight, elitismDegree,
+        std::vector<bool> fixedWeightMask;
+        std::vector<float> minWeightMask;
+        std::vector<float> maxWeightMask;
+        fixedWeightMask.resize(weightVectorLength, false);
+        minWeightMask.resize(weightVectorLength, minWeight);
+        maxWeightMask.resize(weightVectorLength, maxWeight);
+
+        m_evolutionManager.initialize(populationSize, weightVectorLength, fixedWeightMask, minWeightMask, maxWeightMask, elitismDegree,
                                       randomismDegree, evoenums::CrossoverType(crossoverType));
         m_evolutionManager.setMutationFunction(evofunc::getMutationFunctionFromType(evoenums::MutationType(mutationType)));
         m_evolutionManager.setGeneration(generation);
@@ -282,6 +299,12 @@ void TrainingManager::initializeEvolutionManager() {
             m_evolutionManager.loadEliteRecords(m_saveNameBestRecords);
         }
 
+
+        if(doTransferLearning) {
+            evofunc::applyTransferLearning(m_evolutionManager, evofunc::transferLearningTypeFromString(transferLearningType), TLOriginFile, TLTargetFile, fixTransferredWeights);
+        }
+
+
     } else {
         Console::print("Training manager couldn't load ini file (" + m_iniFileName + ")! Default population created!", Console::eWARNING);
         m_matchNumberTarget = 10;
@@ -295,8 +318,9 @@ void TrainingManager::initializeEvolutionManager() {
 
         Console::print("Creating random population", Console::eDEBUG);
         m_evolutionManager.createRandomPopulation();
-
     }
+
+
 }
 
 

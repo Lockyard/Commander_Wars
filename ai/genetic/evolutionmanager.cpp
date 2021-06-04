@@ -22,18 +22,22 @@ EvolutionManager::EvolutionManager(qint32 populationSize, qint32 weightVectorLen
                                    evoenums::CrossoverType crossoverType, float mutationProbability) :
     m_populationSize(populationSize),
     m_weightVectorLength(weightVectorLength),
-    m_minWeight(minWeight),
-    m_maxWeight(maxWeight),
     m_mutationProbability(mutationProbability)
 {
+    setCrossoverFunction(crossoverType);
     m_population.reserve(m_populationSize);
-    if(m_minWeight > m_maxWeight) {
-        float tmp = m_minWeight;
-        m_minWeight = m_maxWeight;
-        m_maxWeight = tmp;
+    if(weightVectorLength <= 0) {
+        weightVectorLength = 0;
+        return;
     }
 
-    setCrossoverFunction(crossoverType);
+    if(minWeight > maxWeight) {
+        float tmp = minWeight;
+        minWeight = maxWeight;
+        maxWeight = tmp;
+    }
+    m_minWeightMask.resize(weightVectorLength, minWeight);
+    m_maxWeightMask.resize(weightVectorLength, maxWeight);
 }
 
 
@@ -41,8 +45,30 @@ void EvolutionManager::initialize(qint32 populationSize, qint32 weightVectorLeng
                                   qint32 elitismDegree, qint32 randomismDegree, evoenums::CrossoverType crossoverType) {
     m_populationSize = populationSize;
     m_weightVectorLength = weightVectorLength;
-    m_minWeight = minWeight;
-    m_maxWeight = maxWeight;
+
+    if(minWeight > maxWeight) {
+        float tmp = minWeight;
+        minWeight = maxWeight;
+        maxWeight = tmp;
+    }
+    m_fixedWeightMask.resize(weightVectorLength, false);
+    m_minWeightMask.resize(weightVectorLength, minWeight);
+    m_maxWeightMask.resize(weightVectorLength, maxWeight);
+
+    m_elitismDegree = elitismDegree;
+    m_randomismDegree = randomismDegree;
+    setCrossoverFunction(crossoverType);
+}
+
+void EvolutionManager::initialize(qint32 populationSize, qint32 weightVectorLength, std::vector<bool> fixedWeightMask, std::vector<float> minWeightMask,
+                                  std::vector<float> maxWeightMask, qint32 elitismDegree, qint32 randomismDegree, evoenums::CrossoverType crossoverType) {
+    m_populationSize = populationSize;
+    m_weightVectorLength = weightVectorLength;
+
+    m_fixedWeightMask = fixedWeightMask;
+    m_minWeightMask = minWeightMask;
+    m_maxWeightMask = maxWeightMask;
+
     m_elitismDegree = elitismDegree;
     m_randomismDegree = randomismDegree;
     setCrossoverFunction(crossoverType);
@@ -109,8 +135,12 @@ void EvolutionManager::createRandomPopulation(qint32 weightVectorLength, qint32 
     m_isPopulationSorted = false;
     m_weightVectorLength = weightVectorLength;
     m_populationSize = populationSize;
-    m_minWeight = minWeight < maxWeight ? minWeight : maxWeight;
-    m_maxWeight = minWeight < maxWeight ? maxWeight : minWeight;
+
+    if(minWeight > maxWeight) {
+        float tmp = minWeight;
+        minWeight = maxWeight;
+        maxWeight = tmp;
+    }
 
     m_population.reserve(populationSize);
 
@@ -119,13 +149,25 @@ void EvolutionManager::createRandomPopulation(qint32 weightVectorLength, qint32 
         //new Vector of weights
         WeightVector newWeightVector = WeightVector::generateRandomWeightVector(weightVectorLength, minWeight, maxWeight);
         //add it.
-        //TODO check if this will go out of scope, since is created here
         m_population.append(newWeightVector);
     }
 }
 
+void EvolutionManager::createRandomPopulation(qint32 weightVectorLength, qint32 populationSize, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask) {
+    m_isPopulationSorted = false;
+    m_weightVectorLength = weightVectorLength;
+    m_populationSize = populationSize;
+
+    m_population.reserve(populationSize);
+    //create population with random weights
+    for(qint32 i = 0; i < populationSize; i++) {
+        //add Vector of weights
+        m_population.append(WeightVector::generateRandomWeightVector(weightVectorLength, minWeightMask, maxWeightMask));
+    }
+}
+
 void EvolutionManager::createRandomPopulation() {
-    createRandomPopulation(m_weightVectorLength, m_populationSize, m_minWeight, m_maxWeight);
+    createRandomPopulation(m_weightVectorLength, m_populationSize, m_minWeightMask, m_maxWeightMask);
 }
 
 
@@ -208,19 +250,8 @@ void EvolutionManager::setCrossoverFunction(WeightVector (*crossoverFunction) (W
 /**
  * @brief setMutationFunction the mutation func used to mutate a weights Vector
  */
-void EvolutionManager::setMutationFunction(void (*mutationFunction) (WeightVector& weightVector, float minWeight, float maxWeight, float probability)) {
+void EvolutionManager::setMutationFunction(void (*mutationFunction) (WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask, float probability)) {
     m_mutationFunction = mutationFunction;
-}
-
-
-bool EvolutionManager::canStartEvolution() {
-    return (m_mutationFunction != nullptr && m_crossoverFunction != nullptr &&
-            m_fitnessFunction != nullptr && m_populationSize >= 2 && m_population.size() >= 2);
-}
-
-
-void EvolutionManager::startEvolution(float fitnessTreshold, bool maximizeFitness, qint32 maxGenerations) {
-
 }
 
 
@@ -246,10 +277,10 @@ bool EvolutionManager::performOneEvolutionStep() {
 
     //create m new completely random samples in the population
     for(qint32 i = 0; i < m_randomismDegree; i++) {
-        WeightVector randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeight, m_maxWeight);
+        WeightVector randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeightMask, m_maxWeightMask);
         //avoid adding a duplicate vector, although it's extremely improbable to generate a duplicate randomly
         while(newPopulation.contains(randomWV)) {
-            randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeight, m_maxWeight);
+            randomWV = WeightVector::generateRandomWeightVector(m_weightVectorLength, m_minWeightMask, m_maxWeightMask);
         }
         newPopulation.append(randomWV);
     }
@@ -262,14 +293,14 @@ bool EvolutionManager::performOneEvolutionStep() {
     //crossover each couple and generate a new child
     for(qint32 i = 0; i < parentsCouples.size(); i++) {
         WeightVector newChild = m_crossoverFunction( *(parentsCouples.at(i).first), *(parentsCouples.at(i).second));
-        m_mutationFunction(newChild, m_minWeight, m_maxWeight, m_mutationProbability);
+        m_mutationFunction(newChild, m_fixedWeightMask, m_minWeightMask, m_maxWeightMask, m_mutationProbability);
 
         //modify the child until it's a different sample, if it happens that's identical to another already existing one
         float boostedMutationProbability = m_mutationProbability > 0 ? m_mutationProbability : .1f;
         while(newPopulation.contains(newChild)) {
             boostedMutationProbability *= 1.2f;
             boostedMutationProbability = boostedMutationProbability > 1 ? 1 : boostedMutationProbability;
-            m_mutationFunction(newChild, m_minWeight, m_maxWeight, boostedMutationProbability);
+            m_mutationFunction(newChild, m_fixedWeightMask, m_minWeightMask, m_maxWeightMask, boostedMutationProbability);
         }
         newPopulation.append(newChild);
     }
@@ -453,7 +484,33 @@ void EvolutionManager::setMaxFitness(float maxFitness)
     m_maxFitness = maxFitness;
 }
 
+void EvolutionManager::applyWeightMaskToPopulation(std::vector<bool> useWeightsMask, std::vector<float> weightsMask, bool setFixedMask) {
+    if(useWeightsMask.size() == static_cast<quint32>(m_weightVectorLength) && useWeightsMask.size() == weightsMask.size()) {
+        for(qint32 i=0; i<m_population.size(); i++) {
+            for(qint32 wvi=0; wvi < m_weightVectorLength; wvi++) {
+                if(useWeightsMask[wvi]) {
+                    m_population[i].setAt(weightsMask[wvi], wvi);
+                }
+            }
+        }
+        if(setFixedMask) {
+            setFixedWeightMask(useWeightsMask);
+        }
+    } else {
+        Console::print("Failed to apply the weight masks to the evolution manager! One or more sizes don't coincide! useWeightsMask size:" +
+                       QString::number(useWeightsMask.size()) + ", weightsMask size: " + QString::number(weightsMask.size()) +
+                       ", required weightVector length: " + QString::number(m_weightVectorLength), Console::eERROR);
+    }
+}
 
+void  EvolutionManager::setFixedWeightMask(std::vector<bool> fixedWeightMask) {
+    if(fixedWeightMask.size() == static_cast<quint32>(m_weightVectorLength)) {
+        m_fixedWeightMask = fixedWeightMask;
+    } else {
+        Console::print("Failed to set a fixed weight mask to evolution manager with size " + QString::number(fixedWeightMask.size()) +
+                       " but evolution manager requires length of " + QString::number(m_weightVectorLength) + "!", Console::eERROR);
+    }
+}
 
 
 

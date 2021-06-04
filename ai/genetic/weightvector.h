@@ -97,6 +97,11 @@ public:
 
     static WeightVector generateFromJson(const QJsonObject &json);
     static WeightVector generateRandomWeightVector(qint32 size, float minWeight, float maxWeight);
+    /**
+     * @brief generate a random WV with specified size and 2 masks which for each position tell the min and max value that weight
+     * can be. A check on each position having min < max is not done, so the maxWeightMask must be always >= minWeightMask on each position
+     */
+    static WeightVector generateRandomWeightVector(qint32 size, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask);
 
 private:
     std::vector<float> m_weights;

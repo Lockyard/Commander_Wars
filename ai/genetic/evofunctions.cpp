@@ -2,8 +2,10 @@
 #include <QRandomGenerator>
 #include <QTime>
 #include <QtMath>
+#include <QSettings>
 #include "coreengine/console.h"
 #include "weightvector.h"
+#include "ai/adapta/multiinfluencenetworkmodule.h"
 
 
 
@@ -60,11 +62,14 @@ namespace evofunc {
 
 
     //default mutation
-    void individualRandomMutation(WeightVector& weightVector, float minWeight, float maxWeight, float probability) {
+    void individualRandomMutation(WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask,
+                                  std::vector<float> &maxWeightMask, float probability) {
         QRandomGenerator random = QRandomGenerator(QTime::currentTime().msecsSinceStartOfDay());
         for(qint32 i = 0; i < weightVector.size(); i++) {
-            if(random.generateDouble() < probability) {
-                weightVector.overwriteWeight(i, minWeight + static_cast<float>(random.generateDouble()*(maxWeight - minWeight)));
+            if(!fixedWeightMask[i]) {
+                if(random.generateDouble() < probability) {
+                    weightVector.overwriteWeight(i, minWeightMask[i] + static_cast<float>(random.generateDouble()*(maxWeightMask[i] - minWeightMask[i])));
+                }
             }
         }
     }
@@ -156,4 +161,65 @@ namespace evofunc {
 
         return customFitnesses;
     }
+
+
+    evoenums::TransferLearningType transferLearningTypeFromString(QString typeString) {
+        if(typeString == "MIN") {
+            return evoenums::TransferLearningType::minTL;
+        }
+        return evoenums::TransferLearningType::noTL;
+    }
+
+
+    void applyTransferLearning(EvolutionManager &evoManager, evoenums::TransferLearningType type, QString originFile, QString destinationFile, bool fixTransferredWeights) {
+        switch (type) {
+        case evoenums::TransferLearningType::minTL: {
+            MultiInfluenceNetworkModule originMIN;
+            originMIN.readIni(originFile);
+            MultiInfluenceNetworkModule targetMIN;
+            targetMIN.readIni(destinationFile);
+            std::pair<std::vector<bool>, std::vector<float>> masks;
+            std::vector<bool> useWeightMask;
+            std::vector<float> weightMask;
+            masks = MultiInfluenceNetworkModule::generateTransferLearningMask(originMIN, targetMIN);
+            useWeightMask = masks.first;
+            weightMask = masks.second;
+
+            evoManager.applyWeightMaskToPopulation(useWeightMask, weightMask, fixTransferredWeights);
+            Console::print("population updated after TL. New population: " + evoManager.toQStringPopulation(), Console::eINFO);
+            Console::print("For reference, originMIN: " + originMIN.toQString(), Console::eINFO);
+        }
+            break;
+        default:
+            Console::print("Transfer Learning type is not defined: TL has been not performed!", Console::eWARNING);
+            return;
+        }
+    }
+
+    /*/
+     * todo if really needed
+    std::pair<std::vector<float>, std::vector<float>> getMinMaxWeightMasksFromType(evoenums::MinMaxWeightMaskType maskType, QString file) {
+        std::pair<std::vector<float>, std::vector<float>> res;
+        if(QFile::exists(file)) {
+            QSettings settings(file, QSettings::IniFormat);
+            bool ok = false;
+            switch (maskType) {
+            case evoenums::MinMaxWeightMaskType::minModuleMask:
+            default:
+            {
+
+            }
+                break;
+            }
+
+        }
+        else {
+            Console::print("failed to get min and max weight masks!", Console::eWARNING);
+            return res;
+        }
+    }
+    //*/
 }
+
+
+

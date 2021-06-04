@@ -76,6 +76,8 @@ void WeightVector::writeToJson(QJsonObject &json) const {
 }
 
 
+//STATIC///////////////
+
 void WeightVector::readFromJson(const QJsonObject &json) {
     if (json.contains("fitness") && json["fitness"].isDouble())
             m_fitness = static_cast<float>(json["fitness"].toDouble());
@@ -126,6 +128,17 @@ WeightVector WeightVector::generateRandomWeightVector(qint32 size, float minWeig
     //generate N floats from minWeight to maxWeight
     for(qint32 i = 0; i < size; i++) {
         weights.push_back(random.bounded(randBound) + minWeight);
+    }
+
+    return WeightVector(weights);
+}
+
+WeightVector WeightVector::generateRandomWeightVector(qint32 size, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask) {
+    std::vector<float> weights;
+    weights.reserve(size);
+
+    for(qint32 i=0; i<size; i++) {
+        weights.push_back(random.bounded(maxWeightMask[i] - minWeightMask[i]) + minWeightMask[i]);
     }
 
     return WeightVector(weights);

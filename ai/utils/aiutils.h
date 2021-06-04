@@ -41,6 +41,13 @@ public:
     double elapsed() const;
 };
 
+//this is just for manually flushing the console since doesn't seem to have a method for it
+inline void flushConsole(Console::eLogLevels ll) {
+    for(qint32 i=0; i<20; i++) {
+        Console::print("--flushing log--", ll);
+    }
+}
+
 }
 
 #endif // AIUTILSFUNCTIONS_H

@@ -5,6 +5,7 @@
 #include <QPair>
 #include "ai/genetic/weightvector.h"
 #include "ai/genetic/EvoEnums.h"
+#include "ai/genetic/evolutionmanager.h"
 
 namespace evofunc {
 
@@ -20,14 +21,17 @@ namespace evofunc {
     WeightVector mixRandomCrossoverFct(WeightVector weightVector_1, WeightVector weightVector_2);
 
     //MUTATION FUNCTIONS ////////////////////
+
     /**
-     * @brief individualRandomMutation this mutates each weight in the weight vector with given probability, setting a
-     * new float uniformly random from min to max weight
+     * @brief individualRandomMutation this mutates each weight in the weight vector with given probability if the mask on that
+     * position has a false, setting a new float uniformly random from min to max weight specified in that position.
+     * weightVector and all masks must have same size
      */
-    void individualRandomMutation(WeightVector& weightVector, float minWeight, float maxWeight, float probability);
+    void individualRandomMutation(WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask,
+                                               std::vector<float> &maxWeightMask, float probability);
 
 
-    typedef void (*mutationFuncPtr)(WeightVector& weightVector, float minWeight, float maxWeight, float probability);
+    typedef void (*mutationFuncPtr)(WeightVector& weightVector, std::vector<bool> &fixedWeightMask, std::vector<float> &minWeightMask, std::vector<float> &maxWeightMask, float probability);
 
     mutationFuncPtr getMutationFunctionFromType(evoenums::MutationType type, mutationFuncPtr defaultMutationFuncPtr = individualRandomMutation);
 
@@ -47,6 +51,19 @@ namespace evofunc {
      * @return
      */
     QVector<float> generateCustomWeightedFitnesses(QVector<WeightVector>& population, float minFitness, float maxFitness);
+
+    evoenums::TransferLearningType transferLearningTypeFromString(QString typeString);
+
+
+    /**
+     * @brief applyTransferLearning applies transfer learning based on the type given, using the given files as reference
+     * (origin is the one to be read which loads a certain configuration, destination is the one that loads the target configuration).
+     * If fixTransferredWeights is true, the assigned weights cannot change and be learned during training
+     */
+    void applyTransferLearning(EvolutionManager &evoManager, evoenums::TransferLearningType type, QString originFile, QString destinationFile, bool fixTransferredWeights);
+
+    //todo if really needed
+    //std::pair<std::vector<float>, std::vector<float>> getMinMaxWeightMasksFromType(evoenums::MinMaxWeightMaskType, QString file, float defaultMinWeight = -10, float defaultMaxWeight = 10);
 }
 
 

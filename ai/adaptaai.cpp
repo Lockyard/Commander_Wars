@@ -7,7 +7,7 @@
 
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
-    readIni("mockup");
+    //readIni("mockup");
 
     MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
     pMin->readIni("resources/aidata/adapta/MINextermination.ini");
@@ -16,7 +16,8 @@ AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn
     Console::print("wv is of size " + QString::number(wv.size()) + " (requested: " +
                    QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
     pMin->assignWeightVector(wv);
-    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eDEBUG);
+    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eINFO);
+    aiutils::flushConsole(Console::eINFO);
     m_modules.append(pMin);
 
 }

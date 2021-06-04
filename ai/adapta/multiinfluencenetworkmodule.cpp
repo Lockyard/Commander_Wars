@@ -2,6 +2,9 @@
 
 #include "ai/coreai.h"
 #include <QSettings>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include "game/gamemap.h"
 #include "ai/utils/aiutils.h"
 #include "coreengine/console.h"
@@ -98,6 +101,10 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
             m_allGlobalInfluenceMapWeightsForUnit2D.resize(globalInfMaps.size() * m_unitAmount); //G * N
         }
 
+        //load a vector if required
+        bool loadWeightVector = settings.value("LoadWeightVector", false).toBool();
+        QString weightVectorFile = settings.value("WeightVectorFile", "").toString();
+
         m_fastMode = settings.value("FastMode", true).toBool();
 
         settings.endGroup();
@@ -108,6 +115,10 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
         weightsPerUnit = m_stdMapsPerUnit + m_customMapsPerUnit * (m_fullUnitAmount + 1) + m_globalMapsAmount;
         //N*(S + K*(M+1) + G) + GK*M
         m_requiredVectorLength = m_unitAmount * weightsPerUnit + m_globalCustomMapsAmount*m_fullUnitAmount;
+
+        if(loadWeightVector) {
+            loadVectorFromFile(weightVectorFile);
+        }
 
         settings.beginGroup("FunctionParameters");
         m_stepMultiplier = settings.value("StepMultiplier", .5f).toDouble(&ok);
@@ -134,6 +145,40 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
     else {
         Console::print("MIN module couldn't load file '" + filename + "'!", Console::eWARNING);
     }
+}
+
+bool MultiInfluenceNetworkModule::loadVectorFromFile(QString file) {
+    QFile loadFile(file);
+    if (!loadFile.open(QIODevice::ReadOnly)) {
+           Console::print("Couldn't open save file of weight vector for MIN '" + file + "'!", Console::eWARNING);
+           return false;
+    }
+    QByteArray saveData = loadFile.readAll();
+    QJsonDocument loadDoc(QJsonDocument::fromJson(saveData));
+    if(loadDoc.isNull()) {
+        Console::print("WV file '" + file +  "' for MIN was not loaded correctly!", Console::eWARNING);
+        return false;
+    }
+
+    QJsonObject wvObject;
+
+    if(loadDoc.isArray()) {
+        wvObject = loadDoc.array()[0].toObject();
+    } else if(loadDoc.isObject()) {
+        wvObject = loadDoc.object();
+    } else {
+        Console::print("WV file '" + file +  "' for MIN was not loaded correctly!", Console::eWARNING);
+        return false;
+    }
+    WeightVector wv = WeightVector::generateFromJson(wvObject);
+    if(wv.size() != m_requiredVectorLength) {
+        Console::print("Loaded vector from file '" + file +  "' for MIN has wrong size! Required: " +
+                       QString::number(m_requiredVectorLength) + ", got: " +QString::number(wv.size()), Console::eWARNING);
+        return false;
+    }
+    assignWeightVector(wv);
+    Console::print("MIN module loaded vector correctly. Weight Vector:\n" + m_weightVector.toQStringFull(), Console::eDEBUG);
+    return true;
 }
 
 /**
@@ -491,6 +536,121 @@ AdaptaAI *MultiInfluenceNetworkModule::getPAdapta() const
 void MultiInfluenceNetworkModule::setPAdapta(AdaptaAI *pAdapta)
 {
     m_pAdapta = pAdapta;
+}
+
+
+std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::generateTransferLearningMask(MultiInfluenceNetworkModule &originMIN, MultiInfluenceNetworkModule &targetMIN) {
+    std::vector<bool> resUseWeightMask;
+    std::vector<float> resWeightValueMask;
+
+    resUseWeightMask.resize(targetMIN.m_requiredVectorLength, false);
+    resWeightValueMask.resize(targetMIN.m_requiredVectorLength);
+
+    //for each unit n in the origin MIN
+    for(qint32 n = 0; n < originMIN.m_unitAmount; n++) {
+
+        qint32 nTarget = targetMIN.m_unitList.indexOf(originMIN.m_unitList.at(n));
+        //if the unit is not used by target MIN, ignore it
+        if(nTarget < 0)
+            continue;
+        std::map<adaenums::iMapType, qint32> mapTypeCount;
+
+        //for each local map of that unit
+        for(qint32 s=0, k=0; s + k < originMIN.m_localMapsPerUnit;) {
+            float mapWeight = originMIN.influenceMapOfUnit(n, s + k).getWeight();
+            adaenums::iMapType mapType = originMIN.influenceMapOfUnit(n, s + k).getType();
+
+            //increment the map type count by 1
+            if(mapTypeCount.find(mapType) != mapTypeCount.end())
+                mapTypeCount.at(mapType)++;
+            else
+                mapTypeCount.insert({mapType, 1});
+
+            //if is custom transfer the weight
+            if(adaenums::isCustomType(mapType)) {
+                //find the index of the custom map's weight in the weight vector
+                qint32 kTarget = targetMIN.indexOfCustomMapWeightOfTypeAndNumberOfUnit(nTarget, mapType, mapTypeCount.at(mapType));
+                //if the target MIN hasn't that map, just skip this map
+                if(kTarget == -1)
+                    continue;
+                qint32 wvIndex = targetMIN.wvIndexOfCustomMapWeightOfUnit(nTarget, kTarget);
+
+                resUseWeightMask[wvIndex] = true;
+                resWeightValueMask[wvIndex] = mapWeight; //adding n0_k0 ... n0_kK
+                //now find all weights for unit n for custom map k of units m
+                for(qint32 m=0; m < originMIN.m_fullUnitAmount; m++) {
+                    qint32 mTarget = targetMIN.m_unitListFull.indexOf(originMIN.m_unitListFull.at(m));
+                    if(mTarget < 0)
+                        continue;
+                    wvIndex = targetMIN.wvIndexCustomInfluenceMapUnitWeight(nTarget, kTarget, mTarget);
+                    resUseWeightMask[wvIndex] = true;
+                    resWeightValueMask[wvIndex] = originMIN.customInfluenceMapUnitWeight(n, k, m); //adding n0_k0_m0, etc
+                }
+                k++;
+            }
+            //if is not custom transfer only the weight of the map
+            else {
+                qint32 sTarget = targetMIN.indexOfStdMapWeightOfTypeAndNumberOfUnit(nTarget, mapType, mapTypeCount.at(mapType));
+                //if the target MIN hasn't that map, just skip this map
+                if(sTarget == -1)
+                    continue;
+                qint32 wvIndex = targetMIN.wvIndexOfStdMapWeightOfUnit(nTarget, sTarget);
+                resUseWeightMask[wvIndex] = true;
+                resWeightValueMask[wvIndex] = mapWeight; //adding n0_s0 ... n0_sS etc
+                s++;
+            }
+        }
+    }
+
+    std::map<adaenums::iMapType, qint32> globalMapTypeCount;
+    //for each global map in origin
+    for(qint32 g = 0, gk = 0; g < originMIN.m_globalMapsAmount; g++) {
+        adaenums::iMapType mapType = originMIN.m_globalInfluenceMaps.at(g).getType();
+        //increment the map type count by 1
+        if(globalMapTypeCount.find(mapType) != globalMapTypeCount.end())
+            globalMapTypeCount.at(mapType)++;
+        else
+            globalMapTypeCount.insert({mapType, 1});
+
+        qint32 gTarget = targetMIN.indexOfGlobalMapWeightOfTypeAndNumber(mapType, globalMapTypeCount.at(mapType));
+        if(gTarget == -1)
+            continue;
+
+        //for each unit n, add the weight of map g for unit n
+        for(qint32 n=0; n < originMIN.m_unitAmount; n++) {
+            qint32 nTarget = targetMIN.m_unitList.indexOf(originMIN.m_unitList.at(n));
+            if(nTarget < 0)
+                continue;
+
+            float mapWeightForUnitN = originMIN.glbMapWeightForUnit(n, g);
+
+            qint32 wvIndex = targetMIN.wvIndexOfGlobalMapWeightForUnit(nTarget, gTarget);
+            resUseWeightMask[wvIndex] = true;
+            resWeightValueMask[wvIndex] = mapWeightForUnitN; //adding n0_g0 ... n0_gG, n1_g0... etc
+        }
+        //now if the global map is custom, add all its weights for unit m
+        if(adaenums::isCustomType(mapType)) {
+            qint32 gkTarget = targetMIN.indexOfGlobalCustomMapWeightOfTypeAndNumber(mapType, globalMapTypeCount.at(mapType));
+            if(gkTarget == -1)
+                continue;
+
+            //for each unit m, add weight gk0_m0, etc.
+            for(qint32 m=0; m < originMIN.m_fullUnitAmount; m++) {
+                qint32 mTarget = targetMIN.m_unitListFull.indexOf(originMIN.m_unitListFull.at(m));
+                if(mTarget < 0)
+                    continue;
+
+                qint32 wvIndex = targetMIN.wvIndexOfGlobalCustomInfluenceMapUnitWeight(gkTarget, mTarget);
+
+                resUseWeightMask[wvIndex] = true;
+                resWeightValueMask[wvIndex] = originMIN.glbCustomMapUnitWeight(gk, m); //assigning gk0_m0, gk0_mM, etc
+            }
+            gk++;
+        }
+    }
+
+    std::pair<std::vector<bool>, std::vector<float>> res(resUseWeightMask, resWeightValueMask);
+    return res;
 }
 
 //private methods///////////////////////////////////////////////////////////////////////////////
@@ -1046,3 +1206,62 @@ QVector3D MultiInfluenceNetworkModule::findNearestHighestDmg(QPoint fromWherePoi
     return currBest;
 }
 
+
+qint32 MultiInfluenceNetworkModule::indexOfCustomMapWeightOfTypeAndNumberOfUnit(qint32 n, adaenums::iMapType type, qint32 typeNumber) {
+    qint32 k = -1;
+    for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+        if(adaenums::isCustomType(influenceMapOfUnit(n, l).getType()))
+            k++;
+        if(influenceMapOfUnit(n, l).getType() == type) {
+            typeNumber--;
+            if(typeNumber == 0) {
+                return k;
+            }
+        }
+    }
+    return -1;
+}
+
+
+qint32 MultiInfluenceNetworkModule::indexOfStdMapWeightOfTypeAndNumberOfUnit(qint32 n, adaenums::iMapType type, qint32 typeNumber) {
+    qint32 s = -1;
+    for(qint32 l=0; l < m_localMapsPerUnit; l++) {
+        if(!adaenums::isCustomType(influenceMapOfUnit(n, l).getType()))
+            s++;
+        if(influenceMapOfUnit(n, l).getType() == type) {
+            typeNumber--;
+            if(typeNumber == 0) {
+                return s;
+            }
+        }
+    }
+    return -1;
+}
+
+
+qint32 MultiInfluenceNetworkModule::indexOfGlobalMapWeightOfTypeAndNumber(adaenums::iMapType type, qint32 typeNumber) {
+    for(qint32 g = 0; g < m_globalMapsAmount; g++) {
+        if(m_globalInfluenceMaps[g].getType() == type) {
+            typeNumber--;
+            if(typeNumber == 0) {
+                return g;
+            }
+        }
+    }
+    return -1;
+}
+
+
+qint32 MultiInfluenceNetworkModule::indexOfGlobalCustomMapWeightOfTypeAndNumber(adaenums::iMapType type, qint32 typeNumber) {
+    qint32 gk = -1;
+    for(qint32 g = 0; g < m_globalMapsAmount; g++) {
+        if(adaenums::isCustomType(m_globalInfluenceMaps[g].getType()))
+            gk++;
+        if(m_globalInfluenceMaps[g].getType() == type) {
+            typeNumber--;
+            if(typeNumber == 0)
+                return gk;
+        }
+    }
+    return -1;
+}

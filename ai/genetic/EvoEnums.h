@@ -13,6 +13,16 @@ namespace evoenums {
     enum MutationType {
         individualRandom,
     };
+
+    enum TransferLearningType {
+        noTL,
+        minTL,
+    };
+
+    enum MinMaxWeightMaskType {
+        noMask,
+        minModuleMask,
+    };
 }
 
 #endif // EVOENUMS_H
