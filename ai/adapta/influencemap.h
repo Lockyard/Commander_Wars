@@ -96,6 +96,14 @@ public:
      */
     void addMapDefenseInfluence(Player* pPlayer, Unit* pUnit, float weightPerStar, float friendlyBuildingMultiplier, float friendlyFactoryMultiplier);
 
+
+    /**
+     * @brief add an influence on all map, of defense based on each tile's number of stars.
+     * an additional mutliplier if there's a friendly building and a multiplier to eventually disincentivize going
+     * on friendly factories pPlayer is used to identify friendly buildings
+     */
+    void addGenericMapDefenseInfluence(Player* pPlayer, float weightPerStar, float friendlyBuildingMultiplier, float friendlyFactoryMultiplier);
+
     /**
      * @brief sum 1:1 the values of sumMap into this map, weighted wrt sumMap's weight
      */

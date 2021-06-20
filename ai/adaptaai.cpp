@@ -17,7 +17,6 @@ AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn
                    QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
     pMin->assignWeightVector(wv);
     Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eINFO);
-    aiutils::flushConsole(Console::eINFO);
     m_modules.append(pMin);
 
 }

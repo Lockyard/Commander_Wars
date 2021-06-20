@@ -493,6 +493,36 @@ void InfluenceMap::addMapDefenseInfluence(Player* pPlayer, Unit* pUnit, float we
     }
 }
 
+
+void InfluenceMap::addGenericMapDefenseInfluence(Player* pPlayer, float weightPerStar, float friendlyBuildingMultiplier, float friendlyFactoryMultiplier) {
+    Building* pBuilding;
+    for(qint32 y=0; y < m_mapHeight; y++) {
+        for(qint32 x=0; x < m_mapWidth; x++) {
+            pBuilding = GameMap::getInstance()->getTerrain(x, y)->getBuilding();
+            if(pBuilding) {
+                if(pBuilding->getOwnerID() == pPlayer->getPlayerID()) {
+                    //if is a friendly production building, add its defense plus the other 2 multipliers
+                    if(pBuilding->isProductionBuilding()) {
+                        addValueAt(friendlyBuildingMultiplier * friendlyFactoryMultiplier * weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                    }
+                    //if it's just a normal friendly building, add the friendly multiplier but not the factoryMultiplier
+                    else {
+                        addValueAt(friendlyBuildingMultiplier * weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                    }
+                }
+                //if is a neutral or enemy building, just add its defense
+                else {
+                    addValueAt(weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+                }
+            } else {
+                //if is a standard terrain, just add the star amount * weightPerStar
+                addValueAt(weightPerStar * GameMap::getInstance()->getTerrain(x, y)->getBaseDefense(), x, y);
+            }
+        }
+    }
+}
+
+
 void InfluenceMap::weightedAddMap(InfluenceMap &sumMap) {
     for(quint32 i=0; i<m_influenceMap2D.size(); i++) {
         m_influenceMap2D[i] += sumMap.m_influenceMap2D[i] * sumMap.m_weight;

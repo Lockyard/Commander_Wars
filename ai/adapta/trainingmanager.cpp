@@ -41,7 +41,6 @@ void TrainingManager::loadIni(QString filename) {
         m_evaluationType = adaenums::getEvalTypeFromString(settings.value("EvaluationType", "VICTORY_COUNT_ONLY").toString());
         m_trainingPlayerIndex = settings.value("TrainingPlayer", 0).toInt(&ok);
         if(!ok) {
-            Console::print("Training Manager didn't found an index to follow a player in INI file! Defaulted to 0!", Console::eWARNING);
             m_trainingPlayerIndex = 0;
         }
 

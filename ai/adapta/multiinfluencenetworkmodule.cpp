@@ -571,8 +571,10 @@ std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::ge
                 //find the index of the custom map's weight in the weight vector
                 qint32 kTarget = targetMIN.indexOfCustomMapWeightOfTypeAndNumberOfUnit(nTarget, mapType, mapTypeCount.at(mapType));
                 //if the target MIN hasn't that map, just skip this map
-                if(kTarget == -1)
+                if(kTarget == -1){
+                    k++;
                     continue;
+                }
                 qint32 wvIndex = targetMIN.wvIndexOfCustomMapWeightOfUnit(nTarget, kTarget);
 
                 resUseWeightMask[wvIndex] = true;
@@ -580,8 +582,9 @@ std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::ge
                 //now find all weights for unit n for custom map k of units m
                 for(qint32 m=0; m < originMIN.m_fullUnitAmount; m++) {
                     qint32 mTarget = targetMIN.m_unitListFull.indexOf(originMIN.m_unitListFull.at(m));
-                    if(mTarget < 0)
+                    if(mTarget < 0) {
                         continue;
+                    }
                     wvIndex = targetMIN.wvIndexCustomInfluenceMapUnitWeight(nTarget, kTarget, mTarget);
                     resUseWeightMask[wvIndex] = true;
                     resWeightValueMask[wvIndex] = originMIN.customInfluenceMapUnitWeight(n, k, m); //adding n0_k0_m0, etc
@@ -592,8 +595,10 @@ std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::ge
             else {
                 qint32 sTarget = targetMIN.indexOfStdMapWeightOfTypeAndNumberOfUnit(nTarget, mapType, mapTypeCount.at(mapType));
                 //if the target MIN hasn't that map, just skip this map
-                if(sTarget == -1)
+                if(sTarget == -1) {
+                    s++;
                     continue;
+                }
                 qint32 wvIndex = targetMIN.wvIndexOfStdMapWeightOfUnit(nTarget, sTarget);
                 resUseWeightMask[wvIndex] = true;
                 resWeightValueMask[wvIndex] = mapWeight; //adding n0_s0 ... n0_sS etc
@@ -613,8 +618,12 @@ std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::ge
             globalMapTypeCount.insert({mapType, 1});
 
         qint32 gTarget = targetMIN.indexOfGlobalMapWeightOfTypeAndNumber(mapType, globalMapTypeCount.at(mapType));
-        if(gTarget == -1)
+        if(gTarget == -1) {
+            if(adaenums::isCustomType(mapType))
+                gk++;
             continue;
+        }
+
 
         //for each unit n, add the weight of map g for unit n
         for(qint32 n=0; n < originMIN.m_unitAmount; n++) {
@@ -631,14 +640,17 @@ std::pair<std::vector<bool>, std::vector<float>> MultiInfluenceNetworkModule::ge
         //now if the global map is custom, add all its weights for unit m
         if(adaenums::isCustomType(mapType)) {
             qint32 gkTarget = targetMIN.indexOfGlobalCustomMapWeightOfTypeAndNumber(mapType, globalMapTypeCount.at(mapType));
-            if(gkTarget == -1)
+            if(gkTarget == -1) {
+                gk++;
                 continue;
+            }
 
             //for each unit m, add weight gk0_m0, etc.
             for(qint32 m=0; m < originMIN.m_fullUnitAmount; m++) {
                 qint32 mTarget = targetMIN.m_unitListFull.indexOf(originMIN.m_unitListFull.at(m));
-                if(mTarget < 0)
+                if(mTarget < 0) {
                     continue;
+                }
 
                 qint32 wvIndex = targetMIN.wvIndexOfGlobalCustomInfluenceMapUnitWeight(gkTarget, mTarget);
 
@@ -1004,12 +1016,28 @@ void MultiInfluenceNetworkModule::correctLocalInfluenceMap(InfluenceMap &influen
 
 
 void MultiInfluenceNetworkModule::computeGlobalInfluenceMap(InfluenceMap &influenceMap, bool isCustom, quint32 customNum) {
-    influenceMap.reset();
     if(isCustom) {
         //todo
+        if(customNum >= 0)
+            influenceMap.reset();
     }
     //if it's standard
-    else {
+    else if(adaenums::isStdType(influenceMap.getType())){
+        //todo
+        influenceMap.reset();
+    } else {
+        switch(influenceMap.getType()) {
+        case adaenums::iMapType::ONCE_MAPDEFENSE:
+            if(influenceMap.isComputed()){
+                return;
+            }
+            influenceMap.reset();
+            influenceMap.addGenericMapDefenseInfluence(m_pPlayer, m_weightPerStar, m_friendlyBuildingMultiplier, m_friendlyFactoryMultiplier);
+            influenceMap.setComputed(true);
+            break;
+        default:
+            break;
+        }
     }
 }
 
@@ -1125,6 +1153,7 @@ void MultiInfluenceNetworkModule::computeLocalInfluenceMap(InfluenceMap &influen
             spUnit unit = new Unit(m_unitList[unitNum], m_pPlayer, false);
             influenceMap.addMapDefenseInfluence(m_pPlayer, unit.get(), m_weightPerStar, m_friendlyBuildingMultiplier, m_friendlyFactoryMultiplier);
             influenceMap.setComputed(true);
+            Console::print("Computed global once map:\n" + influenceMap.toQStringFull(), Console::eDEBUG);
         }
             break;
         default:
