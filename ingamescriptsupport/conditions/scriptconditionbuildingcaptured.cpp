@@ -7,6 +7,7 @@
 #include "resource_management/fontmanager.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
 
 #include "objects/base/spinbox.h"
 #include "objects/base/label.h"
@@ -14,7 +15,6 @@
 ScriptConditionBuildingCaptured::ScriptConditionBuildingCaptured()
     : ScriptCondition (ConditionType::buildingCaptured)
 {
-
 }
 
 qint32 ScriptConditionBuildingCaptured::getX() const
@@ -47,9 +47,10 @@ void ScriptConditionBuildingCaptured::setPlayer(const qint32 &player)
     m_player = player;
 }
 
-void ScriptConditionBuildingCaptured::readCondition(QTextStream& rStream)
+void ScriptConditionBuildingCaptured::readCondition(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    Console::print("Reading ConditionBuildingCaptured", Console::eDEBUG);
+    line = line.simplified();
     QStringList items = line.replace("if (map.getTerrain(", "")
                             .replace(", ", ",")
                             .replace(").getBuilding().getOwner() === null && map.getTerrain(", ",")
@@ -69,11 +70,11 @@ void ScriptConditionBuildingCaptured::readCondition(QTextStream& rStream)
     }
     while (!rStream.atEnd())
     {
-        if (readSubCondition(rStream, ConditionBuildingCaptured))
+        if (readSubCondition(rStream, ConditionBuildingCaptured, line))
         {
             break;
         }
-        spScriptEvent event = ScriptEvent::createReadEvent(rStream);
+        spScriptEvent event = ScriptEvent::createReadEvent(rStream, line);
         if (event.get() != nullptr)
         {
             events.append(event);
@@ -93,6 +94,7 @@ void ScriptConditionBuildingCaptured::writePreCondition(QTextStream& rStream)
 
 void ScriptConditionBuildingCaptured::writeCondition(QTextStream& rStream)
 {
+    Console::print("Writing ConditionBuildingCaptured", Console::eDEBUG);
     rStream << "        if (map.getTerrain(" << QString::number(m_x) << ", " << QString::number(m_y) << ").getBuilding().getOwner() !== null && map.getTerrain(" << QString::number(m_x) << ", " << QString::number(m_y) << ").getBuilding().getOwner().getPlayerID() === "
             << QString::number(m_player) << " && " << m_executed << ".readDataBool() === false) {"
             << "// " << QString::number(getVersion()) << " "  << ConditionBuildingCaptured << "\n";

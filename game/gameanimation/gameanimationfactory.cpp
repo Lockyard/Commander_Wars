@@ -195,7 +195,8 @@ GameAnimation* GameAnimationFactory::createBattleAnimation(Terrain* pAtkTerrain,
 
             if (battleViewMode == GameEnums::BattleAnimationMode_Fullscreen ||
                 battleViewMode == GameEnums::BattleAnimationMode_FullscreenTransparent ||
-                battleViewMode == GameEnums::BattleAnimationMode_FullscreenTransparent)
+                battleViewMode == GameEnums::BattleAnimationMode_FullscreenTransparent ||
+                battleViewMode == GameEnums::BattleAnimationMode_DetailTransparent)
             {
                 oxygine::ResAnim* pAnim = GameManager::getInstance()->getResAnim("fullscreen_battlebackground", oxygine::ep_ignore_error);
                 if (pAnim != nullptr)
@@ -339,9 +340,8 @@ void GameAnimationFactory::finishAllAnimations()
     while (i < m_Animations.size())
     {
         spGameAnimation spAnimation = m_Animations[i];
-        if (!spAnimation->onFinished(true))
+        while (!spAnimation->onFinished(true))
         {
-            ++i;
         }
     }
 }

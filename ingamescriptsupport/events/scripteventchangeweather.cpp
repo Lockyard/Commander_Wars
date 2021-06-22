@@ -39,9 +39,9 @@ void ScriptEventChangeWeather::setWeatherID(const qint32 &value)
     weatherID = value;
 }
 
-void ScriptEventChangeWeather::readEvent(QTextStream& rStream)
+void ScriptEventChangeWeather::readEvent(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    line = line.simplified();
     QStringList items = line.replace("map.getGameRules().changeWeather(", "")
                             .replace(", map.getPlayerCount() * ", ",")
                             .replace("); // ", ",").split(",");

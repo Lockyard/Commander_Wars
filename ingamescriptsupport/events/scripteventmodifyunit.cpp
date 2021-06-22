@@ -28,9 +28,9 @@ void ScriptEventModifyUnit::writeEvent(QTextStream& rStream)
             << QString::number(getVersion()) << " " << EventModifyUnit << "\n";
 }
 
-void ScriptEventModifyUnit::readEvent(QTextStream& rStream)
+void ScriptEventModifyUnit::readEvent(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    line = line.simplified();
     QStringList items = line.replace("if(map.getTerrain(", "")
                             .replace(").getUnit() !== null){map.getTerrain(", ",")
                             .replace(").getUnit().modifyUnit(", ",")

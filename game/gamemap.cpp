@@ -840,14 +840,25 @@ bool GameMap::onMap(qint32 x, qint32 y)
     }
 }
 
-void GameMap::centerMap(qint32 x, qint32 y)
+void GameMap::centerMap(qint32 x, qint32 y, bool updateMinimapPosition)
 {
     if (onMap(x, y))
     {
         // draw point
-        this->setPosition(Settings::getWidth() / 2.0f - x * this->getZoom() * m_imagesize - m_imagesize / 2.0f,
-                          Settings::getHeight() / 2.0f - y * this->getZoom() * m_imagesize - m_imagesize / 2.0f);
+        setPosition(Settings::getWidth() / 2.0f - x * getZoom() * m_imagesize - m_imagesize / 2.0f,
+                    Settings::getHeight() / 2.0f - y * getZoom() * m_imagesize - m_imagesize / 2.0f);
+        if (updateMinimapPosition)
+        {
+            emit sigMovedMap();
+        }
     }
+}
+
+QPoint GameMap::getCenteredPosition()
+{
+     qint32 x = -(getX() + m_imagesize / 2.0f - Settings::getWidth() / 2.0f) / (m_imagesize * getZoom());
+     qint32 y = -(getY() + m_imagesize / 2.0f - Settings::getHeight() / 2.0f) / (getZoom() * m_imagesize);
+     return QPoint(x, y);
 }
 
 void GameMap::moveMap(qint32 x, qint32 y)
@@ -855,8 +866,8 @@ void GameMap::moveMap(qint32 x, qint32 y)
     qint32 heigth = getMapHeight();
     qint32 width = getMapWidth();
     // draw point
-    float resX = this->getPosition().x + x;
-    float resY = this->getPosition().y + y;
+    float resX = getPosition().x + x;
+    float resY = getPosition().y + y;
     float minVisible = 16.0f / m_zoom;
     if (resX > Settings::getWidth()  - minVisible * m_zoom * m_imagesize)
     {
@@ -874,8 +885,8 @@ void GameMap::moveMap(qint32 x, qint32 y)
     {
         resY = -m_zoom * m_imagesize * heigth + minVisible * m_zoom * m_imagesize;
     }
-
-    this->setPosition(resX, resY);
+    setPosition(resX, resY);
+    emit sigMovedMap();
 }
 
 void GameMap::zoom(float zoom)
@@ -1643,7 +1654,7 @@ void GameMap::startOfTurnPlayer(Player* pPlayer)
                     pUnit->removeShineTween();
                     pUnit->updateUnitStatus();
                 }
-                pUnit->updateIconDuration(playerId);
+                pUnit->updateStatusDurations(playerId);
             }
         }
     }
@@ -1869,11 +1880,11 @@ void GameMap::nextTurnPlayerTimeout()
 
 void GameMap::nextTurn(quint32 dayToDayUptimeMs)
 {
-    Mainapp::getInstance()->pauseRendering();
     Console::print("GameMap::nextTurn", Console::eDEBUG);
     m_Rules->checkVictory();
     enableUnits(m_CurrentPlayer.get());
     bool nextDay = nextPlayer();
+    playMusic();
     bool permanent = false;
     bool found = false;
     if ((m_Rules->getDayToDayScreen() == GameRules::DayToDayScreen::Permanent ||
@@ -1945,8 +1956,6 @@ void GameMap::nextTurn(quint32 dayToDayUptimeMs)
         pMenu->updatePlayerinfo();
         pMenu->updateMinimap();
     }
-    playMusic();
-    Mainapp::getInstance()->continueRendering();
 }
 
 void GameMap::playMusic()

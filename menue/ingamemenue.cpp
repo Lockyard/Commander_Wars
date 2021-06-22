@@ -82,7 +82,19 @@ void InGameMenue::loadHandling()
                 if (m_Focused)
                 {
                     pEvent->stopPropagation();
-                    emit this->sigMouseWheel(static_cast<qint32>(pTouchEvent->wheelDirection.y / 100));
+                    emit sigMouseWheel(pTouchEvent->wheelDirection.y);
+                }
+            }
+        });
+        addEventListener(oxygine::TouchEvent::TOUCH_SCROLL, [=](oxygine::Event *pEvent )->void
+        {
+            oxygine::TouchEvent* pTouchEvent = dynamic_cast<oxygine::TouchEvent*>(pEvent);
+            if (pTouchEvent != nullptr)
+            {
+                if (m_Focused)
+                {
+                    pEvent->stopPropagation();
+                    emit sigMouseWheel(pTouchEvent->wheelDirection.y);
                 }
             }
         });
@@ -184,6 +196,15 @@ void InGameMenue::connectMapCursor()
             {
                 emit sigLeftClickDown(m_Cursor->getMapPointX(), m_Cursor->getMapPointY());
             }
+        }
+    });
+    GameMap::getInstance()->addEventListener(oxygine::TouchEvent::TOUCH_DOWN_LONG, [=](oxygine::Event *pEvent )->void
+    {
+        oxygine::TouchEvent* pTouchEvent = dynamic_cast<oxygine::TouchEvent*>(pEvent);
+        if (pTouchEvent != nullptr && Settings::getSimpleDeselect())
+        {
+            pEvent->stopPropagation();
+            emit sigRightClickDown(m_Cursor->getMapPointX(), m_Cursor->getMapPointY());
         }
     });
     GameMap::getInstance()->addEventListener(oxygine::TouchEvent::TOUCH_UP, [=](oxygine::Event *pEvent )->void

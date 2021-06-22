@@ -28,6 +28,7 @@
 #include "objects/base/textbox.h"
 #include "objects/base/label.h"
 #include "objects/base/timespinbox.h"
+#include "objects/dialogs/dialogmessagebox.h"
 
 OptionMenue::OptionMenue()
 {
@@ -131,7 +132,9 @@ void OptionMenue::exitMenue()
     Settings::saveSettings();
     if (restartNeeded)
     {
-        restart();
+        spDialogMessageBox pMessage = spDialogMessageBox::create("Some changes need a restart of the game. The game will restart. Press Ok to restart.", true);
+        connect(pMessage.get(), &DialogMessageBox::sigOk, this, &OptionMenue::restart, Qt::QueuedConnection);
+        addChild(pMessage);
     }
     else
     {
@@ -280,8 +283,16 @@ void OptionMenue::showSettings()
                                      QSize(960 ,  720 ),
                                      QSize(960 ,  640 )};
     QScreen *screen = QGuiApplication::primaryScreen();
-    QSize  screenSize = screen->availableSize ();
-    supportedSizes.push_front(screenSize);
+    QRect screenSize;
+    if (Settings::getFullscreen())
+    {
+        screenSize  = screen->geometry();
+    }
+    else
+    {
+        screenSize  = screen->availableGeometry();
+    }
+    supportedSizes.push_front(screenSize.size());
     qint32 count = 0;
     while  (count < supportedSizes.size())
     {
@@ -335,7 +346,8 @@ void OptionMenue::showSettings()
         Settings::setHeight(heigth);
         emit sigChangeScreenSize(width, heigth);
     });
-    y += 40;
+    pScreenResolution->setEnabled(!Settings::getsmallScreenDevice());
+    y += 40;    
 
     pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
@@ -347,6 +359,7 @@ void OptionMenue::showSettings()
     pScreenModes->setTooltipText(tr("Selects the screen mode for the game"));
     pScreenModes->setPosition(sliderOffset - 130, y);
     pScreenModes->setCurrentItem(pApp->getScreenMode());
+    pScreenModes->setEnabled(!Settings::getsmallScreenDevice());
     m_pOptions->addItem(pScreenModes);
     connect(pScreenModes.get(), &DropDownmenu::sigItemChanged, pApp, &Mainapp::changeScreenMode, Qt::QueuedConnection);
     y += 40;
@@ -387,14 +400,30 @@ void OptionMenue::showSettings()
 
     pTextfield = spLabel::create(sliderOffset - 140);
     pTextfield->setStyle(style);
-    pTextfield->setHtmlText(tr("Sprite Aliasing: "));
+    pTextfield->setHtmlText(tr("Small screen: "));
     pTextfield->setPosition(10, y);
     m_pOptions->addItem(pTextfield);
     spCheckbox pCheckbox = spCheckbox::create();
+    pCheckbox->setTooltipText(tr("If checked several ui elements are hidden and get shown with an additional button.\nWarning disabling this on a smaller screen may lead to unplayable game experience."));
+    pCheckbox->setChecked(Settings::getsmallScreenDevice());
+    pCheckbox->setPosition(sliderOffset - 130, y);
+    connect(pCheckbox.get(), &Checkbox::checkChanged, this, [=](bool value)
+    {
+        Settings::setSmallScreenDevice(value);
+    });
+    m_pOptions->addItem(pCheckbox);
+    y += 40;
+
+    pTextfield = spLabel::create(sliderOffset - 140);
+    pTextfield->setStyle(style);
+    pTextfield->setHtmlText(tr("Sprite Aliasing: "));
+    pTextfield->setPosition(10, y);
+    m_pOptions->addItem(pTextfield);
+    pCheckbox = spCheckbox::create();
     pCheckbox->setTooltipText(tr("If checked ingame sprites will be aliased smoother."));
     pCheckbox->setChecked(Settings::getSpriteFilter() != GL_NEAREST);
     pCheckbox->setPosition(sliderOffset - 130, y);
-    connect(pCheckbox.get(), &Checkbox::checkChanged, [=](bool value)
+    connect(pCheckbox.get(), &Checkbox::checkChanged, this, [=](bool value)
     {
         if (value)
         {

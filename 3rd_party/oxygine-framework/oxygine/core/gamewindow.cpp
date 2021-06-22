@@ -272,6 +272,8 @@ namespace oxygine
             }
         }
         emit sigMousePressEvent(b, event->x(), event->y());
+        m_pressDownTime.start();
+        m_pressDownTimeRunning = true;
     }
 
     void GameWindow::mouseReleaseEvent(QMouseEvent *event)
@@ -300,6 +302,12 @@ namespace oxygine
             }
         }
         emit sigMouseReleaseEvent(b, event->x(), event->y());
+        std::chrono::milliseconds time = std::chrono::milliseconds(m_pressDownTime.elapsed());
+        if (time > std::chrono::milliseconds(500))
+        {
+            emit sigMouseLongPressEvent(b, event->x(), event->y());
+        }
+        m_pressDownTimeRunning = false;
     }
 
     void GameWindow::wheelEvent(QWheelEvent *event)
@@ -309,6 +317,60 @@ namespace oxygine
     void GameWindow::mouseMoveEvent(QMouseEvent *event)
     {
         emit sigMouseMoveEvent(event->x(), event->y());
+    }
+
+    void GameWindow::touchEvent(QTouchEvent *event)
+    {
+        switch (event->type())
+        {
+            case QEvent::TouchBegin:
+            case QEvent::TouchUpdate:
+            {
+                QTouchEvent *touchEvent = static_cast<QTouchEvent *>(event);
+                QList<QTouchEvent::TouchPoint> touchPoints = touchEvent->touchPoints();
+                if (touchPoints.count() == 2)
+                {
+                    // determine scale factor
+                    const QTouchEvent::TouchPoint &touchPoint0 = touchPoints.first();
+                    const QTouchEvent::TouchPoint &touchPoint1 = touchPoints.last();
+                    qreal scale = QLineF(touchPoint0.pos(), touchPoint1.pos()).length() /
+                                  QLineF(touchPoint0.startPos(), touchPoint1.startPos()).length();
+                    emit sigTouchZoomEvent(scale, scale);
+                }
+                else if (touchPoints.count() == 1 )
+                {
+                    const QTouchEvent::TouchPoint &touchPoint0 = touchPoints.first();
+                    if (touchPoint0.pos() != touchPoint0.lastPos())
+                    {
+                        emit sigTouchScrollEvent(touchPoint0.pos().x() - touchPoint0.lastPos().x(),
+                                                 touchPoint0.pos().y() - touchPoint0.lastPos().y());
+                    }
+                    else
+                    {
+                        if (m_pressDownTimeRunning)
+                        {
+                            std::chrono::milliseconds time = std::chrono::milliseconds(m_pressDownTime.elapsed());
+                            if (time > std::chrono::milliseconds(500))
+                            {
+                                emit sigMouseLongPressEvent(MouseButton_Left, touchPoint0.pos().x(), touchPoint0.pos().y());
+                                m_pressDownTimeRunning = false;
+                            }
+                        }
+                        else
+                        {
+                             m_pressDownTime.start();
+                             m_pressDownTimeRunning = true;
+                        }
+                    }
+                }
+                break;
+            }
+            case QEvent::TouchEnd:
+            {
+            }
+            default:
+                break;
+        }
     }
 
     spEventDispatcher GameWindow::getDispatcher()

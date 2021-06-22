@@ -136,7 +136,7 @@ var Constructor = function()
     };
 
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         var boostUnit = CO_GREYFIELD.isBoostUnit(attacker);
         switch (co.getPowerMode())
@@ -172,7 +172,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         var boostUnit = CO_GREYFIELD.isBoostUnit(defender);
         switch (co.getPowerMode())
@@ -243,6 +243,16 @@ var Constructor = function()
         }
         return 0;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "HARBOUR" ||
+            buildingId === "TEMPORARY_HARBOUR")
+        {
+            return ["ZCOUNIT_MISSILE_SUB"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -263,7 +273,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nSpecial Unit:\nMissile Submarine\n\nGlobal Effect: \nNo Effects.") +
+        return qsTr("\nSpecial Unit:\nMissile Submarine\n") +
+               qsTr("\nSpecial Unit:\nMissile Submarine\n\nGlobal Effect: \nNo Effects.") +
                qsTr("\n\nCO Zone Effect: \n Sea Units have 20% offensive and 50% defensive bonus.");
     };
     this.getPowerDescription = function(co)

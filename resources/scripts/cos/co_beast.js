@@ -125,7 +125,7 @@ var Constructor = function()
     };
     this.coZoneBonus = 60;
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                      defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender, action)
     {
         switch (co.getPowerMode())
         {
@@ -147,7 +147,7 @@ var Constructor = function()
         return 0;
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -179,6 +179,17 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_AT_CYCLE"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -199,8 +210,9 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        var text = qsTr("\nGlobal Effect: \nNo bonus.") +
-                qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower when attacking. His Units take 1 Damage after attacking.");
+        var text = qsTr("\nSpecial Unit:\nAT Cycle\n") +
+                   qsTr("\nGlobal Effect: \nNo bonus.") +
+                   qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower when attacking. His Units take 1 Damage after attacking.");
         text = replaceTextArgs(text, [CO_BEAST.coZoneBonus]);
         return text;
     };

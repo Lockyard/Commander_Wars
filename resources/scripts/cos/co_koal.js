@@ -123,7 +123,7 @@ var Constructor = function()
         return "BG";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         if (typeof map !== 'undefined')
         {
@@ -169,7 +169,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -197,6 +197,17 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_HOT_TANK"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -217,7 +228,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nNo Effects.") +
+        return qsTr("\nSpecial Unit:\nHot Tank\n") +
+               qsTr("\nGlobal Effect: \nNo Effects.") +
                qsTr("\n\nCO Zone Effect: \nUnits gain increased firepower on street.");
     };
     this.getPowerDescription = function(co)

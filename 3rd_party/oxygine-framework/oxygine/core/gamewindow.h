@@ -9,8 +9,8 @@
 #include <qmutex.h>
 #include <qbasictimer.h>
 #include <qthread.h>
-
-#include "QKeyEvent"
+#include <QKeyEvent>
+#include <QElapsedTimer>
 
 namespace oxygine
 {
@@ -73,8 +73,11 @@ namespace oxygine
         void sigLoadRessources();
         void sigMousePressEvent(oxygine::MouseButton button, qint32 x, qint32 y);
         void sigMouseReleaseEvent(oxygine::MouseButton button, qint32 x, qint32 y);
+        void sigMouseLongPressEvent(oxygine::MouseButton button, qint32 x, qint32 y);
         void sigWheelEvent(qint32 x, qint32 y);
         void sigMouseMoveEvent(qint32 x, qint32 y);
+        void sigTouchZoomEvent(qint32 x, qint32 y);
+        void sigTouchScrollEvent(qint32 x, qint32 y);
     public slots:
         /**
          * @brief getBrightness
@@ -110,7 +113,8 @@ namespace oxygine
         virtual void mousePressEvent(QMouseEvent *event) override;
         virtual void mouseReleaseEvent(QMouseEvent *event) override;
         virtual void wheelEvent(QWheelEvent *event) override;
-        virtual void mouseMoveEvent(QMouseEvent *event)override;
+        virtual void mouseMoveEvent(QMouseEvent *event)override;        
+        virtual void touchEvent(QTouchEvent *event) override;
 
         void updateData();
         bool beginRendering();
@@ -121,6 +125,8 @@ namespace oxygine
 
         bool m_quit{false};
         QBasicTimer m_Timer;
+        QElapsedTimer m_pressDownTime;
+        bool m_pressDownTimeRunning{false};
 
         QMutex m_pauseMutex;
         qint32 m_pausedCounter{0};

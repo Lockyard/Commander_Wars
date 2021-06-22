@@ -130,7 +130,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         if (defender !== null)
         {
@@ -163,7 +163,7 @@ var Constructor = function()
     };
 
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         var variables = co.getVariables();
         var dmgModVar = variables.createVariable("SANJURO_DMG_MOD");
@@ -347,6 +347,18 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_SMUGGLER"];
+        }
+        return [];
+    };
+
     // CO - Intel
     this.getBio = function(co)
     {
@@ -366,7 +378,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nUnit costs are decreased when he has more income than funds and firepower is decreased.") +
+        return qsTr("\nSpecial Unit:\nSmuggler\n") +
+               qsTr("\nGlobal Effect: \nUnit costs are decreased when he has more income than funds and firepower is decreased.") +
                qsTr("\n\nCO Zone Effect: \nGlobal firepower effects are doubled.");
     };
 

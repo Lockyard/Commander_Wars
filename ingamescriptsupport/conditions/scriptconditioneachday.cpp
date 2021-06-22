@@ -6,6 +6,7 @@
 #include "resource_management/fontmanager.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
 
 #include "objects/base/spinbox.h"
 #include "objects/base/label.h"
@@ -46,9 +47,10 @@ void ScriptConditionEachDay::setPlayer(const qint32 &value)
     player = value;
 }
 
-void ScriptConditionEachDay::readCondition(QTextStream& rStream)
+void ScriptConditionEachDay::readCondition(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    Console::print("Reading ConditionEachDay", Console::eDEBUG);
+    line = line.simplified();
     QStringList items = line.replace("if ((turn - ", "")
                             .replace(") % ", ",")
                             .replace(" === 0 && player === ", ",")
@@ -60,11 +62,11 @@ void ScriptConditionEachDay::readCondition(QTextStream& rStream)
         player = items[2].toInt();
         while (!rStream.atEnd())
         {
-            if (readSubCondition(rStream, ConditionEachDay))
+            if (readSubCondition(rStream, ConditionEachDay, line))
             {
                 break;
             }
-            spScriptEvent event = ScriptEvent::createReadEvent(rStream);
+            spScriptEvent event = ScriptEvent::createReadEvent(rStream, line);
             if (event.get() != nullptr)
             {
                 events.append(event);
@@ -75,6 +77,7 @@ void ScriptConditionEachDay::readCondition(QTextStream& rStream)
 
 void ScriptConditionEachDay::writeCondition(QTextStream& rStream)
 {
+    Console::print("Writing ConditionEachDay", Console::eDEBUG);
     rStream << "        if ((turn - " + QString::number(day)  +  ") % " + QString::number(intervall) +  " === 0 && player === " + QString::number(player) + ") { // "
             << QString::number(getVersion()) << " " << ConditionEachDay +"\n";
     for (qint32 i = 0; i < events.size(); i++)

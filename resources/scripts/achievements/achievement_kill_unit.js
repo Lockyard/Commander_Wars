@@ -44,7 +44,11 @@ var Constructor = function()
                         ["ZCOUNIT_CRYSTAL_TANK",    100,    qsTr("No healing for you!")],
                         ["ZCOUNIT_IRON_SHIELD_GENERATOR", 100, qsTr("You lost your armor!")],
                         ["ZCOUNIT_ROYAL_GUARD",     100,    qsTr("Was that the last guard?")],
-                        ["ZCOUNIT_TANK_HUNTER",     100,    qsTr("The hunt is over!")],];
+                        ["ZCOUNIT_TANK_HUNTER",     100,    qsTr("The hunt is over!")],
+                        ["ZCOUNIT_COMMANDO",        100,    qsTr("Those bastards aren't hidding from me!")],
+                        ["ZCOUNIT_PARTISAN",        100,    qsTr("The Imperium won!")],
+                        ["ZCOUNIT_LOGIC_TRUCK",     100,    qsTr("What a waste of money!")],
+                        ["ZCOUNIT_CHAPERON",        100,    qsTr("I can still hit you!")],];
 
     this.registerAchievements = function()
     {

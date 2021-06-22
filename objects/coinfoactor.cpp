@@ -404,8 +404,8 @@ void COInfoActor::showCOBoost(spUnit pUnit, spCO pCO, qint32 & x, qint32 & y)
     //        else
     if (pCO.get() != nullptr)
     {
-        offBonus = pCO->getOffensiveBonus(pUnit.get(), pUnit->getPosition(), nullptr, pUnit->getPosition(), false);
-        defBonus = pCO->getDeffensiveBonus(nullptr, pUnit->getPosition(), pUnit.get(), pUnit->getPosition(), false);
+        offBonus = pCO->getOffensiveBonus(nullptr, pUnit.get(), pUnit->getPosition(), nullptr, pUnit->getPosition(), false);
+        defBonus = pCO->getDeffensiveBonus(nullptr, nullptr, pUnit->getPosition(), pUnit.get(), pUnit->getPosition(), false);
         firerangeBonus = pCO->getFirerangeModifier(pUnit.get(), pUnit->getPosition());
         movementBonus = pCO->getMovementpointModifier(pUnit.get(), pUnit->getPosition());
     }
@@ -563,7 +563,7 @@ void COInfoActor::createStrengthBar(oxygine::spActor pActor, qint32 bonus, qint3
     pStartBox->setResAnim(pStartAnim);
     pStartBox->setVerticalMode(oxygine::Box9Sprite::TILING_FULL);
     pStartBox->setHorizontalMode(oxygine::Box9Sprite::TILING_FULL);
-    pStartBox->setSize(width * divider + 1, 8);
+    pStartBox->setSize(static_cast<qint32>(width * divider) + 1, 8);
     pStartBox->setPosition(5 +  GameMap::getImageSize(), y);
     pActor->addChild(pStartBox);
 
@@ -571,7 +571,7 @@ void COInfoActor::createStrengthBar(oxygine::spActor pActor, qint32 bonus, qint3
     pEndBox->setResAnim(pEndAnim);
     pEndBox->setVerticalMode(oxygine::Box9Sprite::TILING_FULL);
     pEndBox->setHorizontalMode(oxygine::Box9Sprite::TILING_FULL);
-    pEndBox->setSize(width * (1 - divider) + 2, 8);
+    pEndBox->setSize(static_cast<qint32>(width * (1.0f - divider)) + 2, 8);
     pEndBox->setPosition(5 +  GameMap::getImageSize() + pStartBox->getWidth(), y);
     pActor->addChild(pEndBox);
 }

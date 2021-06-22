@@ -512,7 +512,6 @@ void VictoryMenue::addShopMoney()
         connect(pDialogValueCounter.get(), &DialogValueCounter::sigFinished, this, &VictoryMenue::onProgressTimerStart, Qt::QueuedConnection);
         addChild(pDialogValueCounter);
         pUserdata->addCredtis(highestScore);
-        pUserdata->storeUser();
         m_ProgressTimer.stop();
     }
     else
@@ -660,7 +659,7 @@ void VictoryMenue::exitMenue()
         GameMap::deleteMap();
         Console::print("Leaving Victory Menue", Console::eDEBUG);
         bool multiplayer = m_pNetworkInterface.get() != nullptr;
-        oxygine::getStage()->addChild(spCampaignMenu::create(campaign, multiplayer));
+        oxygine::getStage()->addChild(spCampaignMenu::create(campaign, multiplayer, true));
     }
     else
     {

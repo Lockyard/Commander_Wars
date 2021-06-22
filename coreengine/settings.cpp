@@ -21,6 +21,7 @@ bool Settings::m_borderless         = false;
 bool Settings::m_fullscreen         = false;
 float Settings::m_brightness        = 0.0f;
 float Settings::m_gamma             = 1.0f;
+bool Settings::m_smallScreenDevice  = false;
 Qt::Key Settings::m_key_escape                      = Qt::Key_Escape;
 Qt::Key Settings::m_key_console                     = Qt::Key_F1;
 Qt::Key Settings::m_key_screenshot                  = Qt::Key_F5;
@@ -102,6 +103,7 @@ QString Settings::m_Username = "";
 bool Settings::m_ShowCursor = true;
 bool Settings::m_AutoEndTurn = false;
 qint32 Settings::m_MenuItemCount = 13;
+qint32 Settings::m_MenuItemRowCount = 2;
 bool Settings::m_StaticMarkedFields = false;
 qint32 Settings::m_showCoCount = 0;
 quint32 Settings::m_spriteFilter = GL_LINEAR_MIPMAP_LINEAR;
@@ -112,6 +114,7 @@ bool Settings::m_showIngameCoordinates  = true;
 GameEnums::AutoFocusing Settings::m_autoFocusing = GameEnums::AutoFocusing_LastPos;
 bool Settings::m_centerOnMarkedField = false;
 bool Settings::m_syncAnimations = false;
+bool Settings::m_simpleDeselect = false;
 
 // add mod path
 QStringList Settings::m_activeMods;
@@ -136,6 +139,36 @@ Settings::Settings()
 {
     setObjectName("Settings");
     Interpreter::setCppOwnerShip(this);
+}
+
+bool Settings::getsmallScreenDevice()
+{
+    return m_smallScreenDevice;
+}
+
+void Settings::setSmallScreenDevice(bool newSmallScreenDevice)
+{
+    m_smallScreenDevice = newSmallScreenDevice;
+}
+
+qint32 Settings::getMenuItemRowCount()
+{
+    return m_MenuItemRowCount;
+}
+
+void Settings::setMenuItemRowCount(qint32 newMenuItemRowCount)
+{
+    m_MenuItemRowCount = newMenuItemRowCount;
+}
+
+bool Settings::getSimpleDeselect()
+{
+    return m_simpleDeselect;
+}
+
+void Settings::setSimpleDeselect(bool newSimpleDeselect)
+{
+    m_simpleDeselect = newSimpleDeselect;
 }
 
 bool Settings::getSyncAnimations()
@@ -739,9 +772,10 @@ void Settings::loadSettings()
     }
 
 
-    m_borderless  = settings.value("borderless", false).toBool();
-    m_fullscreen  = settings.value("fullscreen", true).toBool();
-    m_record  = settings.value("recordgames", false).toBool();
+    m_borderless = settings.value("borderless", false).toBool();
+    m_fullscreen = settings.value("fullscreen", true).toBool();
+    m_record = settings.value("recordgames", false).toBool();
+    m_smallScreenDevice = settings.value("SmallScreenDevice", false).toBool();
     settings.endGroup();
 
     // Keys
@@ -1176,12 +1210,19 @@ void Settings::loadSettings()
         Console::print(error, Console::eERROR);
         multiTurnCounter = 4u;
     }
-    m_MenuItemCount = settings.value("MenuItemCount", 11).toInt(&ok);
-    if(!ok || m_MenuItemCount <= 10 || m_MenuItemCount >= (m_height - GameMap::getImageSize() * 2) / GameMap::getImageSize())
+    m_MenuItemCount = settings.value("MenuItemCount", 13).toInt(&ok);
+    if(!ok || m_MenuItemCount < 5)
     {
         QString error = "Error in the Ini File: [Game] Setting: MenuItemCount";
         Console::print(error, Console::eERROR);
-        m_MenuItemCount = 13;
+        m_MenuItemCount = 5;
+    }
+    m_MenuItemRowCount = settings.value("MenuItemRowCount", 2).toInt(&ok);
+    if(!ok || m_MenuItemRowCount < 1)
+    {
+        QString error = "Error in the Ini File: [Game] Setting: MenuItemRowCount";
+        Console::print(error, Console::eERROR);
+        m_MenuItemRowCount = 1;
     }
     m_StaticMarkedFields = settings.value("StaticMarkedFields", false).toBool();
     m_spriteFilter = settings.value("SpriteFilter", GL_LINEAR_MIPMAP_LINEAR).toInt(&ok);
@@ -1208,6 +1249,11 @@ void Settings::loadSettings()
     m_showIngameCoordinates = settings.value("ShowIngameCoordinates", true).toBool();
     m_centerOnMarkedField = settings.value("CenterOnMarkedField", false).toBool();
     m_syncAnimations = settings.value("SyncAnimations", false).toBool();
+#ifdef Q_OS_ANDROID
+    m_simpleDeselect = settings.value("SimpleDeselect", true).toBool();
+#else
+    m_simpleDeselect = settings.value("SimpleDeselect", false).toBool();
+#endif
 
     coInfoPosition  = static_cast<GameEnums::COInfoPosition>(settings.value("COInfoPosition", 0).toInt(&ok));
     if (!ok || coInfoPosition < GameEnums::COInfoPosition_Flipping || coInfoPosition > GameEnums::COInfoPosition_Right)
@@ -1243,15 +1289,15 @@ void Settings::loadSettings()
 
     // sounds
     settings.beginGroup("Autosaving");
-    autoSavingCylceTime = std::chrono::seconds(settings.value("AutoSavingTime", 0).toUInt(&ok));
+    autoSavingCylceTime = std::chrono::seconds(settings.value("AutoSavingTime", 60 * 5).toUInt(&ok));
     if (!ok)
     {
-        autoSavingCylceTime = std::chrono::seconds(0);
+        autoSavingCylceTime = std::chrono::seconds(60 * 5);
     }
-    autoSavingCycle = settings.value("AutoSavingCycle", 0).toUInt(&ok);
+    autoSavingCycle = settings.value("AutoSavingCycle", 3).toUInt(&ok);
     if (!ok)
     {
-        autoSavingCycle = 0;
+        autoSavingCycle = 3;
     }
     settings.endGroup();
 
@@ -1293,6 +1339,7 @@ void Settings::saveSettings()
         settings.setValue("recordgames",                m_record);
         settings.setValue("brightness",                 m_brightness);
         settings.setValue("gamma",                      m_gamma);
+        settings.setValue("SmallScreenDevice",          m_smallScreenDevice);
         settings.endGroup();
 
         settings.beginGroup("Keys");
@@ -1368,6 +1415,7 @@ void Settings::saveSettings()
         settings.setValue("ShowCursor",                     m_ShowCursor);
         settings.setValue("AutoEndTurn",                    m_AutoEndTurn);
         settings.setValue("MenuItemCount",                  m_MenuItemCount);
+        settings.setValue("MenuItemRowCount",               m_MenuItemRowCount);
         settings.setValue("StaticMarkedFields",             m_StaticMarkedFields);
         settings.setValue("ShowCoCount",                    m_showCoCount);
         settings.setValue("SpriteFilter",                   m_spriteFilter);
@@ -1379,6 +1427,7 @@ void Settings::saveSettings()
         settings.setValue("DialogAnimation",                m_dialogAnimation);
         settings.setValue("CenterOnMarkedField",            m_centerOnMarkedField);
         settings.setValue("SyncAnimations",                 m_syncAnimations);
+        settings.setValue("SimpleDeselect",                 m_simpleDeselect);
         settings.endGroup();
 
         // network

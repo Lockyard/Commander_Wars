@@ -25,6 +25,7 @@ PlayerInfo::PlayerInfo()
 
 void PlayerInfo::updateData()
 {    
+    Mainapp::getInstance()->pauseRendering();
     // clean up
     this->removeChildren();
     // recreate the ui
@@ -44,7 +45,6 @@ void PlayerInfo::updateData()
     Player* pViewPlayer = pMap->getCurrentViewPlayer();
     qint32 yPos = 0;
     qint32 currentPlayer = playerIdx;
-
     qint32 count = pMap->getPlayerCount();
     qint32 maxCount = count;
     if (Settings::getShowCoCount() > 0 &&
@@ -192,9 +192,8 @@ void PlayerInfo::updateData()
             break;
         }
     }
-
     setHeight(yPos);
-    
+    Mainapp::getInstance()->continueRendering();
 }
 
 bool PlayerInfo::getFlippedX() const

@@ -110,7 +110,7 @@ var Constructor = function()
     }
 
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         if (isDefender)
         {
@@ -149,7 +149,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -166,7 +166,7 @@ var Constructor = function()
     };
 
     this.getTrueDamage = function(co, damage, attacker, atkPosX, atkPosY, attackerBaseHp,
-                                  defender, defPosX, defPosY, isDefender)
+                                  defender, defPosX, defPosY, isDefender, action)
     {
         if (isDefender === false)
         {
@@ -234,6 +234,17 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_INTEL_TRUCK"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -254,7 +265,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nUnits deal no luck damage. Units gain  firepower for own units in vision range. Counter attacks are weaker.") +
+        return qsTr("\nSpecial Unit:\nIntel truck\n") +
+               qsTr("\nGlobal Effect: \nUnits deal no luck damage. Units gain  firepower for own units in vision range. Counter attacks are weaker.") +
                qsTr("\n\nCO Zone Effect: \nUnits gain even more firepower for own units in vision range.");
     };
     this.getPowerDescription = function(co)

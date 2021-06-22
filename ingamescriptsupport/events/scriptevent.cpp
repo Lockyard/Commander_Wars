@@ -19,6 +19,8 @@
 #include "ingamescriptsupport/events/scripteventcentermap.h"
 #include "ingamescriptsupport/events/scripteventplaysound.h"
 
+#include "coreengine/console.h"
+
 const QString ScriptEvent::EventDialog  = "Dialog";
 const QString ScriptEvent::EventSpawnUnit = "Spawn Unit";
 const QString ScriptEvent::EventDefeatPlayer = "Defeat Player";
@@ -46,11 +48,9 @@ ScriptEvent::ScriptEvent(EventType type)
 {
 }
 
-spScriptEvent ScriptEvent::createReadEvent(QTextStream& rStream)
+spScriptEvent ScriptEvent::createReadEvent(QTextStream& rStream, QString line)
 {
-    qint64 pos = rStream.pos();
-    QString line = rStream.readLine().simplified();
-    rStream.seek(pos);
+    line = line.simplified();
     spScriptEvent ret = nullptr;
     if (line.endsWith(EventDialog))
     {
@@ -130,12 +130,10 @@ spScriptEvent ScriptEvent::createReadEvent(QTextStream& rStream)
     }
     if (ret.get() != nullptr)
     {
-        ret->readEvent(rStream);
+        ret->readEvent(rStream, line);
     }
     else
     {
-        // skip line
-        rStream.readLine();
     }
     return ret;
 }

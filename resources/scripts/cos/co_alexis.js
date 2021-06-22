@@ -225,7 +225,7 @@ var Constructor = function()
     };
     this.coZoneBonus = 15;
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                      defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender, action)
     {
         var nearBuildings = false;
         var fields = globals.getCircle(0, 2);
@@ -270,7 +270,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -334,6 +334,17 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_REPAIR_TANK"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -354,8 +365,9 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        var text = qsTr("\nGlobal Effect: \nUnits adjacent to own properties restore one HP of health at the beginning of each turn.") +
-                qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower and defence.");
+        var text = qsTr("\nSpecial Unit:\nRepair Tank\n") +
+                   qsTr("\nGlobal Effect: \nUnits adjacent to own properties restore one HP of health at the beginning of each turn.") +
+                   qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower and defence.");
         text = replaceTextArgs(text, [CO_ALEXANDER.coZoneBonus]);
         return text;
     };

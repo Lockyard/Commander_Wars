@@ -1,6 +1,6 @@
 var UNIT =
 {
-    getUnitDamageID : function()
+    getUnitDamageID : function(unit)
     {
         // empty string will be replaced by the actual unit id to find the damage value in the table
         // else the given string is used to get the entry
@@ -39,17 +39,17 @@ var UNIT =
     loadSprites : function(unit)
     {
     },
-    getMovementType : function()
+    getMovementType : function(unit)
     {
         return "";
     },
-    getActions : function()
+    getActions : function(unit)
     {
         // returns a string id list of the actions this unit can perform
-        return "ACTION_FIRE,ACTION_JOIN,ACTION_LOAD,ACTION_UNLOAD,ACTION_WAIT,ACTION_CO_UNIT_0,ACTION_CO_UNIT_1";
+        return ["ACTION_FIRE", "ACTION_JOIN", "ACTION_LOAD", "ACTION_UNLOAD", "ACTION_WAIT", "ACTION_CO_UNIT_0", "ACTION_CO_UNIT_1"];
     },
 
-    getName : function()
+    getName : function(unit)
     {
         return "";
     },
@@ -82,20 +82,20 @@ var UNIT =
         // gets called at the start of a turn
     },
 
-    canMoveAndFire : function()
+    canMoveAndFire : function(unit)
     {
         return false;
     },
     // number of units that can be loaded by this unit
-    getLoadingPlace : function()
+    getLoadingPlace : function(unit)
     {
         return 0;
     },
-    useTerrainDefense : function()
+    useTerrainDefense : function(unit)
     {
         return true;
     },
-    getTransportUnits : function()
+    getTransportUnits : function(unit)
     {
         return [];
     },
@@ -163,16 +163,16 @@ var UNIT =
         return Global[terrain.getID()].getTerrainAnimationBackground(unit, terrain);
     },
 
-    getTerrainAnimationMoveSpeed : function()
+    getTerrainAnimationMoveSpeed : function(unit)
     {
         return 0;
     },
 
-    getDescription : function()
+    getDescription : function(unit)
     {
         return "";
     },
-    getUnitType : function()
+    getUnitType : function(unit)
     {
         return GameEnums.UnitType_Ground;
     },
@@ -189,11 +189,11 @@ var UNIT =
     postAction : function(unit, action)
     {
     },
-    getBonusOffensive : function(attacker, atkX, atkY, defender, defX, defY, isDefender)
+    getBonusOffensive : function(attacker, atkX, atkY, defender, defX, defY, isDefender, action)
     {
         return 0;
     },
-    getBonusDefensive : function(defender, defX, defY, attacker, atkX, atkY, isDefender)
+    getBonusDefensive : function(defender, defX, defY, attacker, atkX, atkY, isDefender, action)
     {
         return 0;
     },
@@ -210,6 +210,10 @@ var UNIT =
             {
                 return true;
             }
+        }
+        if (defender.getCloaked() && !defender.getHidden())
+        {
+            return true;
         }
         return false;
     },
@@ -283,7 +287,7 @@ var UNIT =
     {
         return UNIT.unitNavalSortList;
     },
-    getTypeOfWeapon1 : function()
+    getTypeOfWeapon1 : function(unit)
     {
         // changes for which ranges the ammo can be used
         // WeaponType_Direct
@@ -291,7 +295,7 @@ var UNIT =
         return GameEnums.WeaponType_Both;
     },
 
-    getTypeOfWeapon2 : function()
+    getTypeOfWeapon2 : function(unit)
     {
         // changes for which ranges the ammo can be used.
         // WeaponType_Direct
@@ -304,6 +308,10 @@ var UNIT =
         animation.seekBuffer();
         var x = animation.readDataInt32();
         var y = animation.readDataInt32();
-        map.getTerrain(x, y).getUnit().removeUnit();
+        var unit = map.getTerrain(x, y).getUnit();
+        if (unit !== null)
+        {
+            unit.removeUnit();
+        }
     },
 };

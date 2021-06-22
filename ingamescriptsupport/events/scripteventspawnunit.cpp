@@ -22,9 +22,9 @@ ScriptEventSpawnUnit::ScriptEventSpawnUnit()
 
 }
 
-void ScriptEventSpawnUnit::readEvent(QTextStream& rStream)
+void ScriptEventSpawnUnit::readEvent(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    line = line.simplified();
     QStringList items = line.replace("map.spawnUnit(", "")
                             .replace(", ", ",")
                             .replace(",\"", ",")

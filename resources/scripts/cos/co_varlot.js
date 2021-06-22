@@ -160,7 +160,7 @@ var Constructor = function()
         return "DM";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         switch (co.getPowerMode())
         {
@@ -190,7 +190,7 @@ var Constructor = function()
         return 0;
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
             co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -234,6 +234,18 @@ var Constructor = function()
     {
         return 1;
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_SMUGGLER"];
+        }
+        return [];
+    };
+
     // CO - Intel
     this.getBio = function(co)
     {
@@ -253,7 +265,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nIncome is reduced for buildings he captures.") +
+        return qsTr("\nSpecial Unit:\nSmuggler\n") +
+               qsTr("\nGlobal Effect: \nIncome is reduced for buildings he captures.") +
                qsTr("\n\nCO Zone Effect: \nUnits have increased firepower and defense.");
     };
     this.getPowerDescription = function(co)

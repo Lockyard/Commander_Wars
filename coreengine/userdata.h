@@ -11,6 +11,7 @@
 #include "3rd_party/oxygine-framework/oxygine-framework.h"
 
 #include "coreengine/fileserializable.h"
+#include "coreengine/scriptvariablefile.h"
 #include "game/GameEnums.h"
 
 class Userdata;
@@ -238,6 +239,12 @@ public slots:
      * @return
      */
     QStringList getShopItemsList(GameEnums::ShopItemType type, bool bought);
+    /**
+     * @brief getScriptVariableFile
+     * @param filename
+     * @return
+     */
+    ScriptVariableFile* getScriptVariableFile(QString filename);
 private:
     void showAchieved();
 
@@ -254,6 +261,7 @@ private:
      * @brief m_credtis money available to spend in the shop
      */
     qint32 m_credtis{0};
+    QVector<spScriptVariableFile> m_scriptVariableFiles;
 };
 
 #endif // USERDATA_H

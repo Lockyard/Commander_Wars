@@ -26,6 +26,7 @@
 #include "resource_management/achievementmanager.h"
 
 #include "objects/base/tableview.h"
+#include "objects/base/moveinbutton.h"
 #include "objects/dialogs/filedialog.h"
 #include "objects/dialogs/ingame/coinfodialog.h"
 #include "objects/dialogs/ingame/dialogvictoryconditions.h"
@@ -99,6 +100,10 @@ GameMenue::GameMenue(bool saveGame, spNetworkInterface pNetworkInterface)
     {
         startGame();
     }
+    if (Settings::getAutoSavingCycle() > 0)
+    {
+        m_enabledAutosaving = true;
+    }
     Mainapp* pApp = Mainapp::getInstance();
     pApp->continueRendering();
 }
@@ -116,6 +121,10 @@ GameMenue::GameMenue(QString map, bool saveGame)
     loadHandling();
     loadGameMenue();
     loadUIButtons();
+    if (Settings::getAutoSavingCycle() > 0)
+    {
+        m_enabledAutosaving = true;
+    }
     Mainapp* pApp = Mainapp::getInstance();
     pApp->continueRendering();
 }
@@ -331,16 +340,23 @@ void GameMenue::loadGameMenue()
 
     // back to normal code
     m_pPlayerinfo = spPlayerInfo::create();
+    m_pPlayerinfo->updateData();
+    addChild(m_pPlayerinfo);
+
     m_IngameInfoBar = spIngameInfoBar::create();
     m_IngameInfoBar->updateMinimap();
-    m_pPlayerinfo->updateData();
     addChild(m_IngameInfoBar);
-    addChild(m_pPlayerinfo);
+    if (Settings::getsmallScreenDevice())
+    {
+        m_IngameInfoBar->setX(Settings::getWidth() - 1);
+        auto moveButton = spMoveInButton::create(m_IngameInfoBar.get(), m_IngameInfoBar->getWidth());
+        connect(moveButton.get(), &MoveInButton::sigMoved, this, &GameMenue::doPlayerInfoFlipping, Qt::QueuedConnection);
+        m_IngameInfoBar->addChild(moveButton);
+    }
 
     m_autoScrollBorder = QRect(50, 50, m_IngameInfoBar->getWidth(), 50);
 
     connect(&m_UpdateTimer, &QTimer::timeout, this, &GameMenue::updateTimer, Qt::QueuedConnection);
-    connect(&m_AutoSavingTimer, &QTimer::timeout, this, &GameMenue::autoSaveMap, Qt::QueuedConnection);
     connectMap();
     connect(this, &GameMenue::sigExitGame, this, &GameMenue::exitGame, Qt::QueuedConnection);
     connect(this, &GameMenue::sigShowExitGame, this, &GameMenue::showExitGame, Qt::QueuedConnection);
@@ -378,6 +394,7 @@ void GameMenue::connectMap()
     connect(pMap.get(), &GameMap::sigShowWiki, this, &GameMenue::showWiki, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowRules, this, &GameMenue::showRules, Qt::QueuedConnection);
     connect(pMap.get(), &GameMap::sigShowUnitStatistics, this, &GameMenue::showUnitStatistics, Qt::QueuedConnection);
+    connect(pMap.get(), &GameMap::sigMovedMap, m_IngameInfoBar.get(), &IngameInfoBar::syncMinimapPosition, Qt::QueuedConnection);
 
     connect(m_IngameInfoBar->getMinimap(), &Minimap::clicked, pMap.get(), &GameMap::centerMap, Qt::QueuedConnection);
 }
@@ -446,21 +463,11 @@ void GameMenue::loadUIButtons()
     pButtonBox->setSize(200, 50);
     pButtonBox->setPosition((Settings::getWidth() - m_IngameInfoBar->getScaledWidth())  - pButtonBox->getWidth(), 0);
     m_XYButtonBox = pButtonBox;
-    m_XYButtonBox->setVisible(Settings::getShowIngameCoordinates());
+    m_XYButtonBox->setVisible(Settings::getShowIngameCoordinates() && !Settings::getsmallScreenDevice());
     addChild(pButtonBox);
     m_UpdateTimer.setInterval(500);
     m_UpdateTimer.setSingleShot(false);
     m_UpdateTimer.start();
-
-    std::chrono::seconds time = Settings::getAutoSavingCylceTime();
-    qint32 cycles = Settings::getAutoSavingCycle();
-    if (cycles > 0 && time.count() > 0)
-    {
-        m_AutoSavingTimer.setSingleShot(false);
-        m_AutoSavingTimer.setInterval(time);
-        m_AutoSavingTimer.start();
-    }
-
     if (m_pNetworkInterface.get() != nullptr)
     {
         pButtonBox = oxygine::spBox9Sprite::create();
@@ -591,12 +598,13 @@ void GameMenue::performAction(spGameAction pGameAction)
     m_saveAllowed = false;
     if (pGameAction.get() != nullptr)
     {
-        Console::print("GameMenue::performAction", Console::eDEBUG);
+        Console::print("GameMenue::performAction " + pGameAction->getActionID(), Console::eDEBUG);
         spGameMap pMap = GameMap::getInstance();
         Mainapp::getInstance()->pauseRendering();
         bool multiplayer = !pGameAction->getIsLocal() &&
                            m_pNetworkInterface.get() != nullptr &&
                                                         m_gameStarted;
+        spPlayer currentPlayer = pMap->getCurrentPlayer();
         if (multiplayer &&
             pMap->getCurrentPlayer()->getBaseGameInput()->getAiType() == GameEnums::AiTypes_ProxyAi &&
             m_syncCounter + 1 != pGameAction->getSyncCounter())
@@ -651,6 +659,7 @@ void GameMenue::performAction(spGameAction pGameAction)
             }
 
             pCurrentPlayer->getBaseGameInput()->centerCameraOnAction(pGameAction.get());
+
             pGameAction->perform();
             // clean up the action
             m_pCurrentAction = pGameAction;
@@ -667,6 +676,13 @@ void GameMenue::performAction(spGameAction pGameAction)
                 spGameAction pAction = spGameAction::create();
                 pAction->setActionID(CoreAI::ACTION_NEXT_PLAYER);
                 performAction(pAction);
+            }
+        }
+        if (currentPlayer != pMap->getCurrentPlayer())
+        {
+            if (pMap->getCurrentPlayer()->getBaseGameInput()->getAiType() == GameEnums::AiTypes_Human)
+            {
+                autoSaveMap();
             }
         }
         Mainapp::getInstance()->continueRendering();
@@ -1030,10 +1046,10 @@ void GameMenue::finishActionPerformed()
             pUnit->postAction(m_pCurrentAction);
         }
         pMap->getCurrentPlayer()->postAction(m_pCurrentAction.get());
+        pMap->getGameScript()->actionDone(m_pCurrentAction);
         m_pCurrentAction = nullptr;
     }
     pMap->killDeadUnits();
-    pMap->getGameScript()->actionDone(m_pCurrentAction);
     pMap->getGameRules()->checkVictory();
     skipAnimations(true);
     pMap->getGameRules()->createFogVision();
@@ -1041,7 +1057,6 @@ void GameMenue::finishActionPerformed()
 
 void GameMenue::actionPerformed()
 {
-    Mainapp::getInstance()->pauseRendering();
     if (getParent() != nullptr)
     {
         Console::print("Action performed", Console::eDEBUG);
@@ -1093,7 +1108,6 @@ void GameMenue::actionPerformed()
     {
         doSaveMap();
     }
-    Mainapp::getInstance()->continueRendering();
 }
 
 void GameMenue::autoScroll()
@@ -1141,20 +1155,39 @@ void GameMenue::cursorMoved(qint32 x, qint32 y)
     if (m_xyTextInfo.get() != nullptr)
     {
         m_xyTextInfo->setHtmlText("X: " + QString::number(x) + " Y: " + QString::number(y));
-        QPoint pos = getMousePos(x, y);
-        bool flip = m_pPlayerinfo->getFlippedX();
-        qint32 screenWidth = Settings::getWidth() - m_IngameInfoBar->getScaledWidth();
-        const qint32 diff = screenWidth / 8;
-        if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Left)
+        doPlayerInfoFlipping();
+    }
+}
+
+void GameMenue::doPlayerInfoFlipping()
+{
+    qint32 x = m_Cursor->getMapPointX();
+    qint32 y = m_Cursor->getMapPointY();
+    QPoint pos = getMousePos(x, y);
+    bool flip = m_pPlayerinfo->getFlippedX();
+    qint32 screenWidth = m_IngameInfoBar->getX();
+    const qint32 diff = screenWidth / 8;
+    if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Left)
+    {
+        m_pPlayerinfo->setX(0);
+        flip = false;
+        if (m_XYButtonBox.get() != nullptr)
         {
-            m_pPlayerinfo->setX(0);
-            flip = false;
-            if (m_XYButtonBox.get() != nullptr)
-            {
-                m_XYButtonBox->setX(screenWidth - m_XYButtonBox->getScaledWidth());
-            }
+            m_XYButtonBox->setX(screenWidth - m_XYButtonBox->getScaledWidth());
         }
-        else if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Right)
+    }
+    else if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Right)
+    {
+        flip = true;
+        m_pPlayerinfo->setX(screenWidth);
+        if (m_XYButtonBox.get() != nullptr)
+        {
+            m_XYButtonBox->setX(0);
+        }
+    }
+    else if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Flipping)
+    {
+        if ((pos.x() < (screenWidth) / 2 - diff))
         {
             flip = true;
             m_pPlayerinfo->setX(screenWidth);
@@ -1163,33 +1196,20 @@ void GameMenue::cursorMoved(qint32 x, qint32 y)
                 m_XYButtonBox->setX(0);
             }
         }
-        else if (Settings::getCoInfoPosition() == GameEnums::COInfoPosition_Flipping)
+        else if (pos.x() > (screenWidth) / 2 + diff)
         {
-            if ((pos.x() < (screenWidth) / 2 - diff && !flip))
+            m_pPlayerinfo->setX(0);
+            flip = false;
+            if (m_XYButtonBox.get() != nullptr)
             {
-                flip = true;
-                m_pPlayerinfo->setX(screenWidth);
-                if (m_XYButtonBox.get() != nullptr)
-                {
-                    m_XYButtonBox->setX(0);
-                }
-            }
-            else if (pos.x() > (screenWidth) / 2 + diff && flip)
-            {
-                m_pPlayerinfo->setX(0);
-                flip = false;
-                if (m_XYButtonBox.get() != nullptr)
-                {
-                    m_XYButtonBox->setX(screenWidth - m_XYButtonBox->getScaledWidth());
-                }
+                m_XYButtonBox->setX(screenWidth - m_XYButtonBox->getScaledWidth());
             }
         }
-        if (flip != m_pPlayerinfo->getFlippedX())
-        {
-            m_pPlayerinfo->setFlippedX(flip);
-            m_pPlayerinfo->updateData();
-        }
-        
+    }
+    if (flip != m_pPlayerinfo->getFlippedX())
+    {
+        m_pPlayerinfo->setFlippedX(flip);
+        m_pPlayerinfo->updateData();
     }
 }
 
@@ -1517,7 +1537,10 @@ void GameMenue::saveGame()
     QString path = QCoreApplication::applicationDirPath() + "/savegames";
     spFileDialog saveDialog = spFileDialog::create(path, wildcards, GameMap::getInstance()->getMapName());
     this->addChild(saveDialog);
-    connect(saveDialog.get(), &FileDialog::sigFileSelected, this, &GameMenue::saveMap, Qt::QueuedConnection);
+    connect(saveDialog.get(), &FileDialog::sigFileSelected, this, [=](QString filename)
+    {
+        saveMap(filename);
+    }, Qt::QueuedConnection);
     setFocused(false);
     connect(saveDialog.get(), &FileDialog::sigCancel, this, &GameMenue::editFinishedCanceled, Qt::QueuedConnection);
 }
@@ -1567,26 +1590,33 @@ void GameMenue::victoryInfo()
 
 void GameMenue::autoSaveMap()
 {
-    Console::print("autoSaveMap()", Console::eDEBUG);
-    saveMap("savegames/" + GameMap::getInstance()->getMapName() + "_autosave_" + QString::number(m_autoSaveCounter + 1) + getSaveFileEnding());
-    m_autoSaveCounter++;
-    if (m_autoSaveCounter >= Settings::getAutoSavingCycle())
+    if (Settings::getAutoSavingCycle() > 0)
     {
-        m_autoSaveCounter = 0;
+        Console::print("GameMenue::autoSaveMap()", Console::eDEBUG);
+        QString path = GlobalUtils::getNextAutosavePath("savegames/" + GameMap::getInstance()->getMapName() + "_autosave_", getSaveFileEnding(), Settings::getAutoSavingCycle());
+        saveMap(path, false);
     }
 }
 
-void GameMenue::saveMap(QString filename)
+void GameMenue::saveMap(QString filename, bool skipAnimations)
 {
-    m_saveFile = filename;
-    m_saveMap = true;
-    if (m_saveAllowed)
+    Console::print("GameMenue::saveMap()", Console::eDEBUG);
+    if (!m_saveFile.isEmpty())
     {
-        doSaveMap();
+        m_saveFile = filename;
+        m_saveMap = true;
+        if (m_saveAllowed)
+        {
+            doSaveMap();
+        }
+        else if (skipAnimations)
+        {
+            skipAllAnimations();
+        }
     }
     else
     {
-        skipAllAnimations();
+        Console::print("Trying to save empty map name saving ignored.", Console::eWARNING);
     }
     setFocused(true);
 }

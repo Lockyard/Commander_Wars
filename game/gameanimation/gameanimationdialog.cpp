@@ -92,10 +92,7 @@ GameAnimationDialog::GameAnimationDialog(quint32 frameTime)
             pTouchEvent->stopPropagation();
         }
     });
-    connect(this, &GameAnimationDialog::sigRightClick, [=]()
-    {
-        emitFinished();
-    });
+    connect(this, &GameAnimationDialog::sigRightClick, GameAnimationFactory::getInstance(), &GameAnimationFactory::finishAllAnimations, Qt::QueuedConnection);
     connect(this, &GameAnimationDialog::sigLeftClick, this, &GameAnimationDialog::nextDialogStep, Qt::QueuedConnection);
     connect(pApp, &Mainapp::sigKeyDown, this, &GameAnimationDialog::keyInput, Qt::QueuedConnection);
 }
@@ -302,26 +299,36 @@ void GameAnimationDialog::restart()
 
 void GameAnimationDialog::loadBackground(QString file)
 {
-    QImage img(file);
-    oxygine::spSingleResAnim pAnim = oxygine::spSingleResAnim::create();
-    Mainapp::getInstance()->loadResAnim(pAnim, img);
-    m_BackgroundAnim = pAnim;
-    m_BackgroundSprite->setResAnim(m_BackgroundAnim.get());
-    if (pAnim.get() != nullptr)
+    if (!file.isEmpty())
     {
-        m_BackgroundSprite->setScaleX(Settings::getWidth() / pAnim->getWidth());
-        m_BackgroundSprite->setScaleY(Settings::getHeight() / pAnim->getHeight());
+        QImage img(file);
+        oxygine::spSingleResAnim pAnim = oxygine::spSingleResAnim::create();
+        Mainapp::getInstance()->loadResAnim(pAnim, img);
+        m_BackgroundAnim = pAnim;
+        m_BackgroundSprite->setResAnim(m_BackgroundAnim.get());
+        if (pAnim.get() != nullptr)
+        {
+            m_BackgroundSprite->setScaleX(Settings::getWidth() / pAnim->getWidth());
+            m_BackgroundSprite->setScaleY(Settings::getHeight() / pAnim->getHeight());
+        }
+    }
+    else
+    {
+        Console::print("Ignoring loading of empty image. GameAnimationDialog::loadBackground", Console::eDEBUG);
     }
 }
 
 void GameAnimationDialog::loadCoSprite(QString coid, float offsetX, float offsetY, bool flippedX, float scale)
 {
-    oxygine::spSprite pSprite = oxygine::spSprite::create();
-    oxygine::ResAnim* pAnim = COSpriteManager::getInstance()->getResAnim(coid + "+nrm", oxygine::error_policy::ep_ignore_error);
-    pSprite->setSize(pAnim->getSize());
-    pSprite->setFlippedX(flippedX);
-    pSprite->setScale(scale);
-    pSprite->setResAnim(pAnim);
-    pSprite->setPosition(offsetX, offsetY);
-    addChild(pSprite);
+    if (!coid.isEmpty())
+    {
+        oxygine::spSprite pSprite = oxygine::spSprite::create();
+        oxygine::ResAnim* pAnim = COSpriteManager::getInstance()->getResAnim(coid + "+nrm", oxygine::error_policy::ep_ignore_error);
+        pSprite->setSize(pAnim->getSize());
+        pSprite->setFlippedX(flippedX);
+        pSprite->setScale(scale);
+        pSprite->setResAnim(pAnim);
+        pSprite->setPosition(offsetX, offsetY);
+        addChild(pSprite);
+    }
 }

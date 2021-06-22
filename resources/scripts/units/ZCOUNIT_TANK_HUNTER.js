@@ -1,6 +1,6 @@
 var Constructor = function()
 {
-    this.getUnitDamageID = function()
+    this.getUnitDamageID = function(unit)
     {
         return "HEAVY_TANK";
     };
@@ -69,11 +69,15 @@ var Constructor = function()
     };
     this.postBattleActions = function(unit, damage, otherUnit, gotAttacked, weapon)
     {
-        if (weapon === 0 && gotAttacked === false && unit.getUnitID() === "ZCOUNIT_TANK_HUNTER")
+        if (weapon === 0 && gotAttacked === false && unit.getUnitID() === "ZCOUNIT_TANK_HUNTER" && damage >= 0)
         {
             var fuel = otherUnit.getFuel();
             otherUnit.setFuel(fuel - 35);
         }
+    };
+    this.getCOSpecificUnit = function(building)
+    {
+        return true;
     };
 }
 

@@ -37,10 +37,11 @@ void ScriptEventChangeCOBar::setStars(float value)
 }
 
 
-void ScriptEventChangeCOBar::readEvent(QTextStream& rStream)
+void ScriptEventChangeCOBar::readEvent(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
-    line = rStream.readLine().simplified();
+    line = line.simplified();
+    line = rStream.readLine();
+    line = line.simplified();
     QStringList items = line.replace("map.getPlayer(", "")
                             .replace(").getCO(", ",")
                             .replace(").addPowerFilled(", ",")
@@ -51,7 +52,8 @@ void ScriptEventChangeCOBar::readEvent(QTextStream& rStream)
         co = items[1].toInt();
         stars = items[2].toFloat();
     }
-    line = rStream.readLine().simplified();
+    line = rStream.readLine();
+    line = line.simplified();
 }
 
 void ScriptEventChangeCOBar::writeEvent(QTextStream& rStream)

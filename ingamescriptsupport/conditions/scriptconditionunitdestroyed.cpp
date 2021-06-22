@@ -6,6 +6,7 @@
 #include "resource_management/fontmanager.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
 
 #include "objects/base/spinbox.h"
 #include "objects/base/label.h"
@@ -17,9 +18,9 @@ ScriptConditionUnitDestroyed::ScriptConditionUnitDestroyed()
 }
 
 
-void ScriptConditionUnitDestroyed::readCondition(QTextStream& rStream)
+void ScriptConditionUnitDestroyed::readCondition(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    line = line.simplified();
     QStringList list = line.split("//")[1].split(" ");
     if (list.size() > 2)
     {
@@ -28,11 +29,11 @@ void ScriptConditionUnitDestroyed::readCondition(QTextStream& rStream)
     }
     while (!rStream.atEnd())
     {
-        if (readSubCondition(rStream, ConditionUnitDestroyed))
+        if (readSubCondition(rStream, ConditionUnitDestroyed, line))
         {
             break;
         }
-        spScriptEvent event = ScriptEvent::createReadEvent(rStream);
+        spScriptEvent event = ScriptEvent::createReadEvent(rStream, line);
         if (event.get() != nullptr)
         {
             events.append(event);
@@ -42,6 +43,7 @@ void ScriptConditionUnitDestroyed::readCondition(QTextStream& rStream)
 
 void ScriptConditionUnitDestroyed::writePreCondition(QTextStream& rStream)
 {
+    Console::print("Reading ConditionUnitDestroyed", Console::eDEBUG);
     m_executed = ScriptData::getVariableName();
     m_unitID = ScriptData::getVariableName();
     rStream << "        var " << m_executed << " = " << ScriptData::variables << ".createVariable(\"" << m_executed << "\");\n";
@@ -57,6 +59,7 @@ void ScriptConditionUnitDestroyed::writePreCondition(QTextStream& rStream)
 
 void ScriptConditionUnitDestroyed::writeCondition(QTextStream& rStream)
 {
+    Console::print("Writing ConditionUnitDestroyed", Console::eDEBUG);
     rStream << "        if (map.getUnit(" << m_unitID << "Value) === null && " << m_executed << ".readDataBool() === false) {"
             << "// " << m_x << " " << m_y << " " << QString::number(getVersion()) << " " << ConditionUnitDestroyed << "\n";
     if (subCondition.get() != nullptr)

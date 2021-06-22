@@ -64,7 +64,13 @@ var Constructor = function()
                 "HEAVY_HOVERCRAFT", "HEAVY_TANK", "HOVERCRAFT", "HOVERFLAK",
                 "INFANTRY", "LIGHT_TANK", "MECH", "MEGATANK", "MISSILE",
                 "MOTORBIKE", "NEOTANK", "RECON", "ROCKETTHROWER", "SNIPER",
-                "ZCOUNIT_REPAIR_TANK", "ZCOUNIT_IRON_SHIELD_GENERATOR"];
+                "ZCOUNIT_AT_CYCLE", "ZCOUNIT_CRYSTAL_TANK", "ZCOUNIT_INTEL_TRUCK",
+                "ZCOUNIT_IRON_SHIELD_GENERATOR", "ZCOUNIT_NEOSPIDER_TANK",
+                "ZCOUNIT_REPAIR_TANK", "ZCOUNIT_ROYAL_GUARD",
+                "ZCOUNIT_SIEGE_CANNON", "ZCOUNIT_SMUGGLER",
+                "ZCOUNIT_TANK_HUNTER", "ZCOUNIT_COMMANDO", "ZCOUNIT_PARTISAN",
+                "ZCOUNIT_LOGIC_TRUCK", "ZCOUNIT_CHAPERON", "ZCOUNIT_HOT_TANK",
+                "ZCOUNIT_AUTO_TANK"];
     };
     this.useTerrainDefense = function()
     {

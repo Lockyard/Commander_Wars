@@ -6,6 +6,7 @@
 #include "resource_management/fontmanager.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
 
 #include "objects/base/spinbox.h"
 #include "objects/base/textbox.h"
@@ -18,9 +19,10 @@ ScriptConditionCheckVariable::ScriptConditionCheckVariable()
 
 }
 
-void ScriptConditionCheckVariable::readCondition(QTextStream& rStream)
+void ScriptConditionCheckVariable::readCondition(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    Console::print("Reading ConditionCheckVariable", Console::eDEBUG);
+    line = line.simplified();
     line = line.replace("if (", "");
     if (line.startsWith(ScriptData::variables))
     {
@@ -43,11 +45,11 @@ void ScriptConditionCheckVariable::readCondition(QTextStream& rStream)
     }
     while (!rStream.atEnd())
     {
-        if (readSubCondition(rStream, ConditionVictory))
+        if (readSubCondition(rStream, ConditionVictory, line))
         {
             break;
         }
-        spScriptEvent event = ScriptEvent::createReadEvent(rStream);
+        spScriptEvent event = ScriptEvent::createReadEvent(rStream, line);
         if (event.get() != nullptr)
         {
             events.append(event);
@@ -57,6 +59,7 @@ void ScriptConditionCheckVariable::readCondition(QTextStream& rStream)
 
 void ScriptConditionCheckVariable::writePreCondition(QTextStream& rStream)
 {
+    Console::print("Writing ConditionCheckVariable", Console::eDEBUG);
     m_executed = ScriptData::getVariableName();
     rStream << "        var " << m_executed << " = " << ScriptData::variables << ".createVariable(\"" << m_executed << "\");\n";
     if (subCondition.get() != nullptr)

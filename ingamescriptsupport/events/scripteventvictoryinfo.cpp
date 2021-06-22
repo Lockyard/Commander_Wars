@@ -18,9 +18,9 @@ ScriptEventVictoryInfo::ScriptEventVictoryInfo()
 }
 
 
-void ScriptEventVictoryInfo::readEvent(QTextStream& rStream)
+void ScriptEventVictoryInfo::readEvent(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    line = line.simplified();
     QStringList items = line.replace(QString(ScriptData::variables) + ".createVariable(\"victory_info\").writeDataString(\"", "")
                             .replace("\"); // ", ",").split(",");
     if (items.size() >= 1)

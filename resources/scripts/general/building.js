@@ -7,30 +7,30 @@ var BUILDING =
     {
         building.setVisionHigh(1);
     },
-    getName : function()
+    getName : function(building)
     {
         return "";
     },
     // returns the defense of this terrain
-    getDefense : function()
+    getDefense : function(building)
     {
         return 3;
     },
 
     // vision bonus for units created by this building
-    getVisionBonus : function()
+    getVisionBonus : function(building)
     {
         return 0;
     },
     // additional offensive bonus for a unit on this field
     getOffensiveFieldBonus : function(co, attacker, atkPosX, atkPosY,
-                                      defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender, action)
     {
         return 0;
     },
     //  additional deffensive bonus for a unit on this field
     getDeffensiveFieldBonus : function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         return 0;
     },
@@ -99,7 +99,7 @@ var BUILDING =
         }
     },
 
-    getBaseIncome : function()
+    getBaseIncome : function(building)
     {
         return 1000;
     },
@@ -109,7 +109,7 @@ var BUILDING =
         return [];
     },
 
-    getActions : function()
+    getActions : function(building)
     {
         return "";
     },
@@ -171,31 +171,36 @@ var BUILDING =
             var y = unit.getY();
             if (unit.canBeRepaired(Qt.point(x, y)))
             {
-                // our unit and a repairable one
-                // replenish it
-                var refillRule = map.getGameRules().getGameRule("GAMERULE_REFILL_MATERIAL");
-                var refillMaterial = (typeof refillRule === 'undefined' || refillRule === null); // an existing rule equals it's set
-                unit.refill(refillMaterial);
-                var repairAmount = 2 + unit.getRepairBonus(Qt.point(x, y));
-                UNIT.repairUnit(unit, repairAmount);
-                if (!unit.isStealthed(map.getCurrentViewPlayer()))
-                {
-                    var animationCount = GameAnimationFactory.getAnimationCount();
-                    var animation = GameAnimationFactory.createAnimation(x, y);
-                    var width = animation.addText(qsTr("REPAIR"), map.getImageSize() / 2 + 25, 2, 1);
-                    animation.addBox("info", map.getImageSize() / 2, 0, width + 32, map.getImageSize(), 400);
-                    animation.addSprite("repair", map.getImageSize() / 2 + 8, 1, 400, 1.7);
-                    animation.addSound("repair_2.wav");
-                    if (animationCount > 0)
-                    {
-                        GameAnimationFactory.getAnimation(animationCount - 1).queueAnimation(animation);
-                    }
-                }
+                BUILDING.repairUnit(unit, x, y);
             }
         }
     },
 
-    getMiniMapIcon : function()
+    repairUnit : function(unit, x, y)
+    {
+        // our unit and a repairable one
+        // replenish it
+        var refillRule = map.getGameRules().getGameRule("GAMERULE_REFILL_MATERIAL");
+        var refillMaterial = (typeof refillRule === 'undefined' || refillRule === null); // an existing rule equals it's set
+        unit.refill(refillMaterial);
+        var repairAmount = 2 + unit.getRepairBonus(Qt.point(x, y));
+        UNIT.repairUnit(unit, repairAmount);
+        if (!unit.isStealthed(map.getCurrentViewPlayer()))
+        {
+            var animationCount = GameAnimationFactory.getAnimationCount();
+            var animation = GameAnimationFactory.createAnimation(x, y);
+            var width = animation.addText(qsTr("REPAIR"), map.getImageSize() / 2 + 25, 2, 1);
+            animation.addBox("info", map.getImageSize() / 2, 0, width + 32, map.getImageSize(), 400);
+            animation.addSprite("repair", map.getImageSize() / 2 + 8, 1, 400, 1.7);
+            animation.addSound("repair_2.wav");
+            if (animationCount > 0)
+            {
+                GameAnimationFactory.getAnimation(animationCount - 1).queueAnimation(animation);
+            }
+        }
+    },
+
+    getMiniMapIcon : function(building)
     {
         return "minimap_building";
     },
@@ -220,7 +225,7 @@ var BUILDING =
         return 0;
     },
 
-    getBuildingTargets : function()
+    getBuildingTargets : function(building)
     {
         // hint for the ai
         return GameEnums.BuildingTarget_Own;
@@ -243,13 +248,13 @@ var BUILDING =
         return "back_town";
     },
 
-    getDescription : function()
+    getDescription : function(building)
     {
         return "";
     },
 
     // vision created by this field
-    getVision : function()
+    getVision : function(building)
     {
         return 0;
     },

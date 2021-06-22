@@ -93,7 +93,7 @@ public:
      */
     inline virtual qint32 getVersion() const override
     {
-        return 18;
+        return 21;
     }
 
 
@@ -154,9 +154,24 @@ public:
      */
     void syncAnimation(oxygine::timeMS syncTime);
 
-signals:
+    signals:
 
 public slots:
+    /**
+     * @brief transformUnit
+     * @param unitID
+     */
+    void transformUnit(QString unitID);
+    /**
+     * @brief getCursorInfoRange
+     * @return
+     */
+    qint32 getCursorInfoRange() const;
+    /**
+     * @brief setCursorInfoRange
+     * @param newCursorInfoRange
+     */
+    void setCursorInfoRange(qint32 newCursorInfoRange);
     /**
      * @brief getAiMovePath
      * @return
@@ -397,32 +412,40 @@ public slots:
      * @param pOwner
      * @return
      */
-    bool isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide) const;
+    bool isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide);
     bool getHidden() const;
     void setHidden(bool Hidden);
     /**
      * @brief getCloaked cloaked units are like stealthed units, but cloak will always be removed at the start of a players turn
      * @return
      */
-    qint32 getCloaked() const;
+    bool getCloaked() const;
     /**
      * @brief setCloaked cloaked units are like stealthed units, but cloak will always be removed at the start of a players turn
      * @param cloaked
      */
-    void setCloaked(qint32 cloaked);
+    void setCloaked(qint32 cloaked, qint32 byPlayer = -1);
+    /**
+     * @brief removeCloaked
+     * @param byPlayer
+     */
+    void removeCloaked(qint32 byPlayer = -1);
+    /**
+     * @brief updateStealthIcon
+     */
     void updateStealthIcon();
     /**
      * @brief isStealthed checks if the unit is invisible for the given player. Either by terrain, Out of Vision or Stealthmode
      * @param pPlayer
      * @return
      */
-    bool isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange = false, qint32 testX = -1, qint32 testY = -1) const;
+    bool isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange = false, qint32 testX = -1, qint32 testY = -1);
     /**
      * @brief hasTerrainHide
      * @param pPlayer
      * @return
      */
-    bool hasTerrainHide(Player* pPlayer) const;
+    bool hasTerrainHide(Player* pPlayer);
 
     qint32 getUnitRank() const;
     void setUnitRank(const qint32 &UnitRank);
@@ -557,7 +580,7 @@ public slots:
     /**
      * @brief showCORange
      */
-    void showCORange();
+    void showRanges();
     /**
      * @brief removeUnit removes this from game
      */
@@ -592,7 +615,7 @@ public slots:
      * @brief updateIconDuration
      * @param player
      */
-    void updateIconDuration(qint32 player);
+    void updateStatusDurations(qint32 player);
     /**
      * @brief updateUnitStatus updates unit buffs
      */
@@ -663,7 +686,7 @@ public slots:
      * @param position
      * @return offensive bonus at this position
      */
-    qint32 getBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender);
+    qint32 getBonusOffensive(GameAction* pAction, QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender);
     /**
      * @brief getUnitBonusOffensive
      * @param position
@@ -672,7 +695,7 @@ public slots:
      * @param isDefender
      * @return
      */
-    qint32 getUnitBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender);
+    qint32 getUnitBonusOffensive(GameAction* pAction, QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender);
     /**
      * @brief getDamageReduction
      * @param pAttacker
@@ -682,7 +705,7 @@ public slots:
      * @param isDefender
      * @return
      */
-    float getDamageReduction(float damage, Unit* pAttacker, QPoint position, qint32 attackerBaseHp,
+    float getDamageReduction(GameAction* pAction, float damage, Unit* pAttacker, QPoint position, qint32 attackerBaseHp,
                               QPoint defPosition, bool isDefender, GameEnums::LuckDamageMode luckMode);
     /**
      * @brief getTrueDamage
@@ -694,7 +717,7 @@ public slots:
      * @param isDefender
      * @return
      */
-    float getTrueDamage(float damage, QPoint position, qint32 attackerBaseHp,
+    float getTrueDamage(GameAction* pAction, float damage, QPoint position, qint32 attackerBaseHp,
                         Unit* pDefender, QPoint defPosition, bool isDefender);
     /**
      * @brief getTerrainDefense
@@ -706,7 +729,7 @@ public slots:
      * @param position
      * @return defense bonus at this position
      */
-    qint32 getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender);
+    qint32 getBonusDefensive(GameAction* pAction, QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender);
     /**
      * @brief getUnitBonusDefensive
      * @param position
@@ -715,12 +738,12 @@ public slots:
      * @param isDefender
      * @return
      */
-    qint32 getUnitBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender);
+    qint32 getUnitBonusDefensive(GameAction* pAction, QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender);
     /**
      * @brief useTerrainDefense
      * @return
      */
-    bool useTerrainDefense() const;
+    bool useTerrainDefense();
     /**
      * @brief getAttackHpBonus
      * @param position
@@ -763,6 +786,18 @@ public slots:
      * @brief createCORange
      */
     void createCORange(qint32 coRange);
+    /**
+     * @brief showCustomRange
+     * @param id
+     * @param range
+     * @param color
+     */
+    void showCustomRange(QString id, qint32 range, QColor color = Qt::white);
+    /**
+     * @brief removeCustomRange
+     * @param id
+     */
+    void removeCustomRange(QString id);
     /**
      * @brief updateSprites reloads all sprites
      */
@@ -818,7 +853,7 @@ public slots:
      * @param pDefender
      * @return
      */
-    bool isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange = false, QPoint unitPos = QPoint(-1, -1));
+    bool isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange = false, QPoint unitPos = QPoint(-1, -1), bool isDefenderPos = false);
     /**
      * @brief canAttackWithWeapon
      * @param weaponIndex
@@ -928,8 +963,18 @@ protected:
      * @return
      */
     qint32 getBonus(QVector<QPoint>& data);
-
-
+    /**
+     * @brief updateRangeActor
+     * @param pActor
+     * @param range
+     * @param resAnim
+     * @param color
+     */
+    void updateRangeActor(oxygine::spActor & pActor, qint32 range, QString resAnim, QColor color);
+    /**
+     * @brief updateCustomRangeActors
+     */
+    void updateCustomRangeActors();
 private:
     QVector<oxygine::spSprite> m_pUnitWaitSprites;
     QVector<oxygine::spSprite> m_pUnitSprites;
@@ -941,6 +986,17 @@ private:
      * @brief m_CORange
      */
     oxygine::spActor m_CORange;
+    struct CustomRangeInfo
+    {
+        oxygine::spActor pActor;
+        QString id;
+        qint32 range;
+        QColor color;
+    };
+    /**
+     * @brief m_customRangeInfo
+     */
+    QVector<CustomRangeInfo> m_customRangeInfo;
     /**
      * @brief m_UnitID the id of this unit
      */
@@ -973,13 +1029,14 @@ private:
     qint32 m_capturePoints{0};
     qint32 m_UnitRank{GameEnums::UnitRank_None};
 
-    qint32 m_cloaked{0};
+    QVector<QPoint> m_cloaked;
     bool m_Hidden{false};
 
     bool m_IgnoreUnitCollision{false};
 
     qint32 m_minRange{1};
     qint32 m_maxRange{-1};
+    qint32 m_cursorInfoRange{-1};
     qint32 m_vision{1};
     qint32 m_UniqueID{0};
     GameEnums::GameAi m_AiMode{GameEnums::GameAi::GameAi_Normal};

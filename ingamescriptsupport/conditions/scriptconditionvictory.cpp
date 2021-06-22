@@ -6,6 +6,7 @@
 #include "resource_management/fontmanager.h"
 
 #include "coreengine/mainapp.h"
+#include "coreengine/console.h"
 
 #include "objects/base/spinbox.h"
 #include "objects/base/label.h"
@@ -26,9 +27,10 @@ void ScriptConditionVictory::setTeam(const qint32 &value)
     team = value;
 }
 
-void ScriptConditionVictory::readCondition(QTextStream& rStream)
+void ScriptConditionVictory::readCondition(QTextStream& rStream, QString line)
 {
-    QString line = rStream.readLine().simplified();
+    Console::print("Reading ConditionVictory", Console::eDEBUG);
+    line = line.simplified();
     QStringList items = line.replace("if (team === ", "").replace(") { // ", ",").split(",");
     if (items.size() > 0)
     {
@@ -36,11 +38,11 @@ void ScriptConditionVictory::readCondition(QTextStream& rStream)
     }
     while (!rStream.atEnd())
     {
-        if (readSubCondition(rStream, ConditionVictory))
+        if (readSubCondition(rStream, ConditionVictory, line))
         {
             break;
         }
-        spScriptEvent event = ScriptEvent::createReadEvent(rStream);
+        spScriptEvent event = ScriptEvent::createReadEvent(rStream, line);
         if (event.get() != nullptr)
         {
             events.append(event);
@@ -50,6 +52,7 @@ void ScriptConditionVictory::readCondition(QTextStream& rStream)
 
 void ScriptConditionVictory::writeCondition(QTextStream& rStream)
 {
+    Console::print("Writing ConditionVictory", Console::eDEBUG);
     rStream << "        if (team === " + QString::number(team) +") { // "
             << QString::number(getVersion()) << " " << ConditionVictory + "\n";
     for (qint32 i = 0; i < events.size(); i++)

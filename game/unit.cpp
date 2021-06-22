@@ -63,6 +63,14 @@ Unit::~Unit()
         m_CORange->removeChildren();
         m_CORange->detach();
     }
+    for (auto & customRange: m_customRangeInfo)
+    {
+        if (customRange.pActor.get())
+        {
+            customRange.pActor->removeChildren();
+            customRange.pActor->detach();
+        }
+    }
 }
 
 bool Unit::isValid()
@@ -74,6 +82,8 @@ QString Unit::getDescription()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
     // load sprite of the base terrain
     QString function = "getDescription";
     QJSValue ret = pInterpreter->doFunction(m_UnitID, function, args);
@@ -149,7 +159,7 @@ void Unit::setOwner(Player* pOwner)
         m_pOwner->getCO(1)->setCOUnit(nullptr);
         setUnitRank(getMaxUnitRang());
     }
-    showCORange();
+    showRanges();
     m_pOwner = pOwner;
     for (auto & loadedUnit : m_TransportUnits)
     {
@@ -228,10 +238,10 @@ void Unit::loadSpriteV2(QString spriteID, GameEnums::Recoloring mode, bool flipS
         oxygine::spSprite pWaitSprite = oxygine::spSprite::create();
         if (pAnim->getTotalFrames() > 1)
         {
-            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);                        
+            oxygine::spTween tween = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);
             pSprite->addTween(tween);
 
-            oxygine::spTween tweenWait = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);            
+            oxygine::spTween tweenWait = oxygine::createTween(oxygine::TweenAnim(pAnim), oxygine::timeMS(static_cast<qint64>(pAnim->getTotalFrames() * GameMap::frameTime * animationSpeed)), -1);
             pWaitSprite->addTween(tweenWait);
         }
         else
@@ -299,6 +309,15 @@ void Unit::syncAnimation(oxygine::timeMS syncTime)
             pTween = pTween->getNextSibling();
         }
     }
+    for (auto & icons : m_pIconSprites)
+    {
+        oxygine::spTween pTween = icons->getFirstTween();
+        while (pTween.get() != nullptr)
+        {
+            pTween->setElapsed(syncTime);
+            pTween = pTween->getNextSibling();
+        }
+    }
 }
 
 Player* Unit::getOwner()
@@ -312,7 +331,10 @@ QString Unit::getName()
     {
         Interpreter* pInterpreter = Interpreter::getInstance();
         QString function1 = "getName";
-        QJSValue ret = pInterpreter->doFunction(m_UnitID, function1);
+        QJSValueList args;
+        QJSValue obj = pInterpreter->newQObject(this);
+        args << obj;
+        QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args);
         if (ret.isString())
         {
             return ret.toString();
@@ -329,7 +351,10 @@ qint32 Unit::getUnitType()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getUnitType";
-    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args);
     if (ret.isNumber())
     {
         return ret.toInt();
@@ -730,6 +755,8 @@ float Unit::getTerrainAnimationMoveSpeed()
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getTerrainAnimationMoveSpeed";
     QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
     QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args);
     if (erg.isNumber())
     {
@@ -838,13 +865,26 @@ bool Unit::isAttackableFromPosition(Unit* pDefender, QPoint unitPos)
     return isAttackable(pDefender, false, unitPos);
 }
 
-bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint unitPos)
+bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint unitPos, bool isDefenderPos)
 {
     WeaponManager* pWeaponManager = WeaponManager::getInstance();
     spGameMap pMap = GameMap::getInstance();
     if (pDefender != nullptr &&
         pMap.get() != nullptr)
     {
+        QPoint defPos;
+        QPoint atkPos;
+        if (isDefenderPos)
+        {
+            defPos = unitPos;
+            atkPos = Unit::getPosition();
+        }
+        else
+        {
+            defPos = pDefender->Unit::getPosition();
+            atkPos = unitPos;
+        }
+
         if (m_pOwner->getFieldVisible(pDefender->Unit::getX(), pDefender->Unit::getY()) || ignoreOutOfVisionRange)
         {
             if (!pDefender->isStealthed(m_pOwner, ignoreOutOfVisionRange))
@@ -855,7 +895,7 @@ bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint uni
                     if (m_pOwner->isEnemyUnit(pDefender) == true)
                     {
                         if (hasAmmo1() && !m_weapon1ID.isEmpty() &&
-                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(0, unitPos.x(), unitPos.y(), pDefender->Unit::getX(), pDefender->Unit::getY())))
+                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(0, atkPos.x(), atkPos.y(), defPos.x(), defPos.y())))
                         {
                             if (pWeaponManager->getBaseDamage(m_weapon1ID, pDefender) > 0)
                             {
@@ -863,7 +903,7 @@ bool Unit::isAttackable(Unit* pDefender, bool ignoreOutOfVisionRange, QPoint uni
                             }
                         }
                         if (hasAmmo2() && !m_weapon2ID.isEmpty() &&
-                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(1, unitPos.x(), unitPos.y(), pDefender->Unit::getX(), pDefender->Unit::getY())))
+                            (!pMap->onMap(unitPos.x(), unitPos.y()) || canAttackWithWeapon(1, atkPos.x(), atkPos.y(), defPos.x(), defPos.y())))
                         {
                             if (pWeaponManager->getBaseDamage(m_weapon2ID, pDefender) > 0)
                             {
@@ -930,7 +970,10 @@ bool Unit::canAttackWithWeapon(qint32 weaponIndex, qint32 unitX, qint32 unitY, q
 GameEnums::WeaponType Unit::getTypeOfWeapon1()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
-    QJSValue erg = pInterpreter->doFunction(m_UnitID, "getTypeOfWeapon1");
+    QJSValueList args;
+    QJSValue value = pInterpreter->newQObject(this);
+    args << value;
+    QJSValue erg = pInterpreter->doFunction(m_UnitID, "getTypeOfWeapon1", args);
     if (erg.isNumber())
     {
         return static_cast<GameEnums::WeaponType>(erg.toInt());
@@ -941,7 +984,10 @@ GameEnums::WeaponType Unit::getTypeOfWeapon1()
 GameEnums::WeaponType Unit::getTypeOfWeapon2()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
-    QJSValue erg = pInterpreter->doFunction(m_UnitID, "getTypeOfWeapon2");
+    QJSValueList args;
+    QJSValue value = pInterpreter->newQObject(this);
+    args << value;
+    QJSValue erg = pInterpreter->doFunction(m_UnitID, "getTypeOfWeapon2", args);
     if (erg.isNumber())
     {
         return static_cast<GameEnums::WeaponType>(erg.toInt());
@@ -975,8 +1021,10 @@ bool Unit::canMoveAndFire(QPoint position)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "canMoveAndFire";
-    QJSValueList args1;
-    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args);
     if (erg.isBool() && erg.toBool())
     {
         return true;
@@ -1064,11 +1112,9 @@ void Unit::unloadUnit(Unit* pUnit, QPoint position)
         {
             if (m_TransportUnits[i] == pUnit)
             {
-
                 pMap->getTerrain(position.x(), position.y())->setUnit(m_TransportUnits[i]);
                 m_TransportUnits[i]->updateIcons(pMap->getCurrentViewPlayer());
-                m_TransportUnits[i]->showCORange();
-
+                m_TransportUnits[i]->showRanges();
                 m_TransportUnits.removeAt(i);
                 break;
             }
@@ -1086,7 +1132,7 @@ void Unit::unloadUnitAtIndex(qint32 index, QPoint position)
         {
             pMap->getTerrain(position.x(), position.y())->setUnit(m_TransportUnits[index]);
             m_TransportUnits[index]->updateIcons(pMap->getCurrentViewPlayer());
-            m_TransportUnits[index]->showCORange();
+            m_TransportUnits[index]->showRanges();
         }
         m_TransportUnits.removeAt(index);
     }
@@ -1109,10 +1155,10 @@ QStringList  Unit::getTransportUnits()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getTransportUnits";
-    QJSValueList args1;
-    QJSValue obj1 = pInterpreter->newQObject(this);
-    args1 << obj1;
-    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args);
     return erg.toVariant().toStringList();
 }
 
@@ -1153,33 +1199,33 @@ void Unit::postAction(spGameAction pAction)
     pInterpreter->doFunction(m_UnitID, function1, args1);
 }
 
-qint32 Unit::getBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender)
+qint32 Unit::getBonusOffensive(GameAction* pAction, QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     qint32 bonus = 0;
     bonus += getBonus(m_OffensiveBonus);
-    bonus += getUnitBonusOffensive(position, pDefender, defPosition, isDefender);
+    bonus += getUnitBonusOffensive(pAction, position, pDefender, defPosition, isDefender);
     spGameMap pMap = GameMap::getInstance();
     CO* pCO0 = m_pOwner->getCO(0);
     if (pCO0 != nullptr)
     {
-        bonus += pCO0->getOffensiveBonus(this, position, pDefender, defPosition, isDefender);
+        bonus += pCO0->getOffensiveBonus(pAction, this, position, pDefender, defPosition, isDefender);
     }
     CO* pCO1 = m_pOwner->getCO(1);
     if (pCO1 != nullptr)
     {
-        bonus += pCO1->getOffensiveBonus(this, position, pDefender, defPosition, isDefender);
+        bonus += pCO1->getOffensiveBonus(pAction, this, position, pDefender, defPosition, isDefender);
     }
     if (m_pTerrain != nullptr)
     {
         Building* pBuilding = m_pTerrain->getBuilding();
         if (pBuilding != nullptr)
         {
-            bonus += pBuilding->getOffensiveFieldBonus(this, position, pDefender, defPosition, isDefender);
+            bonus += pBuilding->getOffensiveFieldBonus(pAction, this, position, pDefender, defPosition, isDefender);
         }
         else
         {
-            bonus += m_pTerrain->getOffensiveFieldBonus(this, position, pDefender, defPosition, isDefender);
+            bonus += m_pTerrain->getOffensiveFieldBonus(pAction, this, position, pDefender, defPosition, isDefender);
         }
     }
     for (qint32 i = 0; i < pMap->getPlayerCount(); i++)
@@ -1192,12 +1238,12 @@ qint32 Unit::getBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosit
             pCO0 = pPlayer->getCO(0);
             if (pCO0 != nullptr)
             {
-                bonus -= pCO0->getOffensiveReduction(this, position, pDefender, defPosition, isDefender);
+                bonus -= pCO0->getOffensiveReduction(pAction, this, position, pDefender, defPosition, isDefender);
             }
             pCO1 = pPlayer->getCO(1);
             if (pCO1 != nullptr)
             {
-                bonus -= pCO1->getOffensiveReduction(this, position, pDefender, defPosition, isDefender);
+                bonus -= pCO1->getOffensiveReduction(pAction, this, position, pDefender, defPosition, isDefender);
             }
         }
     }
@@ -1254,7 +1300,7 @@ qint32 Unit::getBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosit
     return bonus;
 }
 
-qint32 Unit::getUnitBonusOffensive(QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender)
+qint32 Unit::getUnitBonusOffensive(GameAction* pAction, QPoint position, Unit* pDefender, QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getBonusOffensive";
@@ -1268,6 +1314,8 @@ qint32 Unit::getUnitBonusOffensive(QPoint position, Unit* pDefender, QPoint defP
     args1 << defPosition.x();
     args1 << defPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args1);
     if (erg.isNumber())
     {
@@ -1289,45 +1337,45 @@ qint32 Unit::getTerrainDefense()
     return 0;
 }
 
-float Unit::getDamageReduction(float damage, Unit* pAttacker, QPoint position, qint32 attackerBaseHp,
+float Unit::getDamageReduction(GameAction* pAction, float damage, Unit* pAttacker, QPoint position, qint32 attackerBaseHp,
                                QPoint defPosition, bool isDefender, GameEnums::LuckDamageMode luckMode)
 {
     float bonus = 0;
     CO* pCO = m_pOwner->getCO(0);
     if (pCO != nullptr)
     {
-        bonus += pCO->getDamageReduction(damage, pAttacker, position, attackerBaseHp,
+        bonus += pCO->getDamageReduction(pAction, damage, pAttacker, position, attackerBaseHp,
                                          this, defPosition, isDefender, luckMode);
     }
     pCO = m_pOwner->getCO(1);
     if (pCO != nullptr)
     {
-        bonus += pCO->getDamageReduction(damage, pAttacker, position, attackerBaseHp,
+        bonus += pCO->getDamageReduction(pAction, damage, pAttacker, position, attackerBaseHp,
                                          this, defPosition, isDefender, luckMode);
     }
     return bonus;
 }
 
-float Unit::getTrueDamage(float damage, QPoint position, qint32 attackerBaseHp,
+float Unit::getTrueDamage(GameAction* pAction, float damage, QPoint position, qint32 attackerBaseHp,
                           Unit* pDefender, QPoint defPosition, bool isDefender)
 {
     float bonus = 0;
     CO* pCO = m_pOwner->getCO(0);
     if (pCO != nullptr)
     {
-        bonus += pCO->getTrueDamage(damage, this, position, attackerBaseHp,
+        bonus += pCO->getTrueDamage(pAction, damage, this, position, attackerBaseHp,
                                     pDefender, defPosition, isDefender);
     }
     pCO = m_pOwner->getCO(1);
     if (pCO != nullptr)
     {
-        bonus += pCO->getTrueDamage(damage, this, position, attackerBaseHp,
+        bonus += pCO->getTrueDamage(pAction, damage, this, position, attackerBaseHp,
                                     pDefender, defPosition, isDefender);
     }
     return bonus;
 }
 
-qint32 Unit::getUnitBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender)
+qint32 Unit::getUnitBonusDefensive(GameAction* pAction, QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getBonusDefensive";
@@ -1341,6 +1389,8 @@ qint32 Unit::getUnitBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkP
     args1 << atkPosition.x();
     args1 << atkPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args1);
     if (erg.isNumber())
     {
@@ -1352,22 +1402,22 @@ qint32 Unit::getUnitBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkP
     }
 }
 
-qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender)
+qint32 Unit::getBonusDefensive(GameAction* pAction, QPoint position, Unit* pAttacker, QPoint atkPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     spGameMap pMap = GameMap::getInstance();
     qint32 bonus = 0;
     bonus += getBonus(m_DefensiveBonus);
-    bonus += getUnitBonusDefensive(position, pAttacker, atkPosition, isDefender);
+    bonus += getUnitBonusDefensive(pAction, position, pAttacker, atkPosition, isDefender);
     CO* pCO = m_pOwner->getCO(0);
     if (pCO != nullptr)
     {
-        bonus += pCO->getDeffensiveBonus(pAttacker, atkPosition, this, position, isDefender);
+        bonus += pCO->getDeffensiveBonus(pAction, pAttacker, atkPosition, this, position, isDefender);
     }
     pCO = m_pOwner->getCO(1);
     if (pCO != nullptr)
     {
-        bonus += pCO->getDeffensiveBonus(pAttacker, atkPosition, this, position, isDefender);
+        bonus += pCO->getDeffensiveBonus(pAction, pAttacker, atkPosition, this, position, isDefender);
     }
     for (qint32 i = 0; i < pMap->getPlayerCount(); i++)
     {
@@ -1379,12 +1429,12 @@ qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosit
             pCO = pPlayer->getCO(0);
             if (pCO != nullptr)
             {
-                bonus -= pCO->getDeffensiveReduction(pAttacker, atkPosition, this, position, isDefender);
+                bonus -= pCO->getDeffensiveReduction(pAction, pAttacker, atkPosition, this, position, isDefender);
             }
             pCO = pPlayer->getCO(1);
             if (pCO != nullptr)
             {
-                bonus -= pCO->getDeffensiveReduction(pAttacker, atkPosition, this, position, isDefender);
+                bonus -= pCO->getDeffensiveReduction(pAction, pAttacker, atkPosition, this, position, isDefender);
             }
         }
     }
@@ -1410,11 +1460,11 @@ qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosit
         Building* pBuilding = m_pTerrain->getBuilding();
         if (pBuilding != nullptr)
         {
-            bonus += pBuilding->getDeffensiveFieldBonus(pAttacker, atkPosition, this, position, isDefender);
+            bonus += pBuilding->getDeffensiveFieldBonus(pAction, pAttacker, atkPosition, this, position, isDefender);
         }
         else
         {
-            bonus += m_pTerrain->getDeffensiveFieldBonus(pAttacker, atkPosition, this, position, isDefender);
+            bonus += m_pTerrain->getDeffensiveFieldBonus(pAction, pAttacker, atkPosition, this, position, isDefender);
         }
     }
     if (!m_pOwner->getWeatherImmune())
@@ -1436,12 +1486,14 @@ qint32 Unit::getBonusDefensive(QPoint position, Unit* pAttacker, QPoint atkPosit
     return bonus;
 }
 
-bool Unit::useTerrainDefense() const
+bool Unit::useTerrainDefense()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "useTerrainDefense";
-    QJSValueList args1;
-    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue erg = pInterpreter->doFunction(m_UnitID, function1, args);
     if (erg.isBool() && erg.toBool())
     {
         return true;
@@ -1507,6 +1559,17 @@ void Unit::setUnitVisible(bool value)
     if (m_CORange.get() != nullptr)
     {
         m_CORange->setVisible(value);
+    }
+    for (auto & customRange: m_customRangeInfo)
+    {
+        if (customRange.pActor.get() == nullptr)
+        {
+            updateRangeActor(customRange.pActor,
+                             customRange.range,
+                             customRange.id,
+                             customRange.color);
+        }
+        customRange.pActor->setVisible(value);
     }
     setVisible(value);
 }
@@ -1583,7 +1646,7 @@ void Unit::startOfTurn()
     }
 }
 
-void Unit::updateIconDuration(qint32 player)
+void Unit::updateStatusDurations(qint32 player)
 {
     qint32 i = 0;
     QStringList removeList;
@@ -1617,12 +1680,23 @@ void Unit::updateIconDuration(qint32 player)
         {
             unloadIcon(item);
         }
-    }    
+    }
+    for (qint32 i = 0; i < m_cloaked.size(); ++i)
+    {
+        if (m_cloaked[i].y() == player)
+        {
+            m_cloaked[i].setX(m_cloaked[i].x() - 1);
+            if (m_cloaked[i].x() <= 0)
+            {
+                m_cloaked.removeAt(i);
+            }
+            break;
+        }
+    }
 }
 
 void Unit::updateUnitStatus()
 {
-    m_cloaked--;
     updateBonus(m_OffensiveBonus);
     updateBonus(m_DefensiveBonus);
     updateBonus(m_VisionBonus);
@@ -1716,19 +1790,19 @@ qint32 Unit::getMovementCosts(qint32 x, qint32 y, qint32 curX, qint32 curY, bool
 void Unit::initUnit()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
-    QString function1 = "getMovementType";
-    QJSValue  erg = pInterpreter->doFunction(m_UnitID, function1);
+    QJSValueList args1;
+    QJSValue obj1 = pInterpreter->newQObject(this);
+    args1 << obj1;
+    QString function1 = "init";
+    pInterpreter->doFunction(m_UnitID, function1, args1);
+    function1 = "initForMods";
+    pInterpreter->doFunction(m_UnitID, function1, args1);
+    function1 = "getMovementType";
+    QJSValue  erg = pInterpreter->doFunction(m_UnitID, function1, args1);
     if (erg.isString())
     {
         m_MovementType = erg.toString();
     }
-    function1 = "init";
-    QJSValueList args1;
-    QJSValue obj1 = pInterpreter->newQObject(this);
-    args1 << obj1;
-    pInterpreter->doFunction(m_UnitID, function1, args1);
-    function1 = "initForMods";
-    pInterpreter->doFunction(m_UnitID, function1, args1);
     setFuel(m_fuel);
     setAmmo1(m_ammo1);
     setAmmo2(m_ammo2);
@@ -1989,7 +2063,6 @@ bool Unit::getPerfectHpView(Player* pPlayer)
     return false;
 }
 
-
 void Unit::updateIcons(Player* pPlayer)
 {
     qint32 hpValue = GlobalUtils::roundUp(m_hp);
@@ -2055,8 +2128,10 @@ qint32 Unit::getLoadingPlace()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getLoadingPlace";
-    QJSValueList args1;
-    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args);
     if (ret.isNumber())
     {
         return ret.toInt();
@@ -2076,8 +2151,10 @@ QString Unit::getUnitDamageID()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getUnitDamageID";
-    QJSValueList args1;
-    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args);
     if (ret.isString())
     {
         QString retStr = ret.toString();
@@ -2231,7 +2308,10 @@ QStringList Unit::getActionList()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getActions";
-    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args);
     QStringList actionList;
     if (ret.isString())
     {
@@ -2399,7 +2479,7 @@ void Unit::moveUnitToField(qint32 x, qint32 y)
     spUnit pUnit = m_pTerrain->getSpUnit();
     // teleport unit to target position
     pMap->getTerrain(x, y)->setUnit(pUnit);
-    showCORange();
+    showRanges();
     pUnit = nullptr;
     
 }
@@ -2452,10 +2532,10 @@ GameAnimation* Unit::killUnit()
     QJSValue ret = pInterpreter->doFunction(m_UnitID, function1, args1);
     if (ret.isQObject())
     {
-       pRet = dynamic_cast<GameAnimation*>(ret.toQObject());
-       pRet->writeDataInt32(getX());
-       pRet->writeDataInt32(getY());
-       pRet->setStartOfAnimationCall("UNIT", "onKilled");
+        pRet = dynamic_cast<GameAnimation*>(ret.toQObject());
+        pRet->writeDataInt32(getX());
+        pRet->writeDataInt32(getY());
+        pRet->setStartOfAnimationCall("UNIT", "onKilled");
     }
     // record destruction of this unit
     GameRecorder* pRecorder = GameMap::getInstance()->getGameRecorder();
@@ -2662,14 +2742,51 @@ qint32 Unit::getTotalVisionHigh()
     return high;
 }
 
-qint32 Unit::getCloaked() const
+bool Unit::getCloaked() const
 {
-    return m_cloaked;
+    return (m_cloaked.size() > 0);
 }
 
-void Unit::setCloaked(qint32 cloaked)
+void Unit::setCloaked(qint32 cloaked, qint32 byPlayer)
 {
-    m_cloaked = cloaked;
+    if (byPlayer < 0)
+    {
+        byPlayer = m_pOwner->getPlayerID();
+    }
+    bool found = false;
+    for (auto & entry : m_cloaked)
+    {
+        if (entry.y() == byPlayer)
+        {
+            found = true;
+            if (entry.x() < cloaked)
+            {
+                entry.setX(cloaked);
+            }
+        }
+    }
+    if (!found)
+    {
+        m_cloaked.append(QPoint(cloaked, byPlayer));
+    }
+    updateStealthIcon();
+}
+
+void Unit::removeCloaked(qint32 byPlayer)
+{
+    if (byPlayer < 0)
+    {
+        byPlayer = m_pOwner->getPlayerID();
+    }
+    bool found = false;
+    for (qint32 i = 0; i < m_cloaked.size(); ++i)
+    {
+        if (m_cloaked[i].y() == byPlayer)
+        {
+            m_cloaked.removeAt(i);
+            break;
+        }
+    }
     updateStealthIcon();
 }
 
@@ -2860,10 +2977,10 @@ void Unit::setIgnoreUnitCollision(bool IgnoreUnitCollision)
 
 bool Unit::isStatusStealthed() const
 {
-    return (m_Hidden || (m_cloaked > 0));
+    return (m_Hidden || (m_cloaked.size() > 0));
 }
 
-bool Unit::isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide) const
+bool Unit::isStatusStealthedAndInvisible(Player* pPlayer, bool & terrainHide)
 {
     terrainHide = hasTerrainHide(pPlayer);
     if ((isStatusStealthed() || terrainHide) &&
@@ -2897,7 +3014,7 @@ void Unit::updateStealthIcon()
     }
 }
 
-bool Unit::hasTerrainHide(Player* pPlayer) const
+bool Unit::hasTerrainHide(Player* pPlayer)
 {
     qint32 x = Unit::getX();
     qint32 y = Unit::getY();
@@ -2907,7 +3024,7 @@ bool Unit::hasTerrainHide(Player* pPlayer) const
             pMap->getGameRules()->getFogMode() != GameEnums::Fog_Off);
 }
 
-bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 testX, qint32 testY) const
+bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 testX, qint32 testY)
 {
     if (pPlayer != nullptr &&
         pPlayer->checkAlliance(m_pOwner) == GameEnums::Alliance_Enemy)
@@ -2936,7 +3053,7 @@ bool Unit::isStealthed(Player* pPlayer, bool ignoreOutOfVisionRange, qint32 test
             return true;
         }
         // a unit can be stealth by itself or by the terrain it's on.
-        if (getHidden() ||
+        if (isStatusStealthed() ||
             hasTerrainHide(pPlayer))
         {
             spQmlVectorPoint pPoints = GlobalUtils::getCircle(1, 1);
@@ -3022,7 +3139,12 @@ void Unit::serializeObject(QDataStream& pStream) const
     {
         pStream << m_FirerangeBonus[i];
     }
-    pStream << m_cloaked;
+    size = m_cloaked.size();
+    pStream << size;
+    for (qint32 i = 0; i < size; i++)
+    {
+        pStream << m_cloaked[i];
+    }
     pStream << m_VisionHigh;
     pStream << m_customName;
     size = m_AiMovePath.size();
@@ -3052,6 +3174,15 @@ void Unit::serializeObject(QDataStream& pStream) const
     pStream << m_maxRange;
     pStream << m_maxFuel;
     pStream << m_baseMovementPoints;
+    size = m_customRangeInfo.size();
+    pStream << size;
+    for (qint32 i = 0; i < size; i++)
+    {
+        pStream << m_customRangeInfo[i].id;
+        pStream << m_customRangeInfo[i].range;
+        pStream << m_customRangeInfo[i].color.rgba();
+    }
+    pStream << m_cursorInfoRange;
 }
 
 void Unit::deserializeObject(QDataStream& pStream)
@@ -3251,7 +3382,26 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     }
     if (version > 12)
     {
-        pStream >> m_cloaked;
+        if (version > 18)
+        {
+            qint32 size = 0;
+            pStream >> size;
+            for (qint32 i = 0; i < size; i++)
+            {
+                QPoint point;
+                pStream >> point;
+                m_cloaked.append(point);
+            }
+        }
+        else
+        {
+            qint32 duration = 0;
+            pStream >> duration;
+            if (duration > 0)
+            {
+                m_cloaked.append(QPoint(duration, m_pOwner->getPlayerID()));
+            }
+        }
     }
     if (version > 13)
     {
@@ -3324,9 +3474,40 @@ void Unit::deserializer(QDataStream& pStream, bool fast)
     setAmmo1(bufAmmo1);
     setAmmo2(bufAmmo2);
     setFuel(bufFuel);
+    if (version > 19)
+    {
+        qint32 size;
+        pStream >> size;
+        for (qint32 i = 0; i < size; i++)
+        {
+            CustomRangeInfo customRangeInfo;
+            pStream >> customRangeInfo.id;
+            pStream >> customRangeInfo.range;
+            QRgb rgb;
+            pStream >> rgb;
+            customRangeInfo.color = rgb;
+            m_customRangeInfo.append(customRangeInfo);
+            updateRangeActor(customRangeInfo.pActor,
+                             customRangeInfo.range,
+                             customRangeInfo.id,
+                             customRangeInfo.color);
+        }
+    }
+    if (version > 20)
+    {
+        if (savegame)
+        {
+            pStream >> m_cursorInfoRange;
+        }
+        else
+        {
+            qint32 dummy2;
+            pStream >> dummy2;
+        }
+    }
 }
 
-void Unit::showCORange()
+void Unit::showRanges()
 {    
     if (m_UnitRank == GameEnums::UnitRank_CO0)
     {
@@ -3339,31 +3520,135 @@ void Unit::showCORange()
     else
     {
         createCORange(-1);
-    }    
+    }
+    updateCustomRangeActors();
+}
+
+void Unit::showCustomRange(QString id, qint32 range, QColor color)
+{
+    bool found = false;
+    for (auto & customRangeInfo : m_customRangeInfo)
+    {
+        if (customRangeInfo.id == id)
+        {
+            customRangeInfo.range = range;
+            customRangeInfo.color = color;
+            updateRangeActor(customRangeInfo.pActor,
+                             customRangeInfo.range,
+                             customRangeInfo.id,
+                             customRangeInfo.color);
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+    {
+        CustomRangeInfo customRangeInfo;
+        customRangeInfo.range = range;
+        customRangeInfo.id = id;
+        customRangeInfo.color = color;
+        m_customRangeInfo.append(customRangeInfo);
+        updateRangeActor(customRangeInfo.pActor,
+                         customRangeInfo.range,
+                         customRangeInfo.id,
+                         customRangeInfo.color);
+    }
+}
+
+void Unit::removeCustomRange(QString id)
+{
+    for (qint32 i = 0; i < m_customRangeInfo.size(); ++i)
+    {
+        if (m_customRangeInfo[i].id == id)
+        {
+            m_customRangeInfo[i].pActor->removeChildren();
+            m_customRangeInfo[i].pActor->detach();
+            m_customRangeInfo.removeAt(i);
+            break;
+        }
+    }
 }
 
 void Unit::createCORange(qint32 coRange)
 {
-    if (m_CORange.get() == nullptr)
+    QColor color = m_pOwner->getColor();
+    updateRangeActor(m_CORange, coRange, "co+range+marker", color);
+}
+
+void Unit::updateCustomRangeActors()
+{
+    for (auto & customRangeInfo : m_customRangeInfo)
     {
-        m_CORange = oxygine::spActor::create();
+        updateRangeActor(customRangeInfo.pActor,
+                         customRangeInfo.range,
+                         customRangeInfo.id,
+                         customRangeInfo.color);
+    }
+}
+
+void Unit::transformUnit(QString unitID)
+{
+    for (auto & sprite : m_pUnitWaitSprites)
+    {
+        sprite->detach();
+    }
+    for (auto & sprite : m_pUnitSprites)
+    {
+        sprite->detach();
+    }
+    for (auto & sprite : m_pIconSprites)
+    {
+        sprite->detach();
+    }
+    while (m_customRangeInfo.size() > 0)
+    {
+        removeCustomRange(m_customRangeInfo[0].id);
+    }
+    m_pIconSprites.clear();
+    m_pUnitWaitSprites.clear();
+    m_pUnitSprites.clear();
+    qint32 fuel = m_fuel;
+    qint32 ammo1 = m_ammo1;
+    qint32 ammo2 = m_ammo2;
+    m_UnitID = unitID;
+    initUnit();
+    setFuel(fuel);
+    setAmmo1(ammo1);
+    setAmmo2(ammo2);
+    updateSprites(false);
+}
+
+qint32 Unit::getCursorInfoRange() const
+{
+    return m_cursorInfoRange;
+}
+
+void Unit::setCursorInfoRange(qint32 newCursorInfoRange)
+{
+    m_cursorInfoRange = newCursorInfoRange;
+}
+
+void Unit::updateRangeActor(oxygine::spActor & pActor, qint32 range, QString resAnim, QColor color)
+{
+    if (pActor.get() == nullptr)
+    {
+        pActor = oxygine::spActor::create();
     }
     else
     {
-        m_CORange->detach();
+        pActor->detach();
     }
-    m_CORange->removeChildren();
-    m_CORange->setPriority(static_cast<qint32>(Mainapp::ZOrder::CORange));
+    pActor->removeChildren();
+    pActor->setPriority(static_cast<qint32>(Mainapp::ZOrder::CORange));
     spGameMap pMap = GameMap::getInstance();
-    if (m_pTerrain != nullptr && coRange >= 0 && pMap.get())
+    if (m_pTerrain != nullptr && range >= 0 && pMap.get())
     {
-        QColor color = m_pOwner->getColor();
-        CreateOutline::addCursorRangeOutline(m_CORange, "co+range+marker", coRange, color);
-        m_CORange->setPosition(GameMap::getImageSize() * Unit::getX(), GameMap::getImageSize() * Unit::getY());
-        pMap->addChild(m_CORange);
+        CreateOutline::addCursorRangeOutline(pActor, resAnim, range, color);
+        pActor->setPosition(GameMap::getImageSize() * Unit::getX(), GameMap::getImageSize() * Unit::getY());
+        pMap->addChild(pActor);
     }
     else
     {
-        m_CORange = nullptr;
+        pActor = nullptr;
     }
 }

@@ -13,6 +13,8 @@
 #include "ingamescriptsupport/conditions/scriptconditionplayerreachedarea.h"
 #include "ingamescriptsupport/conditions/scriptconditioncheckvariable.h"
 
+#include "coreengine/console.h"
+
 const QString ScriptCondition::ConditionVictory = "Victory";
 const QString ScriptCondition::ConditionStartOfTurn = "Start Of Turn";
 const QString ScriptCondition::ConditionEachDay = "Each Day";
@@ -57,28 +59,26 @@ void ScriptCondition::setSubCondition(const spScriptCondition &value)
     }
 }
 
-bool ScriptCondition::readSubCondition(QTextStream& rStream, QString id)
+bool ScriptCondition::readSubCondition(QTextStream& rStream, QString id, QString & line)
 {
-    qint64 pos = rStream.pos();
-    QString line = rStream.readLine().simplified();
+    line = rStream.readLine();
+    line = line.simplified();
     if (line.endsWith(id + " End"))
     {
         return true;
     }
-    rStream.seek(pos);
     if (subCondition.get() == nullptr)
     {
-        setSubCondition(createReadCondition(rStream));
+        setSubCondition(createReadCondition(rStream, line));
     }
     if (subCondition.get() != nullptr)
     {
-        pos = rStream.pos();
-        line = rStream.readLine().simplified();
+        line = rStream.readLine();
+        line = line.simplified();
         if (line.endsWith(id + " End"))
         {
             return true;
         }
-        rStream.seek(pos);
     }
     return false;
 }
@@ -149,11 +149,9 @@ spScriptCondition ScriptCondition::createCondition(ConditionType type)
 }
 
 
-spScriptCondition ScriptCondition::createReadCondition(QTextStream& rStream)
+spScriptCondition ScriptCondition::createReadCondition(QTextStream& rStream, QString & line)
 {
-    qint64 pos = rStream.pos();
-    QString line = rStream.readLine().simplified();
-    rStream.seek(pos);
+    line = line.simplified();
     spScriptCondition ret = nullptr;
     if (line.endsWith(ConditionEachDay))
     {
@@ -209,8 +207,8 @@ spScriptCondition ScriptCondition::createReadCondition(QTextStream& rStream)
     }
     if (ret.get() != nullptr)
     {
-        ret->readCondition(rStream);
-    }
+        ret->readCondition(rStream, line);
+    }    
     return ret;
 }
 void ScriptCondition::addEvent(spScriptEvent event)
@@ -316,6 +314,7 @@ bool ScriptCondition::sameConditionGroup(ConditionType type1, ConditionType type
 
 void ScriptCondition::writePreCondition(QTextStream& rStream)
 {
+    Console::print("ScriptCondition::writePreCondition", Console::eDEBUG);
     if (subCondition.get() != nullptr)
     {
         subCondition->writePreCondition(rStream);
@@ -324,6 +323,7 @@ void ScriptCondition::writePreCondition(QTextStream& rStream)
 
 void ScriptCondition::writePostCondition(QTextStream& rStream)
 {
+    Console::print("ScriptCondition::writePostCondition", Console::eDEBUG);
     if (pParent != nullptr)
     {
         pParent->writePostCondition(rStream);

@@ -245,10 +245,12 @@ QString Terrain::getDescription()
     if (m_terrainDescription.isEmpty())
     {
         Interpreter* pInterpreter = Interpreter::getInstance();
-        QJSValueList args;
         // load sprite of the base terrain
         QString function = "getDescription";
-        QJSValue ret = pInterpreter->doFunction(m_terrainID, function, args);
+        QJSValueList args1;
+        QJSValue obj2 = pInterpreter->newQObject(this);
+        args1 << obj2;
+        QJSValue ret = pInterpreter->doFunction(m_terrainID, function, args1);
         if (ret.isString())
         {
             return ret.toString();
@@ -561,6 +563,8 @@ qint32 Terrain::getBaseDefense()
     qint32 defense = 0;
     if (m_Building.get() == nullptr)
     {
+        QJSValue obj = pInterpreter->newQObject(this);
+        args1 << obj;
         QJSValue ret = pInterpreter->doFunction(m_terrainID, function1, args1);
         if (ret.isNumber())
         {
@@ -569,6 +573,8 @@ qint32 Terrain::getBaseDefense()
     }
     else
     {
+        QJSValue obj = pInterpreter->newQObject(m_Building.get());
+        args1 << obj;
         QJSValue ret = pInterpreter->doFunction(m_Building->getBuildingID(), function1, args1);
         if (ret.isNumber())
         {
@@ -583,6 +589,8 @@ QString Terrain::getMinimapIcon()
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getMiniMapIcon";
     QJSValueList args1;
+    QJSValue obj2 = pInterpreter->newQObject(this);
+    args1 << obj2;
     QJSValue ret = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (ret.isString())
     {
@@ -885,8 +893,10 @@ float Terrain::getTerrainAnimationMoveSpeed()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getTerrainAnimationMoveSpeed";
-    QJSValueList args;
-    QJSValue erg = pInterpreter->doFunction(m_terrainID, function1, args);
+    QJSValueList args1;
+    QJSValue obj2 = pInterpreter->newQObject(this);
+    args1 << obj2;
+    QJSValue erg = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (erg.isNumber())
     {
         return erg.toNumber();
@@ -937,6 +947,8 @@ qint32 Terrain::getVision(Player* pPlayer)
     QJSValueList args1;
     QJSValue obj1 = pInterpreter->newQObject(pPlayer);
     args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(this);
+    args1 << obj2;
     QJSValue ret = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (ret.isNumber())
     {
@@ -959,6 +971,11 @@ bool Terrain::getVisionHide(Player* pPlayer)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getVisionHide";
+    QJSValueList args1;
+    QJSValue obj2 = pInterpreter->newQObject(this);
+    args1 << obj2;
+    QJSValue obj1 = pInterpreter->newQObject(pPlayer);
+    args1 << obj1;
     QJSValue ret = pInterpreter->doFunction(m_terrainID, function1);
     spGameMap pMap = GameMap::getInstance();
     if (ret.isBool())
@@ -1006,6 +1023,8 @@ qint32 Terrain::getBonusVision(Unit* pUnit)
     QJSValueList args1;
     QJSValue obj1 = pInterpreter->newQObject(pUnit);
     args1 << obj1;
+    QJSValue obj2 = pInterpreter->newQObject(this);
+    args1 << obj2;
     QJSValue ret = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (ret.isNumber())
     {
@@ -1041,7 +1060,7 @@ void Terrain::startOfTurn()
     }
 }
 
-qint32 Terrain::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit* pDefender,  QPoint defPosition, bool isDefender)
+qint32 Terrain::getOffensiveFieldBonus(GameAction* pAction, Unit* pAttacker, QPoint atkPosition,Unit* pDefender,  QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getOffensiveFieldBonus";
@@ -1057,6 +1076,8 @@ qint32 Terrain::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit*
     args1 << defPosition.x();
     args1 << defPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     qint32 ergValue = 0;
     QJSValue erg = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (erg.isNumber())
@@ -1066,7 +1087,7 @@ qint32 Terrain::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit*
     return ergValue;
 }
 
-qint32 Terrain::getDeffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition, Unit* pDefender, QPoint defPosition, bool isDefender)
+qint32 Terrain::getDeffensiveFieldBonus(GameAction* pAction, Unit* pAttacker, QPoint atkPosition, Unit* pDefender, QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getDeffensiveFieldBonus";
@@ -1082,6 +1103,8 @@ qint32 Terrain::getDeffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition, Uni
     args1 << defPosition.x();
     args1 << defPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     qint32 ergValue = 0;
     QJSValue erg = pInterpreter->doFunction(m_terrainID, function1, args1);
     if (erg.isNumber())

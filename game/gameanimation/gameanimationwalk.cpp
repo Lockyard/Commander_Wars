@@ -25,14 +25,22 @@ GameAnimationWalk::GameAnimationWalk(Unit* pUnit, QVector<QPoint> movePath)
 
 bool GameAnimationWalk::onFinished(bool skipping)
 {    
-    Player* pPlayer = GameMap::getInstance()->getCurrentViewPlayer();
+    spGameMap pMap = GameMap::getInstance();
+    Player* pPlayer = pMap->getCurrentViewPlayer();
     Mainapp::getInstance()->getAudioThread()->stopAllSounds();
     if (!m_pUnit->isStealthed(pPlayer))
     {
         m_pUnit->setUnitVisible(true);
     }
+    if (m_movePath.size() > 0)
+    {
+        QPoint pos = m_movePath[0];
+        if (pMap->getTerrain(pos.x(), pos.y())->getUnit() == nullptr)
+        {
+            pMap->getTerrain(pos.x(), pos.y())->setUnit(m_pUnit);
+        }
+    }
     bool ret = GameAnimation::onFinished(skipping);
-    
     return ret;
 }
 
@@ -199,6 +207,10 @@ void GameAnimationWalk::loadSpriteV2(QString spriteID, GameEnums::Recoloring mod
         else if (mode == GameEnums::Recoloring_Table)
         {
             pSprite->setColorTable(m_pUnit->getOwner()->getColorTableAnim());
+        }
+        else
+        {
+            pSprite->setPriority(1);
         }
 
         this->addChild(pSprite);

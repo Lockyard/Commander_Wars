@@ -82,9 +82,8 @@ IngameInfoBar::IngameInfoBar()
 
 void IngameInfoBar::updatePlayerInfo()
 {
-
+    Mainapp::getInstance()->pauseRendering();
     m_pGameInfoBox->removeChildren();
-
     COSpriteManager* pCOSpriteManager = COSpriteManager::getInstance();
     GameManager* pGameManager = GameManager::getInstance();
     spGameMap pMap = GameMap::getInstance();
@@ -330,6 +329,7 @@ void IngameInfoBar::updatePlayerInfo()
             }
         }
     }
+    Mainapp::getInstance()->continueRendering();
 }
 
 void IngameInfoBar::updateMinimap()
@@ -866,4 +866,34 @@ void IngameInfoBar::addColorbar(float divider, qint32 posX, qint32 posY, QColor 
     pSprite->setResAnim(pAnim);
     pSprite->setPosition(posX, posY);
     m_pCursorInfoBox->addChild(pSprite);
+}
+
+void IngameInfoBar::syncMinimapPosition()
+{
+    spGameMap pMap = GameMap::getInstance();
+    if (pMap.get() != nullptr)
+    {
+        QPoint centeredPos = pMap->getCenteredPosition();
+        oxygine::RectF bounds = m_pMinimapSlider->getDragBounds();
+        oxygine::Vector2 size = m_pMinimapSlider->getSize();
+        qint32 newX = size.x / 2 - centeredPos.x() * Minimap::IMAGE_SIZE * m_pMinimap->getScaleX();
+        qint32 newY = size.y / 2 - centeredPos.y() * Minimap::IMAGE_SIZE * m_pMinimap->getScaleY();
+        if (newX < bounds.getLeft())
+        {
+            newX = bounds.getLeft();
+        }
+        else if (newX > bounds.getRight())
+        {
+            newX = bounds.getRight();
+        }
+        if (newY < bounds.getTop())
+        {
+            newY = bounds.getTop();
+        }
+        else if (newY > bounds.getBottom())
+        {
+            newY = bounds.getBottom();
+        }
+        m_pMinimapSlider->getContent()->setPosition(newX, newY);
+    }
 }

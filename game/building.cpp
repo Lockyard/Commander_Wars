@@ -85,9 +85,11 @@ void Building::scaleAndShowOnSingleTile()
 QString Building::getDescription()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
-    QJSValueList args;
     // load sprite of the base terrain
     QString function = "getDescription";
+    QJSValueList args;
+    QJSValue objArg = pInterpreter->newQObject(this);
+    args << objArg;
     QJSValue ret = pInterpreter->doFunction(m_BuildingID, function, args);
     if (ret.isString())
     {
@@ -143,6 +145,7 @@ void Building::setOwner(Player* pOwner)
         prevOwner == nullptr)
     {
         updateBuildingSprites(false);
+        updatePlayerColor(visible);
     }
     else
     {
@@ -290,10 +293,10 @@ qint32 Building::getVision()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getVision";
-    QJSValueList args1;
-    QJSValue obj2 = pInterpreter->newQObject(this);
-    args1 << obj2;
-    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
+    QJSValueList args;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args << obj;
+    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args);
     if (ret.isNumber())
     {
         return ret.toInt();
@@ -349,7 +352,10 @@ QString Building::getName()
     {
         Interpreter* pInterpreter = Interpreter::getInstance();
         QString function1 = "getName";
-        QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1);
+        QJSValueList args1;
+        QJSValue obj = pInterpreter->newQObject(this);
+        args1 << obj;
+        QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
         if (ret.isString())
         {
             return ret.toString();
@@ -423,6 +429,8 @@ QString Building::getMinimapIcon()
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getMiniMapIcon";
     QJSValueList args1;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args1 << obj;
     QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
     if (ret.isString())
     {
@@ -463,6 +471,8 @@ QStringList Building::getActionList()
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getActions";
     QJSValueList args1;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args1 << obj;
     QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
     QStringList retList;
     if (ret.isString())
@@ -676,7 +686,10 @@ qint32 Building::getVisionBonus()
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getVisionBonus";
-    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1);
+    QJSValueList args1;
+    QJSValue obj = pInterpreter->newQObject(this);
+    args1 << obj;
+    QJSValue ret = pInterpreter->doFunction(m_BuildingID, function1, args1);
     if (ret.isNumber())
     {
         return ret.toInt();
@@ -687,7 +700,7 @@ qint32 Building::getVisionBonus()
     }
 }
 
-qint32 Building::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit* pDefender,  QPoint defPosition, bool isDefender)
+qint32 Building::getOffensiveFieldBonus(GameAction* pAction, Unit* pAttacker, QPoint atkPosition,Unit* pDefender,  QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getOffensiveFieldBonus";
@@ -703,6 +716,8 @@ qint32 Building::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit
     args1 << defPosition.x();
     args1 << defPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     qint32 ergValue = 0;
     QJSValue erg = pInterpreter->doFunction(m_BuildingID, function1, args1);
     if (erg.isNumber())
@@ -712,7 +727,7 @@ qint32 Building::getOffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition,Unit
     return ergValue;
 }
 
-qint32 Building::getDeffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition, Unit* pDefender, QPoint defPosition, bool isDefender)
+qint32 Building::getDeffensiveFieldBonus(GameAction* pAction, Unit* pAttacker, QPoint atkPosition, Unit* pDefender, QPoint defPosition, bool isDefender)
 {
     Interpreter* pInterpreter = Interpreter::getInstance();
     QString function1 = "getDeffensiveFieldBonus";
@@ -728,6 +743,8 @@ qint32 Building::getDeffensiveFieldBonus(Unit* pAttacker, QPoint atkPosition, Un
     args1 << defPosition.x();
     args1 << defPosition.y();
     args1 << isDefender;
+    QJSValue obj4 = pInterpreter->newQObject(pAction);
+    args1 << obj4;
     qint32 ergValue = 0;
     QJSValue erg = pInterpreter->doFunction(m_BuildingID, function1, args1);
     if (erg.isNumber())

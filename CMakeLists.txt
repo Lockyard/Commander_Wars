@@ -214,6 +214,7 @@ set(${PROJECT_NAME}_SRCS
         objects/base/focusableobject.cpp
         objects/base/tableview.cpp
         objects/base/closeablepopup.cpp
+        objects/base/moveinbutton.cpp
         # objects dialogs
         objects/dialogs/colorselectiondialog.cpp
         objects/dialogs/dialogconnecting.cpp
@@ -298,6 +299,7 @@ set(${PROJECT_NAME}_SRCS
         coreengine/crashreporter.cpp
         coreengine/filesupport.cpp
         coreengine/globalutils.cpp
+        coreengine/scriptvariablefile.cpp
 
         # tweens
         coreengine/tweens/tweentogglevisibility.cpp

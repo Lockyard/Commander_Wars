@@ -22,7 +22,7 @@ var Constructor = function()
         var animation = GameAnimationFactory.createAnimation(0, 0);
         animation.addSprite2("white_pixel", 0, 0, 3200, map.getMapWidth(), map.getMapHeight());
         animation.addTweenColor(0, "#00FFFFFF", "#FFFFFFFF", 3000, true);
-        animation2.setSound("power_colin.wav");
+        animation.setSound("power_colin.wav");
         powerNameAnimation.queueAnimation(animation);
 
         var player = co.getOwner();
@@ -113,7 +113,7 @@ var Constructor = function()
         return -baseCost * CO_COLIN.costModifier / 100;
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         switch (co.getPowerMode())
         {
@@ -134,7 +134,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -143,13 +143,21 @@ var Constructor = function()
         }
         return 0;
     };
-
-
     this.getAiCoUnitBonus = function(co, unit)
     {
         return 1;
     };
-
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_LOGIC_TRUCK"];
+        }
+        return [];
+    };
     // CO - Intel
     this.getBio = function(co)
     {
@@ -169,8 +177,9 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        var text = qsTr("\nGlobal Effect: \nUnits are %0% cheaper and have %1% less firepower.") +
-               qsTr("\n\nCO Zone Effect: \nUnits have only %2% weaker firepower.");
+        var text = qsTr("\nSpecial Unit:\nLogistic Truck\n") +
+                   qsTr("\nGlobal Effect: \nUnits are %0% cheaper and have %1% less firepower.") +
+                   qsTr("\n\nCO Zone Effect: \nUnits have only %2% weaker firepower.");
         text = replaceTextArgs(text, [CO_COLIN.costModifier, CO_COLIN.globalBoost, CO_COLIN.coZoneBoost]);
         return text;
     };

@@ -173,7 +173,7 @@ var Constructor = function()
     };
     this.coZoneBonus = 20;
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         switch (co.getPowerMode())
         {
@@ -203,7 +203,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                     defender, defPosX, defPosY, isDefender)
+                                     defender, defPosX, defPosY, isDefender, action)
         {
             if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -244,7 +244,7 @@ var Constructor = function()
     this.getLongCODescription = function()
     {
         var text = qsTr("\nGlobal Effect: \nNo bonus.") +
-               qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower and defence.");
+                   qsTr("\n\nCO Zone Effect: \nUnits gain %0% firepower and defence.");
         text = replaceTextArgs(text, [CO_ADDER.coZoneBonus]);
        return text;
     };

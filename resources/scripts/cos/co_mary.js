@@ -195,7 +195,7 @@ var Constructor = function()
     };
 
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         // get cop and scop offensive bonus
         switch (co.getPowerMode())
@@ -214,7 +214,7 @@ var Constructor = function()
         }
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -224,7 +224,7 @@ var Constructor = function()
         return 0;
     };
     this.getDeffensiveReduction = function(co, attacker, atkPosX, atkPosY,
-                                  defender, defPosX, defPosY, isDefender)
+                                  defender, defPosX, defPosY, isDefender, action)
     {
         // reduce enemy defense
         if (co.getPowerMode() === GameEnums.PowerMode_Superpower ||
@@ -306,6 +306,17 @@ var Constructor = function()
     {
         return "AC";
     };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_AT_CYCLE"];
+        }
+        return [];
+    };
 
     // CO - Intel
     this.getBio = function(co)
@@ -326,7 +337,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nAttacked units won't repair from buildings for one turn. Whenever Mary destroys a unit on a property, she gains a capture bonus for that property.") +
+        return qsTr("\nSpecial Unit:\nAT Cycle\n") +
+               qsTr("\nGlobal Effect: \nAttacked units won't repair from buildings for one turn. Whenever Mary destroys a unit on a property, she gains a capture bonus for that property.") +
                qsTr("\n\nCO Zone Effect: \nUnits gain firepower and defense.");
     };
     this.getPowerDescription = function(co)

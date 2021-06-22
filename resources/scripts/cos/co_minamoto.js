@@ -115,7 +115,7 @@ var Constructor = function()
         return "GS";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                      defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender, action)
     {
         var nearMountains = false;
         if (typeof map !== 'undefined')
@@ -170,7 +170,7 @@ var Constructor = function()
         return 0;
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -252,7 +252,7 @@ var Constructor = function()
             buildingId === "TOWN" ||
             buildingId === "HQ")
         {
-            return ["ZCOUNIT_ROYAL_GUARD"];
+            return ["ZCOUNIT_NEOSPIDER_TANK"];
         }
         return [];
     };
@@ -275,7 +275,7 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nSpecial Unit:\nRoyal Guard\n") +
+        return qsTr("\nSpecial Unit:\nNeo Spider Tank\n") +
                qsTr("\nGlobal Effect: \nNo Effects.") +
                qsTr("\n\nCO Zone Effect: \nUnits near Mountains gain additional firepower.");
     };

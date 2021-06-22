@@ -191,7 +191,7 @@ var Constructor = function()
         return "BG";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         if (typeof map !== 'undefined')
         {
@@ -236,7 +236,7 @@ var Constructor = function()
     };
 
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -249,6 +249,17 @@ var Constructor = function()
     this.getAiCoUnitBonus = function(co, unit)
     {
         return 1;
+    };
+    this.getCOUnits = function(co, building)
+    {
+        var buildingId = building.getBuildingID();
+        if (buildingId === "FACTORY" ||
+            buildingId === "TOWN" ||
+            buildingId === "HQ")
+        {
+            return ["ZCOUNIT_PARTISAN"];
+        }
+        return [];
     };
 
     // CO - Intel
@@ -270,7 +281,8 @@ var Constructor = function()
     };
     this.getLongCODescription = function()
     {
-        return qsTr("\nGlobal Effect: \nNo Effects.") +
+        return qsTr("\nSpecial Unit:\nPartisan\n") +
+               qsTr("\nGlobal Effect: \nNo Effects.") +
                qsTr("\n\nCO Zone Effect: \nUnits on buildings have increased firepower.");
     };
     this.getPowerDescription = function(co)

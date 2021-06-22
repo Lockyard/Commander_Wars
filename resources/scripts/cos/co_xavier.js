@@ -129,7 +129,7 @@ var Constructor = function()
         return "GS";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                 defender, defPosX, defPosY, isDefender)
+                                 defender, defPosX, defPosY, isDefender, action)
     {
         switch (co.getPowerMode())
         {
@@ -179,7 +179,7 @@ var Constructor = function()
         return false;
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -269,7 +269,7 @@ var Constructor = function()
     this.getLongCODescription = function()
     {
         var text = qsTr("\nGlobal Effect: \nUnits with %0 HP or less deal maximum luck damage.") +
-               qsTr("\n\nCO Zone Effect: \nUnits have increased firepower.");
+                   qsTr("\n\nCO Zone Effect: \nUnits have increased firepower.");
         text = replaceTextArgs(text, [CO_XAVIER.minLuckHp]);
         return text;
     };

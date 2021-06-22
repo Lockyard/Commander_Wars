@@ -146,7 +146,7 @@ var Constructor = function()
         return "GE";
     };
     this.getOffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                      defender, defPosX, defPosY, isDefender)
+                                      defender, defPosX, defPosY, isDefender, action)
     {
         if (defender === null)
         {
@@ -192,7 +192,7 @@ var Constructor = function()
         return bonus;
     };
     this.getDeffensiveBonus = function(co, attacker, atkPosX, atkPosY,
-                                       defender, defPosX, defPosY, isDefender)
+                                       defender, defPosX, defPosY, isDefender, action)
     {
         if (co.inCORange(Qt.point(defPosX, defPosY), defender) ||
                 co.getPowerMode() > GameEnums.PowerMode_Off)
@@ -236,8 +236,8 @@ var Constructor = function()
     this.getLongCODescription = function()
     {
         var text = qsTr("\nSpecial Unit:\nRoyal Guard\n") +
-                qsTr("\nGlobal Effect: \nDirect Units have increased firepower and loose additional firepower per terrain star.") +
-                qsTr("\n\nCO Zone Effect: \nDirect Units have increased firepower.");
+                   qsTr("\nGlobal Effect: \nDirect Units have increased firepower and loose additional firepower per terrain star.") +
+                   qsTr("\n\nCO Zone Effect: \nDirect Units have increased firepower.");
         return text;
     };
     this.getPowerDescription = function(co)
