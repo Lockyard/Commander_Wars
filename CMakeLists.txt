@@ -404,6 +404,7 @@ set(${PROJECT_NAME}_SRCS
         ai/adapta/adaptamodule.cpp
         ai/adapta/buildingmodule.cpp
         ai/adapta/multiinfluencenetworkmodule.cpp
+        ai/adapta/behavioralmodule.cpp
         ai/adapta/convolutionalnnmodule.cpp
         ai/adaptaai.cpp
         ai/testfirstai.cpp
