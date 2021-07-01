@@ -53,7 +53,7 @@ public:
 
     MultiInfluenceNetworkModule() = default;
 
-    MultiInfluenceNetworkModule(Player* pPlayer, AdaptaAI* ai);
+    MultiInfluenceNetworkModule(AdaptaAI* ai);
 
     MultiInfluenceNetworkModule(MultiInfluenceNetworkModule &other) = default;
     MultiInfluenceNetworkModule(MultiInfluenceNetworkModule &&other) = default;
@@ -62,6 +62,8 @@ public:
     virtual ~MultiInfluenceNetworkModule() = default;
 
     virtual void readIni(QString filename) override;
+
+    virtual void init(Player* pPlayer) override;
 
     bool loadVectorFromFile(QString file);
 
@@ -110,7 +112,7 @@ public:
      * @param assignedWV
      * @return true if the assignment was correctly done, false otherwise
      */
-    virtual bool assignWeightVector(WeightVector assignedWV) override;
+    bool assignWeightVector(WeightVector assignedWV);
 
 
     qint32 getRequiredWeightVectorLength();
@@ -150,7 +152,6 @@ private:
     //these are long M and contain M fake units of a player and the opponent respectively
     std::vector<spUnit> m_armyUnitTypesVector;
     std::vector<spUnit> m_enemyUnitTypesVector;
-    bool m_arePlayerPtrStuffInitialized{false};
 
     std::vector<qint32> m_unitCount;
     //has the influence map of unit n been computed, for this turn?

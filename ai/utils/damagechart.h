@@ -27,7 +27,9 @@ public:
      * @brief fast way to retrieve the damage done by attacker to defender. the passed indices are relative to the
      * stringlist/vector passed on the constructor
      */
-    inline float getBaseDmg(qint32 mAttacker, qint32 mDefender);
+    inline float getBaseDmg(qint32 mAttacker, qint32 mDefender) {
+        return dmgChart1At(mAttacker, mDefender) > dmgChart2At(mAttacker, mDefender) ? dmgChart1At(mAttacker, mDefender) : dmgChart2At(mAttacker, mDefender);
+    }
 
     /**
      * @brief a bit slower way to retrieve the damage done by attacker to defender, using IDs

@@ -11,7 +11,7 @@
 
 
 
-MultiInfluenceNetworkModule::MultiInfluenceNetworkModule(Player* pPlayer, AdaptaAI* ai) : AdaptaModule(pPlayer), m_pAdapta(ai) {
+MultiInfluenceNetworkModule::MultiInfluenceNetworkModule(AdaptaAI* ai) : AdaptaModule(), m_pAdapta(ai) {
 }
 
 
@@ -147,6 +147,15 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
     }
 }
 
+
+void MultiInfluenceNetworkModule::init(Player *pPlayer) {
+    if(m_pPlayer != nullptr || pPlayer == nullptr)
+        return;
+    AdaptaModule::init(pPlayer);
+    initializeWithPlayerPtr();
+}
+
+
 bool MultiInfluenceNetworkModule::loadVectorFromFile(QString file) {
     QFile loadFile(file);
     if (!loadFile.open(QIODevice::ReadOnly)) {
@@ -186,16 +195,14 @@ bool MultiInfluenceNetworkModule::loadVectorFromFile(QString file) {
  */
 void MultiInfluenceNetworkModule::processStartOfTurn() {
     Console::print("MIN module processStartOfTurn()", Console::eDEBUG);
-    //if not initialized, initialize the types vectors
-    initializeWithPlayerPtr();
     //do unit count at start of turn and mark all maps as not computed
     for(qint32 i=0; i < m_unitAmount; i++) {
         m_unitCount[i] = m_pPlayer->getUnitCount(m_unitList[i]);
         m_isMapNComputed[i] = false;
     }
     //and unitData init
-    spQmlVectorUnit spEnemies = m_pPlayer->getEnemyUnits();
-    spQmlVectorUnit spUnits = m_pPlayer->getUnits();
+    spQmlVectorUnit spEnemies = m_pAdapta->getCurrentProcessSpEnemies();
+    spQmlVectorUnit spUnits = m_pAdapta->getCurrentProcessSpUnits();
     initUnitData(m_armyUnitData, spUnits.get(), false);
     initUnitData(m_enemyUnitData, spEnemies.get(), true);
     m_armyUnitDataKillCount = 0;
@@ -698,8 +705,6 @@ void MultiInfluenceNetworkModule::defaultInitializeUnitList(QStringList &unitLis
 
 
 void MultiInfluenceNetworkModule::initializeWithPlayerPtr() {
-    if(m_arePlayerPtrStuffInitialized || !(m_pAdapta->getPlayer()))
-        return;
     m_pPlayer = m_pAdapta->getPlayer();
     //initialize types vectors
     m_unitTypesVector.reserve(m_unitAmount);
@@ -725,8 +730,6 @@ void MultiInfluenceNetworkModule::initializeWithPlayerPtr() {
     //initialize damage chart
     m_damageChart.initialize(m_unitListFull);
     Console::print(m_damageChart.toQString(), Console::eDEBUG);
-
-    m_arePlayerPtrStuffInitialized = true;
 }
 
 

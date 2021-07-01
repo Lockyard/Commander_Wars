@@ -57,9 +57,6 @@ void DamageChart::initialize(std::vector<QString> unitIDsVector) {
 }
 
 
-inline float DamageChart::getBaseDmg(qint32 mAttacker, qint32 mDefender) {
-    return dmgChart1At(mAttacker, mDefender) > dmgChart2At(mAttacker, mDefender) ? dmgChart1At(mAttacker, mDefender) : dmgChart2At(mAttacker, mDefender);
-}
 
 float DamageChart::getBaseDmg(QString attackerID, QString defenderID) {
     qint32 i_att = 0, i_def = 0;

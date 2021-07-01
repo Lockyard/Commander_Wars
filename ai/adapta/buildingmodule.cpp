@@ -1,21 +1,27 @@
 #include "buildingmodule.h"
 
-BuildingModule::BuildingModule(Player* pPlayer) : m_pPlayer(pPlayer)
-{
-
-}
+BuildingModule::BuildingModule() {}
 
 BuildingModule::BuildingModule(const BuildingModule &other) {
     m_moduleWeight = other.m_moduleWeight;
+    m_pPlayer = other.m_pPlayer;
 }
 
 BuildingModule::BuildingModule(BuildingModule &&other) {
     m_moduleWeight = other.m_moduleWeight;
+    m_pPlayer = other.m_pPlayer;
     other.m_moduleWeight = 0.0;
+    other.m_pPlayer = nullptr;
 }
 
 BuildingModule &BuildingModule::operator=(const BuildingModule &other) {
     m_moduleWeight = other.m_moduleWeight;
+    m_pPlayer = other.m_pPlayer;
+    return *this;
+}
+
+void BuildingModule::init(Player *pPlayer) {
+    m_pPlayer = pPlayer;
 }
 
 /**
@@ -29,7 +35,10 @@ float BuildingModule::getHighestBid(bool weighted/*=true*/) {
             highestBid = m_buildingsBids[i];
         }
     }
-    return highestBid;
+    if(weighted)
+        return highestBid * m_moduleWeight;
+    else
+        return highestBid;
 }
 
 Building* BuildingModule::getHighestBidBuilding() {

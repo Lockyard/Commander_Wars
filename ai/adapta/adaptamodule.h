@@ -29,7 +29,6 @@ class AdaptaModule : public QObject, public oxygine::ref_counter
     Q_OBJECT
 public:
     AdaptaModule();
-    AdaptaModule(Player* pPlayer);
     AdaptaModule(const AdaptaModule &other);
     AdaptaModule(AdaptaModule &&other);
     void operator=(const AdaptaModule &other);
@@ -37,6 +36,11 @@ public:
 
     //Methods to be overridden. I wanted to make this class abstract, but it breaks QVectors, so this is it
     virtual void readIni(QString name) = 0;
+
+    /**
+     * @brief init this module and gives it the playerPtr reference
+     */
+    virtual void init(Player* pPlayer);
     /**
      * @brief processStartOfTurn calculate bids for this turn and process stuff for the start of turn
      */
@@ -57,9 +61,6 @@ public:
     virtual float getHighestBid(bool weighted = true) = 0;
     virtual Unit* getHighestBidUnit() = 0;
 
-
-    virtual bool assignWeightVector(WeightVector weightVector) = 0;
-
     /**
      * @brief get in QString format a state of the module.
      */
@@ -70,7 +71,6 @@ public:
     void setModuleWeight(float moduleWeight);
 
     Player *getPPlayer() const;
-    void setPPlayer(Player *pPlayer);
 
 protected:
     //how much this module's bids are weighted by the adapta AI. default is 1 so that no modifications are done to the bids
@@ -80,7 +80,7 @@ protected:
     QVector<QPair<Unit*, float>> m_unitsBids;
     bool m_isUnitBidsSorted{false};
 
-    Player* m_pPlayer;
+    Player* m_pPlayer{nullptr};
 
     void sortUnitBids();
 };

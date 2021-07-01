@@ -220,7 +220,7 @@ void testSpeedOfVectors() {
 }
 /////////////////////////////////////////////////
 
-TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta), m_adaAI(), m_MINmodule(m_pPlayer, &m_adaAI),
+TestFirstAI::TestFirstAI() : CoreAI(GameEnums::AiTypes_Adapta), m_adaAI(), m_MINmodule(&m_adaAI),
     m_influenceMap(), m_inffMap(m_IslandMaps)
 {
     rebuildIslandMaps = true;

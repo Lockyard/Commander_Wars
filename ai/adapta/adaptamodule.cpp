@@ -4,10 +4,6 @@ AdaptaModule::AdaptaModule() {
 
 }
 
-AdaptaModule::AdaptaModule(Player* pPlayer) : m_pPlayer(pPlayer)
-{
-}
-
 AdaptaModule::AdaptaModule(const AdaptaModule &other) {
     m_moduleWeight = other.m_moduleWeight;
 }
@@ -19,6 +15,10 @@ AdaptaModule::AdaptaModule(AdaptaModule &&other) {
 
 void AdaptaModule::operator=(const AdaptaModule &other) {
     m_moduleWeight = other.m_moduleWeight;
+}
+
+void AdaptaModule::init(Player *pPlayer) {
+    m_pPlayer = pPlayer;
 }
 
 float AdaptaModule::getBidFor(Unit* pUnit) {
@@ -80,11 +80,6 @@ void AdaptaModule::setModuleWeight(float moduleWeight)
 Player *AdaptaModule::getPPlayer() const
 {
     return m_pPlayer;
-}
-
-void AdaptaModule::setPPlayer(Player *pPlayer)
-{
-    m_pPlayer = pPlayer;
 }
 
 void AdaptaModule::sortUnitBids() {

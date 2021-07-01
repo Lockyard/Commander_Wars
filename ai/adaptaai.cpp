@@ -1,14 +1,35 @@
 #include "adaptaai.h"
 #include "adapta/convolutionalnnmodule.h"
 #include "adapta/multiinfluencenetworkmodule.h"
+#include "adapta/normalbehavioralmodule.h"
+#include "adapta/normalbuildingmodule.h"
 #include "coreengine/console.h"
 #include "ai/adapta/trainingmanager.h"
 #include "ai/utils/aiutils.h"
 
+#include "menue/mapselectionmapsmenue.h"
+
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
+    //*/
+    setObjectName("AdaptaAI");
+    Interpreter::setCppOwnerShip(this);
+    Mainapp* pApp = Mainapp::getInstance();
+    this->moveToThread(pApp->getWorkerthread());
+    //loadIni("normal/" + configurationFile);
+    //*/
     //readIni("mockup");
+    NormalBehavioralModule* nbm = new NormalBehavioralModule(this);
+    NormalBuildingModule* nbmBuild = new NormalBuildingModule(this);
 
+    nbm->readIni("resources/aidata/adapta/normalbehavior.ini");
+    nbmBuild->readIni("resources/aidata/adapta/normalbuilding.ini");
+
+    m_modules.append(nbm);
+    m_buildingModules.append(nbmBuild);
+    Console::print("Normal AI Behavior and Building modules loaded", Console::eDEBUG);
+
+    /*/
     MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
     pMin->readIni("resources/aidata/adapta/MINextermination.ini");
     TrainingManager::instance().requestWVLength(pMin->getRequiredWeightVectorLength());
@@ -17,34 +38,35 @@ AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn
                    QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
     pMin->assignWeightVector(wv);
     Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eINFO);
+    oxygine::intrusive_ptr<MultiInfluenceNetworkModule> spMin(pMin);
     m_modules.append(pMin);
-
+    //*/
 }
 
 void AdaptaAI::readIni(QString name) {
     //todo remove this test and actually read an ini
 }
 
+void AdaptaAI::init() {
+    CoreAI::init();
+    initModules();
+}
+
 void AdaptaAI::process() {
-
-    spQmlVectorUnit pUnits = m_pPlayer->getUnits();
-    spQmlVectorUnit pEnemies = m_pPlayer->getEnemyUnits();
-
     if(m_isFirstProcessOfTurn) {
         m_isFirstProcessOfTurn = false;
 
-        // remove island maps of the last turn
-        m_IslandMaps.clear();
+        setCurrentProcessInfosNonValid();
 
         //compute all modules' bids, based on current state of game
-        for(auto spModule : m_modules) {
+        for(auto spModule : qAsConst(m_modules)) {
             spModule->processStartOfTurn();
+        }
+        for(auto spBuildingModule : qAsConst(m_buildingModules)) {
+            spBuildingModule->processStartOfTurn();
         }
     }
 
-    rebuildIsland(pUnits.get());
-
-    Unit* pUsedUnit;
     float highestBid = 0;
     qint32 selectedModuleIndex = -1;
     m_lastSelectedModuleIndex = -1;
@@ -59,7 +81,6 @@ void AdaptaAI::process() {
     //select the highest bid unit and make that module use that unit
     if(selectedModuleIndex != -1) {
         m_lastSelectedModuleIndex = selectedModuleIndex;
-        pUsedUnit = m_modules[selectedModuleIndex]->getHighestBidUnit();
         if(!m_modules[selectedModuleIndex]->processHighestBidUnit()) {
             Console::print("Module didn't actually perform any action! Finishing turn to avoid livelock", Console::eWARNING);
             finishTurn();
@@ -74,14 +95,20 @@ void AdaptaAI::process() {
         //see if any module has to build something
         for(qint32 i=0; i < m_buildingModules.size(); i++) {
             m_buildingModules[i]->processWhatToBuild();
-            if(m_buildingModules[i]->getHighestBid() > highestBid) {
-                highestBid = m_buildingModules[i]->getHighestBid();
+            float currModuleHighestBid = m_buildingModules[i]->getHighestBid();
+            if(currModuleHighestBid > highestBid) {
+                highestBid = currModuleHighestBid;
                 selectedModuleIndex = i;
             }
         }
         //select the module which had the highest bid, and make it create a unit
         if(selectedModuleIndex != -1) {
-            m_buildingModules[selectedModuleIndex]->buildHighestBidUnit();
+            //build something with the selected module...
+            if(!m_buildingModules[selectedModuleIndex]->buildHighestBidUnit()) {
+                //if the module didn't build anything, end turn to avoid livelock
+                finishTurn();
+                return;
+            }
         }
         //if no module nor buildingModule has done an action, end turn
         else {
@@ -96,6 +123,39 @@ void AdaptaAI::addSelectedFieldData(spGameAction pGameAction, qint32 pointX, qin
     pGameAction->setInputStep(pGameAction->getInputStep() + 1);
 }
 
+spQmlVectorUnit AdaptaAI::getCurrentProcessSpUnits() {
+    if(!m_currProcessInfo.validSpUnits)
+        updateCurrentProcessInfoUnits();
+    return m_currProcessInfo.spUnits;
+}
+
+spQmlVectorUnit AdaptaAI::getCurrentProcessSpEnemies() {
+    if(!m_currProcessInfo.validSpEnemies)
+        updateCurrentProcessInfoEnemies();
+    return m_currProcessInfo.spEnemies;
+}
+
+spQmlVectorBuilding AdaptaAI::getCurrentProcessSpBuildings() {
+    if(!m_currProcessInfo.validSpBuildings)
+        updateCurrentProcessInfoBuildings();
+    return m_currProcessInfo.spBuildings;
+}
+
+spQmlVectorBuilding AdaptaAI::getCurrentProcessSpEnemyBuildings() {
+    if(!m_currProcessInfo.validSpEnemyBuildings)
+        updateCurrentProcessInfoEnemyBuildings();
+    return m_currProcessInfo.spEnemyBuildings;
+}
+
+//slot
+void AdaptaAI::initModules() {
+    for(auto spModule : qAsConst(m_modules)) {
+        spModule->init(m_pPlayer);
+    }
+    for(auto spBuildingModule : qAsConst(m_buildingModules)) {
+        spBuildingModule->init(m_pPlayer);
+    }
+}
 
 
 //protected
@@ -104,5 +164,4 @@ void AdaptaAI::finishTurn()
     m_isFirstProcessOfTurn = true;
     CoreAI::finishTurn();
 }
-
 

@@ -14,18 +14,24 @@ class BuildingModule : public QObject
 {
     Q_OBJECT
 public:
-    BuildingModule() = delete;
-    explicit BuildingModule(Player* m_pPlayer);
+    explicit BuildingModule();
     BuildingModule(const BuildingModule &other);
     BuildingModule(BuildingModule &&other);
     BuildingModule &operator=(const BuildingModule &other);
     virtual ~BuildingModule() = default;
 
+    virtual void readIni(QString filename) = 0;
 
-    //same as adapta module: these 2 methods should be abstract, but since it breaks QVector, they are not
-    virtual void processWhatToBuild(){};
+    /**
+     * @brief init this module and gives it the playerPtr reference
+     */
+    virtual void init(Player* pPlayer);
 
-    virtual void buildHighestBidUnit(){};
+    virtual void processStartOfTurn() = 0;
+
+    virtual void processWhatToBuild() = 0;
+
+    virtual bool buildHighestBidUnit() = 0;
 
     /**
      * @brief getHighestBid get the value of the highest bid done by this module. By default the bid is weighted by
@@ -41,11 +47,14 @@ public:
 protected:
     float m_moduleWeight = 1.0f;
 
-    Player* m_pPlayer;
+    Player* m_pPlayer{nullptr};
 
     spQmlVectorBuilding m_buildings;
     QVector<float> m_buildingsBids;
 
+private:
+    bool buildUnits(spQmlVectorBuilding pBuildings, spQmlVectorUnit pUnits,
+                    spQmlVectorUnit pEnemyUnits, spQmlVectorBuilding pEnemyBuildings);
 };
 
 #endif // BUILDINGMODULE_H
