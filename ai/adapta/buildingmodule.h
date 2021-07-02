@@ -4,13 +4,17 @@
 #include <QObject>
 #include "game/building.h"
 #include "coreengine/qmlvector.h"
+
+class BuildingModule;
+typedef oxygine::intrusive_ptr<BuildingModule> spBuildingModule;
+
 /**
  * @brief The BuildingModule class represents a Module of the Adapta AI, dedicated only at choosing which and where units to
  * build. The working is the same of the AdaptaModule, which means each place in the map where the player can build is
  * associated with a bid [0,1] representing the importance of the unit that should be built there. 0 means that no unit should
  * be built there, according to this module
  */
-class BuildingModule : public QObject
+class BuildingModule : public QObject, public oxygine::ref_counter
 {
     Q_OBJECT
 public:
@@ -20,7 +24,11 @@ public:
     BuildingModule &operator=(const BuildingModule &other);
     virtual ~BuildingModule() = default;
 
-    virtual void readIni(QString filename) = 0;
+    /**
+     * @brief read from a ini file.
+     * @return true if load was ok, false if not
+     */
+    virtual bool readIni(QString filename) = 0;
 
     /**
      * @brief init this module and gives it the playerPtr reference

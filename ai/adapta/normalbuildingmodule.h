@@ -12,11 +12,13 @@
 class NormalBuildingModule : public BuildingModule
 {
 public:
+    static const QString MODULE_ID;
+
     NormalBuildingModule(AdaptaAI* pAdapta);
 
     // BuildingModule interface
 public:
-    void readIni(QString filename) override;
+    bool readIni(QString filename) override;
     void init(Player* pPlayer) override;
     void processStartOfTurn() override;
     void processWhatToBuild() override;

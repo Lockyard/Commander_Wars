@@ -8,11 +8,13 @@
 #include "resource_management/weaponmanager.h"
 
 
+const QString NormalBuildingModule::MODULE_ID = "NORMAL_BUILDING";
+
 NormalBuildingModule::NormalBuildingModule(AdaptaAI* pAdapta) : BuildingModule(), m_pAdapta(pAdapta)
 {
 }
 
-void NormalBuildingModule::readIni(QString filename) {
+bool NormalBuildingModule::readIni(QString filename) {
     if(QFile::exists(filename)) {
         QSettings moduleSettings(filename, QSettings::IniFormat);
 
@@ -339,11 +341,11 @@ void NormalBuildingModule::readIni(QString filename) {
                 m_ProducingTransportMinLoadingTransportRatio = 3.0f;
             }
             settings.endGroup();
+            return true;
         }
 
     }
-
-
+    return false;
 }
 
 void NormalBuildingModule::init(Player *pPlayer) {

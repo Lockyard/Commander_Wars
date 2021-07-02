@@ -8,10 +8,23 @@
 #include "adapta/buildingmodule.h"
 
 
+/**
+ * @brief The AdaptaAI is the AI core of the project. Actually in itself is relatively simple, since the complexity is given more
+ * by its modules. The AdaptaAI in short has a list of AdaptaModule(s) and BuildingModule(s). The first modules manage actions,
+ * the second ones manage the building of units. Each module has to make a bid, a value going from 0 to 1 which tells how much
+ * is important the next action they need to do, so they will receive a unit (or factory) control if no other module bids higher.
+ * The AdaptaAI can weight each module as it sees fit, so that its bid are increased or reduced.
+ * When all modules bid 0 the turn is over
+ */
 class AdaptaAI : public CoreAI
 {
     Q_OBJECT
 public:
+    static const QString DEFAULT_CONFIG_NAME;
+    /**
+     * @brief NO_MODULE_ID the ID which marks to have no modules
+     */
+    static const QString NO_MODULE_ID;
     /**
      * @brief The currProcessInfo struct contains info about the current process, info which can be shared across modules
      * to be calculated at most once if requested
@@ -58,7 +71,7 @@ protected:
 private:
     //all loaded modules of the adapta
     QVector<spAdaptaModule> m_modules;
-    QVector<BuildingModule*> m_buildingModules;
+    QVector<spBuildingModule> m_buildingModules;
 
     QVector<float> m_unitBidVector;
 
@@ -68,6 +81,15 @@ private:
     bool m_ignoreBids;
 
     currProcessInfo m_currProcessInfo;
+
+    /**
+     * @brief thake the stringList of parameters of ini file and load/generate the modules specified.
+     * @return true if load was ok, false if not
+     */
+    bool loadModulesFromConfig(bool requireAllLoadsOk, QStringList adaptaModulesIDs, QStringList buildingModulesIDs,
+                               QStringList adaptaModulesIniFiles, QStringList buildingModulesIniFiles);
+
+    void loadDefaultConfig();
 
     /**
      * @brief setPlayerPtr to all modules

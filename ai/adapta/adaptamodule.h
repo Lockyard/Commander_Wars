@@ -34,8 +34,11 @@ public:
     void operator=(const AdaptaModule &other);
     virtual ~AdaptaModule() = default;
 
-    //Methods to be overridden. I wanted to make this class abstract, but it breaks QVectors, so this is it
-    virtual void readIni(QString name) = 0;
+    /**
+     * @brief read from a ini file.
+     * @return true if load was ok, false if not
+     */
+    virtual bool readIni(QString name) = 0;
 
     /**
      * @brief init this module and gives it the playerPtr reference

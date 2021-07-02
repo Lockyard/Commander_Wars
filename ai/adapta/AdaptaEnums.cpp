@@ -1,6 +1,9 @@
 #include "AdaptaEnums.h"
 #include "coreengine/console.h"
 #include "game/gamemap.h"
+#include "multiinfluencenetworkmodule.h"
+#include "normalbehavioralmodule.h"
+#include "normalbuildingmodule.h"
 
 namespace adaenums {
 
@@ -63,6 +66,27 @@ evalType getEvalTypeFromString(QString eTypeString, evalType defaultType) {
     if(eTypeString == "PLAYER_VALUE_PREDEPLOYED")
         return evalType::PLAYER_VALUE_PREDEPLOYED;
     return defaultType;
+}
+
+spAdaptaModule generateAdaptaModuleFromString(QString moduleID, AdaptaAI* pAdaptaAI) {
+    if(moduleID == MultiInfluenceNetworkModule::MODULE_ID) {
+        return spAdaptaModule(new MultiInfluenceNetworkModule(pAdaptaAI));
+    } else if (moduleID == NormalBehavioralModule::MODULE_ID){
+        return spAdaptaModule(new NormalBehavioralModule(pAdaptaAI));
+    } else {
+        Console::print("Trying to generate an AdaptaModule from ID, but ID '" + moduleID + "' does not match with any module ID!", Console::eWARNING);
+        return spAdaptaModule(nullptr);
+    }
+}
+
+
+spBuildingModule generateBuildingModuleFromString(QString moduleID, AdaptaAI* pAdaptaAI) {
+    if(moduleID == NormalBuildingModule::MODULE_ID) {
+        return spBuildingModule(new NormalBuildingModule(pAdaptaAI));
+    } else {
+        Console::print("Trying to generate a BuildingModule from ID, but ID '" + moduleID + "' does not match with any module ID!", Console::eWARNING);
+        return spBuildingModule(nullptr);
+    }
 }
 
 

@@ -24,7 +24,7 @@
 
 /**
  * @brief NormalBehavioralModule is a module which implements just a behavioral AI. It will be basically a copy/reimplementation
- * of the existing normal AI by Robosturm adapted to be a module for the AdaptaAI, maybe with some changes (credits to him in
+ * of the existing normal AI by Robosturm just adapted to be a module for the AdaptaAI (credits to him in
  * any case), but nothing more since a behavioral AI is not the focus of the AdaptaAI project.
  * This module should be used so that the Adapta AI has at least an action to do with each unit, if some units are not supported
  * by any other module.
@@ -32,6 +32,11 @@
  */
 class NormalBehavioralModule : public AdaptaModule
 {
+public:
+    //own static stuff
+    static const QString MODULE_ID;
+
+private:
     //CoreAI stuff
     /**
      * @brief NB_AISteps = Normal Behavior AISteps
@@ -81,9 +86,10 @@ class NormalBehavioralModule : public AdaptaModule
 public:
 
     NormalBehavioralModule(AdaptaAI* ai);
+    virtual ~NormalBehavioralModule();
 
     // AdaptaModule interface
-    void readIni(QString name) override;
+    bool readIni(QString name) override;
     void init(Player* pPlayer) override;
     void processStartOfTurn() override;
     bool processHighestBidUnit() override;

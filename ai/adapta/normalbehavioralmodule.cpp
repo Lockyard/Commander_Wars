@@ -23,7 +23,10 @@
 #include "game/building.h"
 #include "resource_management/weaponmanager.h"
 
+//own static stuff
+const QString NormalBehavioralModule::MODULE_ID = "NORMAL_BEHAVIORAL";
 
+//coreAI static stuff
 const QString NormalBehavioralModule::ACTION_WAIT = "ACTION_WAIT";
 const QString NormalBehavioralModule::ACTION_HOELLIUM_WAIT = "ACTION_HOELLIUM_WAIT";
 const QString NormalBehavioralModule::ACTION_SUPPORTSINGLE = "ACTION_SUPPORTSINGLE";
@@ -58,7 +61,11 @@ NormalBehavioralModule::NormalBehavioralModule(AdaptaAI* ai) : AdaptaModule(), m
 
 }
 
-void NormalBehavioralModule::readIni(QString filename) {
+NormalBehavioralModule::~NormalBehavioralModule() {
+    Console::print("Deleting normal behavioral module!", Console::eDEBUG);
+}
+
+bool NormalBehavioralModule::readIni(QString filename) {
 
     if(QFile::exists(filename)) {
         QSettings moduleSettings(filename, QSettings::IniFormat);
@@ -526,12 +533,12 @@ void NormalBehavioralModule::readIni(QString filename) {
                 m_ProducingTransportMinLoadingTransportRatio = 3.0f;
             }
             settings.endGroup();
-        }
 
+            return true;
+        }
     }
 
-
-        //*/
+    return false;
 }
 
 void NormalBehavioralModule::init(Player *pPlayer) {

@@ -3,6 +3,9 @@
 
 #include <QString>
 #include "game/unit.h"
+#include "adaptamodule.h"
+#include "buildingmodule.h"
+#include "ai/adaptaai.h"
 
 namespace adaenums {
 
@@ -83,6 +86,22 @@ QString iMapTypeToQString(iMapType type);
  * (VICTORY_COUNT_ONLY is default if not specified)
  */
 evalType getEvalTypeFromString(QString eTypeString, evalType defaultType = evalType::VICTORY_COUNT_ONLY);
+
+/**
+ * @brief generates and return a new AdaptaModule for the specified adaptaAI (required not null), based on the passed moduleID.
+ * A module ID should be specified by the module class itself.
+ * If the moduleID is not recognized among the valid ones, returns a sp with nullptr
+ */
+spAdaptaModule generateAdaptaModuleFromString(QString moduleID, AdaptaAI* pAdaptaAI);
+
+
+/**
+ * @brief generates and return a new BuildingModule for the specified adaptaAI (required not null), based on the passed moduleID.
+ * A module ID should be specified by the module class itself.
+ * If the moduleID is not recognized among the valid ones, returns a sp with nullptr
+ */
+spBuildingModule generateBuildingModuleFromString(QString moduleID, AdaptaAI* pAdaptaAI);
+
 
 /**
  * @brief get the fitness of this match for player #playerIndex

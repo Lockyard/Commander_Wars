@@ -21,6 +21,7 @@ typedef oxygine::intrusive_ptr<MultiInfluenceNetworkModule> spMultiInfluenceNetw
 class MultiInfluenceNetworkModule : public AdaptaModule
 {
 public:
+    static const QString MODULE_ID;
     struct UnitStatus {
         float hp;
         qint32 posX;
@@ -61,7 +62,7 @@ public:
 
     virtual ~MultiInfluenceNetworkModule() = default;
 
-    virtual void readIni(QString filename) override;
+    virtual bool readIni(QString filename) override;
 
     virtual void init(Player* pPlayer) override;
 

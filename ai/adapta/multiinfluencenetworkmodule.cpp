@@ -9,13 +9,13 @@
 #include "ai/utils/aiutils.h"
 #include "coreengine/console.h"
 
-
+const QString MultiInfluenceNetworkModule::MODULE_ID = "MIN";
 
 MultiInfluenceNetworkModule::MultiInfluenceNetworkModule(AdaptaAI* ai) : AdaptaModule(), m_pAdapta(ai) {
 }
 
 
-void MultiInfluenceNetworkModule::readIni(QString filename) {
+bool MultiInfluenceNetworkModule::readIni(QString filename) {
     if(QFile::exists(filename)) {
         QSettings settings(filename, QSettings::IniFormat);
 
@@ -141,9 +141,11 @@ void MultiInfluenceNetworkModule::readIni(QString filename) {
             m_friendlyFactoryMultiplier = 0.1f;
 
         settings.endGroup();
+        return true;
     }
     else {
         Console::print("MIN module couldn't load file '" + filename + "'!", Console::eWARNING);
+        return false;
     }
 }
 

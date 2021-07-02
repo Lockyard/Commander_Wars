@@ -1,4 +1,7 @@
 #include "adaptaai.h"
+
+#include <QSettings>
+
 #include "adapta/convolutionalnnmodule.h"
 #include "adapta/multiinfluencenetworkmodule.h"
 #include "adapta/normalbehavioralmodule.h"
@@ -9,42 +12,73 @@
 
 #include "menue/mapselectionmapsmenue.h"
 
+const QString AdaptaAI::DEFAULT_CONFIG_NAME = "DefaultConfiguration";
+const QString AdaptaAI::NO_MODULE_ID = "NONE";
+
 AdaptaAI::AdaptaAI() : CoreAI(GameEnums::AiTypes_Adapta), m_isFirstProcessOfTurn(true)
 {
-    //*/
     setObjectName("AdaptaAI");
     Interpreter::setCppOwnerShip(this);
     Mainapp* pApp = Mainapp::getInstance();
     this->moveToThread(pApp->getWorkerthread());
-    //loadIni("normal/" + configurationFile);
+    loadIni("adapta/adaptaai.ini");
     //*/
-    //readIni("mockup");
-    NormalBehavioralModule* nbm = new NormalBehavioralModule(this);
-    NormalBuildingModule* nbmBuild = new NormalBuildingModule(this);
 
-    nbm->readIni("resources/aidata/adapta/normalbehavior.ini");
-    nbmBuild->readIni("resources/aidata/adapta/normalbuilding.ini");
 
-    m_modules.append(nbm);
-    m_buildingModules.append(nbmBuild);
-    Console::print("Normal AI Behavior and Building modules loaded", Console::eDEBUG);
-
-    /*/
-    MultiInfluenceNetworkModule* pMin = new MultiInfluenceNetworkModule(m_pPlayer, this);
-    pMin->readIni("resources/aidata/adapta/MINextermination.ini");
-    TrainingManager::instance().requestWVLength(pMin->getRequiredWeightVectorLength());
-    WeightVector wv = TrainingManager::instance().getAssignedWeightVector();
-    Console::print("wv is of size " + QString::number(wv.size()) + " (requested: " +
-                   QString::number(pMin->getRequiredWeightVectorLength()) + ")", Console::eDEBUG);
-    pMin->assignWeightVector(wv);
-    Console::print("MIN mockup module loaded. Result:\n" + pMin->toQString(), Console::eINFO);
-    oxygine::intrusive_ptr<MultiInfluenceNetworkModule> spMin(pMin);
-    m_modules.append(pMin);
-    //*/
 }
 
-void AdaptaAI::readIni(QString name) {
-    //todo remove this test and actually read an ini
+void AdaptaAI::readIni(QString filename) {
+    if(QFile::exists(filename)) {
+        QSettings settings(filename, QSettings::IniFormat);
+
+        settings.beginGroup("LoadConfiguration");
+        QString configName = settings.value("ConfigName", "DefaultConfiguration").toString();
+        settings.endGroup();
+
+        bool requireAllLoadsOk;
+        QStringList adaptaModulesIDs;
+        QStringList buildingModulesIDs;
+        QStringList adaptaModulesIniFiles;
+        QStringList buildingModulesIniFiles;
+
+        settings.beginGroup(configName);
+        requireAllLoadsOk = settings.value("RequireAllLoadsOk", true).toBool();
+        adaptaModulesIDs = settings.value("AdaptaModules").toStringList();
+        buildingModulesIDs = settings.value("BuildingModules").toStringList();
+        adaptaModulesIniFiles = settings.value("AdaptaIniFiles").toStringList();
+        buildingModulesIniFiles = settings.value("BuildingIniFiles").toStringList();
+        settings.endGroup();
+
+        bool ok = loadModulesFromConfig(requireAllLoadsOk, adaptaModulesIDs, buildingModulesIDs, adaptaModulesIniFiles, buildingModulesIniFiles);
+
+        //if load failed for whatever reason, load the default configuration
+        if(!ok) {
+            Console::print("Configuration '" + configName + "' failed to load! Loading default configuration '" + DEFAULT_CONFIG_NAME + "'!", Console::eWARNING);
+            settings.beginGroup(DEFAULT_CONFIG_NAME);
+            requireAllLoadsOk = settings.value("RequireAllLoadsOk", true).toBool();
+            adaptaModulesIDs = settings.value("AdaptaModules").toStringList();
+            buildingModulesIDs = settings.value("BuildingModules").toStringList();
+            adaptaModulesIniFiles = settings.value("AdaptaIniFiles").toStringList();
+            buildingModulesIniFiles = settings.value("BuildingIniFiles").toStringList();
+            settings.endGroup();
+
+            ok = loadModulesFromConfig(requireAllLoadsOk, adaptaModulesIDs, buildingModulesIDs, adaptaModulesIniFiles, buildingModulesIniFiles);
+
+            //if even default config fails, which shouldn't really, but who knows, then just hardcode instantiate a
+            //default config which should be the same anyway, a normal AI behavioral + building
+            if(!ok) {
+                Console::print("Default configuration failed! Instantiating a default Normal AI Behavior + Building configuration!", Console::eWARNING);
+                loadDefaultConfig();
+            } else {
+                Console::print("AdaptaAI: Default Configuration was loaded", Console::eDEBUG);
+            }
+        } else {
+            Console::print("AdaptaAI: Configuration '" + configName + "' was loaded", Console::eDEBUG);
+        }
+    } else {
+        Console::print("AdaptaAI ini file not found. Instantiating a default Normal AI Behavior + Building configuration.", Console::eWARNING);
+        loadDefaultConfig();
+    }
 }
 
 void AdaptaAI::init() {
@@ -147,6 +181,122 @@ spQmlVectorBuilding AdaptaAI::getCurrentProcessSpEnemyBuildings() {
     return m_currProcessInfo.spEnemyBuildings;
 }
 
+
+bool AdaptaAI::loadModulesFromConfig(bool requireAllLoadsOk, QStringList adaptaModulesIDs, QStringList buildingModulesIDs,
+                           QStringList adaptaModulesIniFiles, QStringList buildingModulesIniFiles) {
+    if(adaptaModulesIDs.isEmpty() || buildingModulesIDs.isEmpty()) {
+        Console::print("Loading AdaptaAI modules from file: Configuration was not found or is incomplete, since at least one of the lists is empty. "
+                        " (if you want to have an empty list of modules, use '" + NO_MODULE_ID + "' as specified in the adapta ini file)", Console::eWARNING);
+        return false;
+    }
+
+    if(!adaptaModulesIDs.contains(NO_MODULE_ID) && adaptaModulesIDs.size() != adaptaModulesIniFiles.size()) {
+        Console::print("Loading AdaptaAI modules from file: mismatch of length of adaptaModules (" + QString::number(adaptaModulesIDs.size()) +
+                       ") and length of their ini files (" + QString::number(adaptaModulesIniFiles.size()) + ")!", Console::eWARNING);
+        return false;
+    }
+    if(!buildingModulesIDs.contains(NO_MODULE_ID) && buildingModulesIDs.size() != buildingModulesIniFiles.size()) {
+        Console::print("Loading AdaptaAI modules from file: mismatch of length of adaptaModules (" + QString::number(adaptaModulesIDs.size()) +
+                       ") and length of their ini files (" + QString::number(adaptaModulesIniFiles.size()) + ")!", Console::eWARNING);
+        return false;
+    }
+
+    m_modules.reserve(adaptaModulesIDs.size());
+
+    if(!adaptaModulesIDs.contains(NO_MODULE_ID)) {
+        //here we are sure sizes of ids and inifiles lists are the same. they may be 0,
+        for(qint32 i=0; i < adaptaModulesIDs.size(); i++) {
+            spAdaptaModule loadedModule = adaenums::generateAdaptaModuleFromString(adaptaModulesIDs.at(i), this);
+            //if generation of the module was not ok abort
+            if(loadedModule.get() == nullptr) {
+                if(requireAllLoadsOk) {
+                    m_modules.clear();
+                    Console::print("Error while generating module '" + adaptaModulesIDs.at(i) +"'!", Console::eWARNING);
+                    return false;
+                } else {
+                    Console::print("Module '" + adaptaModulesIDs.at(i) + "' was not generated, skipping it since current configuration "
+                    "doesn't require all modules", Console::eWARNING);
+                    continue;
+                }
+            }
+            //load the ini. If load goes well, add the module
+            if(loadedModule->readIni(adaptaModulesIniFiles.at(i))) {
+                m_modules.append(loadedModule);
+                Console::print("'" + adaptaModulesIDs.at(i) + "' module loaded correctly with config file '" +
+                               adaptaModulesIniFiles.at(i) + "'", Console::eDEBUG);
+            }
+            //if load fails, abort if all modules are required, else continue
+            else {
+                if(requireAllLoadsOk) {
+                    m_modules.clear();
+                    Console::print("Error while loading ini file '" + adaptaModulesIniFiles.at(i) + "' of module '" + adaptaModulesIDs.at(i) +"'", Console::eWARNING);
+                    return false;
+                } else {
+                    Console::print("Module '" + adaptaModulesIDs.at(i) + "' didn't load ini correctly, skipping it since current configuration "
+                                    "doesn't require all modules", Console::eWARNING);
+                    continue;
+                }
+            }
+        }
+    }
+
+    //skip building modules if there is contained the keyword which states not to have building modules, or if the list is empty
+    if(buildingModulesIDs.contains(NO_MODULE_ID) || buildingModulesIDs.isEmpty())
+        return true;
+
+    m_buildingModules.reserve(buildingModulesIDs.size());
+
+    for(qint32 i=0; i<buildingModulesIDs.size(); i++) {
+        spBuildingModule loadedBuildingModule = adaenums::generateBuildingModuleFromString(buildingModulesIDs.at(i), this);
+        //if generation of the module was not ok abort
+        if(loadedBuildingModule.get() == nullptr) {
+            if(requireAllLoadsOk) {
+                m_modules.clear();
+                m_buildingModules.clear();
+                Console::print("Error while generating building module '" + buildingModulesIDs.at(i) + "'!", Console::eWARNING);
+                return false;
+            } else {
+                Console::print("BuildingModule '" + buildingModulesIDs.at(i) + "' was not generated, skipping it since current configuration "
+                                "doesn't require all modules", Console::eWARNING);
+                continue;
+            }
+        }
+        //load ini config. If load goes well, add the module
+        if(loadedBuildingModule->readIni(buildingModulesIniFiles.at(i))) {
+            m_buildingModules.append(loadedBuildingModule);
+            Console::print("'" + buildingModulesIDs.at(i) + "' building module loaded correctly with config file '" +
+                           buildingModulesIniFiles.at(i) + "'", Console::eDEBUG);
+        }
+        //if load fails, abort if all modules are required, else continue
+        else {
+            if(requireAllLoadsOk) {
+                m_modules.clear();
+                m_buildingModules.clear();
+                Console::print("Error while loading ini file '" + buildingModulesIniFiles.at(i) + "' of building module '" + buildingModulesIDs.at(i) +"'", Console::eWARNING);
+                return false;
+            } else {
+                Console::print("BuildingModule '" + buildingModulesIDs.at(i) + "' didn't load ini correctly, skipping it since current configuration "
+                                "doesn't require all modules", Console::eWARNING);
+                continue;
+            }
+        }
+    }
+    return true;
+}
+
+
+void AdaptaAI::loadDefaultConfig() {
+    m_modules.clear();
+    m_buildingModules.clear();
+    //since they are the assigned to an intrusive ptr in the append(), they will be destroyed correctly
+    NormalBehavioralModule* nbm = new NormalBehavioralModule(this);
+    NormalBuildingModule* nbmBuild = new NormalBuildingModule(this);
+    nbm->readIni("resources/aidata/adapta/normalbehavior.ini");
+    nbmBuild->readIni("resources/aidata/adapta/normalbuilding.ini");
+    m_modules.append(nbm);
+    m_buildingModules.append(nbmBuild);
+    Console::print("AdaptaAI: Default Normal AI Behavior and Building modules configuration loaded", Console::eDEBUG);
+}
 //slot
 void AdaptaAI::initModules() {
     for(auto spModule : qAsConst(m_modules)) {
